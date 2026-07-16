@@ -1,0 +1,9 @@
+{
+  "common": {
+    "logIn": "Connexion",
+    "logOut": "Déconnexion",
+    "signUp": "Inscription",
+    "backToDashboard": "Retour au tableau de bord",
+    "brand": "RDV"
+  }
+}
