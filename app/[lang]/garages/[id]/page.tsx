@@ -35,6 +35,9 @@ const ERROR_MESSAGES: Record<string, string> = {
   service: "That service is no longer available.",
   "slot-taken": "That time was just booked by someone else. Pick another.",
   error: "Something went wrong booking that slot. Please try again.",
+  "not-payable": "This garage hasn't finished payment setup yet.",
+  "payment-cancelled": "Checkout was cancelled. You haven't been charged.",
+  "payment-error": "Something went wrong starting checkout. Please try again.",
 };
 
 export default async function GarageDetailPage({
@@ -61,7 +64,7 @@ export default async function GarageDetailPage({
 
   const { data: garage } = await supabase
     .from("garages")
-    .select("id, name, address, city, latitude, longitude")
+    .select("id, name, address, city, latitude, longitude, stripe_charges_enabled")
     .eq("id", garageId)
     .eq("status", "approved")
     .single();
@@ -208,7 +211,14 @@ export default async function GarageDetailPage({
           </div>
         </div>
 
-        {selectedService && (
+        {selectedService && !garage.stripe_charges_enabled && (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
+            This garage hasn&apos;t finished payment setup yet, so booking is
+            temporarily unavailable.
+          </p>
+        )}
+
+        {selectedService && garage.stripe_charges_enabled && (
           <div className="flex flex-col gap-3">
             <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
               Choose a date

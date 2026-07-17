@@ -15,6 +15,10 @@ Built with Next.js 16 (App Router, Turbopack) and Supabase (Postgres, Auth, Stor
 - **`@react-pdf/renderer`** — server-side PDF invoice generation.
 - **`@vis.gl/react-google-maps`** — garage location picker/display, gated on
   `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (no-ops gracefully when unset).
+- **Stripe Connect** — clients pay at booking time via a fully Stripe-hosted Checkout Session
+  (no Stripe.js/Elements in this app); garages are Express connected accounts; the platform
+  keeps a flat `PLATFORM_COMMISSION_PERCENT`% via a Checkout application fee, the rest transfers
+  automatically to the garage. See `lib/stripe.ts` and `app/api/webhooks/stripe/route.ts`.
 
 ## Getting started
 
@@ -45,6 +49,14 @@ Optional, with graceful fallbacks:
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — without it, the garage location picker (onboarding) and
   map display (garage detail page) both render a text fallback instead of a map.
 
+Required for bookings to work at all:
+
+- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `PLATFORM_COMMISSION_PERCENT` — a garage with no
+  connected Stripe account (`stripe_charges_enabled = false`) simply hides its booking slots
+  rather than erroring, so the app still boots and is browsable without these, but no payment
+  can be taken until they're set and a garage completes Connect onboarding at
+  `/garage/stripe-connect`.
+
 ## Database migrations
 
 Schema changes live in `supabase/migrations/`, numbered sequentially. They are **applied
@@ -64,3 +76,8 @@ listed above in the Vercel project settings, then also set, in the Supabase dash
 - **Auth → Email Templates**: the "Confirm signup", "Invite user", and "Reset Password"
   templates must link through this app's `/auth/confirm` route using the `token_hash` URL
   format, not Supabase's default `{{ .ConfirmationURL }}` — see `app/auth/confirm/route.ts`.
+
+Also register a webhook endpoint in the Stripe dashboard pointing at
+`https://<your-domain>/api/webhooks/stripe`, subscribed to `checkout.session.completed`,
+`checkout.session.expired`, and `account.updated` — then copy its signing secret into
+`STRIPE_WEBHOOK_SECRET`.

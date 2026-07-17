@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthedUser, requireGarageMember, requireGarageOwner } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
+import { getOrigin } from "@/lib/origin";
+import { getStripe, PLATFORM_COMMISSION_PERCENT } from "@/lib/stripe";
 import { BookingFormSchema } from "@/lib/definitions";
 import { notifyAppointmentStatusChange } from "@/lib/notifications";
 import { renderInvoicePdf } from "@/lib/invoice-pdf";
@@ -75,7 +78,7 @@ export async function bookAppointment(formData: FormData) {
 
   const { data: service } = await supabase
     .from("services")
-    .select("duration_minutes")
+    .select("name, duration_minutes, price")
     .eq("id", serviceId)
     .eq("garage_id", garageId)
     .single();
@@ -84,30 +87,125 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/${lang}/garages/${garageId}?error=service`);
   }
 
+  const { data: garage } = await supabase
+    .from("garages")
+    .select("stripe_account_id, stripe_charges_enabled")
+    .eq("id", garageId)
+    .single();
+
+  if (!garage?.stripe_charges_enabled || !garage.stripe_account_id) {
+    redirect(`/${lang}/garages/${garageId}?error=not-payable`);
+  }
+
   const startDate = new Date(`${date}T${startTime}:00`);
   const endDate = new Date(
     startDate.getTime() + service.duration_minutes * 60000
   );
+  const bookingErrorUrl = (reason: string) =>
+    `/${lang}/garages/${garageId}?service=${serviceId}&date=${date}&error=${reason}`;
 
-  const { error } = await supabase.from("appointments").insert({
-    client_id: user.id,
-    garage_id: garageId,
-    service_id: serviceId,
-    start_time: startDate.toISOString(),
-    end_time: endDate.toISOString(),
-  });
+  const { data: appointment, error } = await supabase
+    .from("appointments")
+    .insert({
+      client_id: user.id,
+      garage_id: garageId,
+      service_id: serviceId,
+      start_time: startDate.toISOString(),
+      end_time: endDate.toISOString(),
+      status: "pending_payment",
+    })
+    .select("id")
+    .single();
 
-  if (error) {
+  if (error || !appointment) {
     // 23P01 = exclusion_violation, thrown by the no-overlap DB constraint
     // when another client books the same slot first.
-    const reason = error.code === "23P01" ? "slot-taken" : "error";
-    redirect(
-      `/${lang}/garages/${garageId}?service=${serviceId}&date=${date}&error=${reason}`
-    );
+    redirect(bookingErrorUrl(error?.code === "23P01" ? "slot-taken" : "error"));
   }
 
-  revalidateLocalizedPath("/dashboard");
-  redirect(`/${lang}/dashboard?booked=1`);
+  // Client pays the full service price; the platform's cut is carved out via
+  // a Stripe Connect destination charge, so the garage automatically
+  // receives (price - commission) with no manual payout step.
+  const totalCents = Math.round(service.price * 100);
+  const commissionCents = Math.round(
+    totalCents * (PLATFORM_COMMISSION_PERCENT / 100)
+  );
+
+  let sessionUrl: string;
+  try {
+    const origin = await getOrigin();
+    const session = await getStripe().checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "eur",
+            product_data: { name: service.name },
+            unit_amount: totalCents,
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        application_fee_amount: commissionCents,
+        transfer_data: { destination: garage.stripe_account_id },
+      },
+      metadata: { appointmentId: appointment.id },
+      success_url: `${origin}/${lang}/dashboard?booked=1`,
+      cancel_url: `${origin}${bookingErrorUrl("payment-cancelled")}`,
+      // Keeps an abandoned checkout from holding the slot for Stripe's
+      // default 24h session lifetime -- checkout.session.expired frees it.
+      expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
+    });
+
+    if (!session.url) {
+      throw new Error("Stripe did not return a checkout session URL");
+    }
+
+    await supabase
+      .from("appointments")
+      .update({ stripe_checkout_session_id: session.id })
+      .eq("id", appointment.id);
+
+    sessionUrl = session.url;
+  } catch (err) {
+    console.error("[payments] checkout session creation failed:", err);
+    await supabase.from("appointments").delete().eq("id", appointment.id);
+    redirect(bookingErrorUrl("payment-error"));
+  }
+
+  redirect(sessionUrl);
+}
+
+// Cancelling a paid appointment must not silently keep the client's money --
+// look up a succeeded payment and refund it via Stripe. Uses the service-role
+// client throughout: `payments` has no update policy for the authenticated
+// role by design (financial records are only ever written server-side), so
+// flipping status to "refunded" needs to bypass RLS the same way the webhook
+// handler's writes do.
+async function refundIfPaid(appointmentId: string) {
+  try {
+    const admin = createAdminClient();
+    const { data: payment } = await admin
+      .from("payments")
+      .select("id, stripe_payment_intent_id")
+      .eq("appointment_id", appointmentId)
+      .eq("status", "succeeded")
+      .maybeSingle();
+
+    if (!payment?.stripe_payment_intent_id) return;
+
+    await getStripe().refunds.create({
+      payment_intent: payment.stripe_payment_intent_id,
+    });
+
+    await admin
+      .from("payments")
+      .update({ status: "refunded" })
+      .eq("id", payment.id);
+  } catch (err) {
+    console.error("[payments] refund failed:", err);
+  }
 }
 
 export async function cancelAppointment(formData: FormData) {
@@ -135,6 +233,7 @@ export async function cancelAppointment(formData: FormData) {
       "cancelled",
       "client"
     );
+    await refundIfPaid(id);
   }
 
   revalidateLocalizedPath("/dashboard");
@@ -319,6 +418,7 @@ export async function providerCancelAppointment(formData: FormData) {
       "cancelled",
       "garage"
     );
+    await refundIfPaid(id);
   }
 
   revalidateLocalizedPath("/garage/calendar");

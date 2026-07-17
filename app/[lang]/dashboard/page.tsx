@@ -118,6 +118,11 @@ function AppointmentCard({
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
             {formatDateTime(appointment.start_time)}
           </p>
+          {appointment.status === "pending_payment" && (
+            <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
+              Payment processing
+            </p>
+          )}
           {appointment.status === "cancelled" && (
             <p className="mt-1 text-sm text-red-600">Cancelled</p>
           )}
@@ -395,12 +400,22 @@ export default async function DashboardPage({
                 " You can still set up services and availability in the meantime."}
             </p>
           )}
+          {!garage.stripe_charges_enabled && (
+            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
+              Connect a Stripe account to start accepting bookings.{" "}
+              <Link href={`/${lang}/garage/stripe-connect`} className="underline">
+                Set up payments
+              </Link>
+            </p>
+          )}
           <div className="flex flex-wrap gap-4 text-sm font-medium underline">
             <Link href={`/${lang}/garage/calendar`}>Calendar</Link>
             <Link href={`/${lang}/garage/services`}>Services</Link>
             <Link href={`/${lang}/garage/availability`}>Availability</Link>
             <Link href={`/${lang}/garage/documents`}>Documents</Link>
             <Link href={`/${lang}/garage/invoices`}>Invoices</Link>
+            <Link href={`/${lang}/garage/payments`}>Payments</Link>
+            <Link href={`/${lang}/garage/stripe-connect`}>Stripe setup</Link>
             <Link href={`/${lang}/garage/onboarding`}>Garage profile</Link>
             <Link href={`/${lang}/garage/staff`}>Staff</Link>
           </div>

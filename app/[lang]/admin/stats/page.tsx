@@ -71,6 +71,7 @@ export default async function AdminStatsPage({
     pendingDocuments,
     { data: reviews },
     { data: invoices },
+    { data: payments },
   ] = await Promise.all([
     headCount(supabase, "garages", "status", "pending"),
     headCount(supabase, "garages", "status", "approved"),
@@ -85,12 +86,17 @@ export default async function AdminStatsPage({
     headCount(supabase, "garage_documents", "status", "pending"),
     supabase.from("reviews").select("rating"),
     supabase.from("invoices").select("amount"),
+    supabase.from("payments").select("commission_amount").eq("status", "succeeded"),
   ]);
 
   const ratings = (reviews ?? []).map((review) => review.rating);
   const avgRating = averageRating(ratings);
   const totalRevenue = (invoices ?? []).reduce(
     (sum, invoice) => sum + Number(invoice.amount),
+    0
+  );
+  const totalCommission = (payments ?? []).reduce(
+    (sum, payment) => sum + Number(payment.commission_amount),
     0
   );
 
@@ -138,6 +144,13 @@ export default async function AdminStatsPage({
               style: "currency",
               currency: "EUR",
             }).format(totalRevenue)}
+          />
+          <StatTile
+            label="Platform commission"
+            value={new Intl.NumberFormat("fr-LU", {
+              style: "currency",
+              currency: "EUR",
+            }).format(totalCommission)}
           />
           <StatTile
             label="Average rating"
