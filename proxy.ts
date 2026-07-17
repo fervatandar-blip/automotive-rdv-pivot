@@ -6,8 +6,10 @@ import { updateSession } from "@/lib/supabase/proxy";
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Non-localized routes (Supabase email callback, etc.) pass through untouched.
-  if (pathname.startsWith("/auth")) {
+  // Non-localized routes (Supabase email callback, API routes/webhooks,
+  // etc.) pass through untouched -- locale-prefixing them would break
+  // server-to-server callers like Stripe that hit an exact URL.
+  if (pathname.startsWith("/auth") || pathname.startsWith("/api")) {
     return NextResponse.next();
   }
 
