@@ -7,6 +7,7 @@ import { resolveLocale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { GarageMapDisplay } from "@/components/garage-map-display";
 import { bookAppointment } from "@/app/actions/appointments";
+import { formatRating } from "@/lib/ratings";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -75,6 +76,20 @@ export default async function GarageDetailPage({
     .eq("garage_id", garageId)
     .order("created_at", { ascending: true });
 
+  const { data: reviews } = await supabase
+    .from("reviews")
+    .select("id, rating, comment, created_at, profiles(full_name)")
+    .eq("garage_id", garageId)
+    .order("created_at", { ascending: false });
+
+  const reviewRows = (reviews ?? []) as unknown as {
+    id: string;
+    rating: number;
+    comment: string | null;
+    created_at: string;
+    profiles: { full_name: string } | null;
+  }[];
+
   const selectedService =
     services?.find((service) => service.id === serviceParam) ?? services?.[0];
 
@@ -133,6 +148,9 @@ export default async function GarageDetailPage({
                 {[garage.address, garage.city].filter(Boolean).join(", ")}
               </p>
             )}
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              {formatRating(reviewRows.map((review) => review.rating))}
+            </p>
           </div>
           <LanguageSwitcher lang={lang} />
         </div>
@@ -248,6 +266,42 @@ export default async function GarageDetailPage({
             )}
           </div>
         )}
+
+        <div className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            Reviews
+          </h2>
+          {reviewRows.length > 0 ? (
+            reviewRows.map((review) => (
+              <div
+                key={review.id}
+                className="rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-black dark:text-zinc-50">
+                    {review.profiles?.full_name ?? "Client"}
+                  </span>
+                  <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {"★".repeat(review.rating)}
+                    {"☆".repeat(5 - review.rating)}
+                  </span>
+                </div>
+                {review.comment && (
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    {review.comment}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+                  {new Date(review.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              No reviews yet.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );

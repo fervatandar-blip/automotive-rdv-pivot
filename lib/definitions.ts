@@ -196,3 +196,13 @@ export const BookingFormSchema = z.object({
     .string()
     .regex(/^\d{2}:\d{2}$/, { error: "Invalid start time." }),
 });
+
+export const ReviewFormSchema = z.object({
+  appointmentId: z.uuid(),
+  rating: z.coerce
+    .number({ error: "Choose a rating." })
+    .int()
+    .min(1)
+    .max(5),
+  comment: z.string().trim().max(1000, { error: "Keep it under 1000 characters." }).optional(),
+});

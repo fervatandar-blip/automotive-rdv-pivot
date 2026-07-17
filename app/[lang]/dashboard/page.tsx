@@ -9,6 +9,7 @@ import {
   confirmAppointment,
   providerCancelAppointment,
 } from "@/app/actions/appointments";
+import { submitReview } from "@/app/actions/reviews";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
@@ -37,60 +38,121 @@ function formatDateTime(iso: string) {
   });
 }
 
+const RATING_OPTIONS = [
+  { value: 5, label: "5 – Excellent" },
+  { value: 4, label: "4 – Good" },
+  { value: 3, label: "3 – Average" },
+  { value: 2, label: "2 – Poor" },
+  { value: 1, label: "1 – Very poor" },
+];
+
+function ReviewForm({
+  appointmentId,
+  lang,
+}: {
+  appointmentId: string;
+  lang: Locale;
+}) {
+  return (
+    <form
+      action={submitReview}
+      className="mt-2 flex flex-col gap-2 border-t border-black/[.08] pt-3 dark:border-white/[.145]"
+    >
+      <input type="hidden" name="appointmentId" value={appointmentId} />
+      <input type="hidden" name="lang" value={lang} />
+      <p className="text-sm font-medium text-black dark:text-zinc-50">
+        Leave a review
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          name="rating"
+          defaultValue={5}
+          className="rounded-md border border-black/[.08] px-2 py-1 text-sm dark:border-white/[.145] dark:bg-black"
+        >
+          {RATING_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          className="rounded-full border border-black/[.08] px-4 py-1 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+        >
+          Submit
+        </button>
+      </div>
+      <textarea
+        name="comment"
+        placeholder="Optional comment"
+        rows={2}
+        className="rounded-md border border-black/[.08] px-3 py-2 text-sm dark:border-white/[.145] dark:bg-black"
+      />
+    </form>
+  );
+}
+
 function AppointmentCard({
   appointment,
   lang,
   cancellable = false,
   invoiceUrl,
+  reviewable = false,
 }: {
   appointment: Appointment;
   lang: Locale;
   cancellable?: boolean;
   invoiceUrl?: string;
+  reviewable?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-      <div>
-        <h3 className="font-semibold text-black dark:text-zinc-50">
-          {appointment.services?.name ?? "Service"}
-        </h3>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          with {appointment.garages?.name ?? "Garage"}
-        </p>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {formatDateTime(appointment.start_time)}
-        </p>
-        {appointment.status === "cancelled" && (
-          <p className="mt-1 text-sm text-red-600">Cancelled</p>
-        )}
-        {appointment.status === "completed" && (
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Completed
+    <div className="flex flex-col rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-black dark:text-zinc-50">
+            {appointment.services?.name ?? "Service"}
+          </h3>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            with {appointment.garages?.name ?? "Garage"}
           </p>
-        )}
-        {invoiceUrl && (
-          <a
-            href={invoiceUrl}
-            className="mt-1 inline-block text-sm font-medium underline"
-          >
-            Download invoice
-          </a>
-        )}
-      </div>
-      {cancellable &&
-        (appointment.status === "pending" ||
-          appointment.status === "confirmed") && (
-          <form action={cancelAppointment}>
-            <input type="hidden" name="id" value={appointment.id} />
-            <input type="hidden" name="lang" value={lang} />
-            <button
-              type="submit"
-              className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {formatDateTime(appointment.start_time)}
+          </p>
+          {appointment.status === "cancelled" && (
+            <p className="mt-1 text-sm text-red-600">Cancelled</p>
+          )}
+          {appointment.status === "completed" && (
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Completed
+            </p>
+          )}
+          {invoiceUrl && (
+            <a
+              href={invoiceUrl}
+              className="mt-1 inline-block text-sm font-medium underline"
             >
-              Cancel
-            </button>
-          </form>
-        )}
+              Download invoice
+            </a>
+          )}
+        </div>
+        {cancellable &&
+          (appointment.status === "pending" ||
+            appointment.status === "confirmed") && (
+            <form action={cancelAppointment}>
+              <input type="hidden" name="id" value={appointment.id} />
+              <input type="hidden" name="lang" value={lang} />
+              <button
+                type="submit"
+                className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+              >
+                Cancel
+              </button>
+            </form>
+          )}
+      </div>
+      {reviewable && (
+        <ReviewForm appointmentId={appointment.id} lang={lang} />
+      )}
     </div>
   );
 }
@@ -360,6 +422,7 @@ export default async function DashboardPage({
             Role: {profile.role}
           </p>
           <div className="flex gap-4 text-sm font-medium underline">
+            <Link href={`/${lang}/admin/stats`}>Overview</Link>
             <Link href={`/${lang}/admin/garages`}>Garages</Link>
           </div>
           <LanguageSwitcher lang={lang} />
@@ -402,6 +465,18 @@ export default async function DashboardPage({
       if (data?.signedUrl) {
         invoiceUrls.set(invoice.appointment_id, data.signedUrl);
       }
+    }
+  }
+
+  const reviewedAppointmentIds = new Set<string>();
+  if (completedIds.length > 0) {
+    const { data: reviews } = await supabase
+      .from("reviews")
+      .select("appointment_id")
+      .in("appointment_id", completedIds);
+
+    for (const review of reviews ?? []) {
+      reviewedAppointmentIds.add(review.appointment_id);
     }
   }
 
@@ -470,6 +545,10 @@ export default async function DashboardPage({
                 appointment={appointment}
                 lang={lang}
                 invoiceUrl={invoiceUrls.get(appointment.id)}
+                reviewable={
+                  appointment.status === "completed" &&
+                  !reviewedAppointmentIds.has(appointment.id)
+                }
               />
             ))}
           </div>
