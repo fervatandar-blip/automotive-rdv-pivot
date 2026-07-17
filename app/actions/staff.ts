@@ -1,11 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireGarageOwner } from "@/lib/dal";
 import { locales, parseLocale, defaultLocale } from "@/lib/i18n/config";
+import { getOrigin } from "@/lib/origin";
 import {
   InviteMechanicFormSchema,
   type InviteMechanicFormState,
@@ -15,13 +15,6 @@ function revalidateLocalizedPath(path: string) {
   for (const locale of locales) {
     revalidatePath(`/${locale}${path}`);
   }
-}
-
-async function getOrigin() {
-  const headersList = await headers();
-  const host = headersList.get("host") ?? "localhost:3000";
-  const protocol = host.startsWith("localhost") ? "http" : "https";
-  return `${protocol}://${host}`;
 }
 
 export async function inviteMechanic(
@@ -76,10 +69,11 @@ export async function inviteMechanic(
   }
 
   const origin = await getOrigin();
+  const nextPath = encodeURIComponent(`/${defaultLocale}/set-password`);
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: fullName, role: "mecanicien" },
-    redirectTo: `${origin}/${defaultLocale}/set-password`,
+    redirectTo: `${origin}/auth/callback?next=${nextPath}`,
   });
 
   if (error || !data.user) {

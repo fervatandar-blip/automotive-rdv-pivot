@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RDV
 
-## Getting Started
+A bilingual (FR/EN) marketplace connecting car owners with verified garages in Luxembourg.
+Built with Next.js 16 (App Router, Turbopack) and Supabase (Postgres, Auth, Storage).
 
-First, run the development server:
+## Stack
+
+- **Next.js 16.2.10** — App Router, server actions, `proxy.ts` for locale detection + session
+  refresh. See `node_modules/next/dist/docs/` for this version's breaking changes vs. older
+  Next.js conventions (e.g. Middleware → Proxy).
+- **Supabase** — Postgres with RLS-first authorization, `@supabase/ssr` for browser/server
+  auth clients, Storage for garage verification documents and generated invoices.
+- **Resend** — transactional email (appointment status changes, invites). Falls back to
+  console logging when `RESEND_API_KEY` is unset.
+- **`@react-pdf/renderer`** — server-side PDF invoice generation.
+- **`@vis.gl/react-google-maps`** — garage location picker/display, gated on
+  `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (no-ops gracefully when unset).
+
+## Getting started
 
 ```bash
+npm install
+cp .env.example .env.local   # fill in real values, see below
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+See `.env.example` for the full list and inline documentation. Required for the app to boot:
 
-## Learn More
+- `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` — from your Supabase project settings.
+- `SUPABASE_SERVICE_ROLE_KEY` — **server-only**, never prefix with `NEXT_PUBLIC_`. Used for
+  admin-level operations (staff invites via `auth.admin.inviteUserByEmail`). Treat as a secret;
+  never paste it into a shell command or commit it — read it from `.env.local` only.
 
-To learn more about Next.js, take a look at the following resources:
+Optional, with graceful fallbacks:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `RESEND_API_KEY` / `EMAIL_FROM` — without a key, emails are logged to the server console
+  instead of sent. The default `EMAIL_FROM` uses Resend's sandbox sender
+  (`onboarding@resend.dev`), which only delivers to the Resend account owner — real
+  transactional email to clients/garages requires verifying a real sending domain in Resend
+  and updating `EMAIL_FROM`.
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` — without it, the garage location picker (onboarding) and
+  map display (garage detail page) both render a text fallback instead of a map.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Database migrations
 
-## Deploy on Vercel
+Schema changes live in `supabase/migrations/`, numbered sequentially. They are **applied
+manually** via the Supabase SQL editor — there is no automated migration runner in this repo.
+When adding a new migration, run it against your Supabase project's SQL editor before relying
+on it in application code.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Deployed on Vercel. After connecting the GitHub repo, configure the same environment variables
+listed above in the Vercel project settings, then also set, in the Supabase dashboard:
+
+- **Auth → URL Configuration → Site URL**: the deployed app's URL.
+- **Auth → URL Configuration → Redirect URLs**: an allowlist entry for the deployed URL (and
+  `http://localhost:3000/**` for local development) — Supabase silently drops `redirect_to`/
+  `next` params that aren't on this allowlist.
+- **Auth → Email Templates**: the "Confirm signup", "Invite user", and "Reset Password"
+  templates must link through this app's `/auth/confirm` route using the `token_hash` URL
+  format, not Supabase's default `{{ .ConfirmationURL }}` — see `app/auth/confirm/route.ts`.

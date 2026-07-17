@@ -3,11 +3,14 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { parseLocale } from "@/lib/i18n/config";
+import { getOrigin } from "@/lib/origin";
 import {
+  ForgotPasswordFormSchema,
   LoginFormSchema,
   SetPasswordFormSchema,
   SignupFormSchema,
   type AuthFormState,
+  type ForgotPasswordFormState,
   type SetPasswordFormState,
 } from "@/lib/definitions";
 
@@ -29,6 +32,7 @@ export async function signup(
   }
 
   const { fullName, email, password, role } = validatedFields.data;
+  const origin = await getOrigin();
   const supabase = await createClient();
 
   // Profile row is created by the on_auth_user_created DB trigger, which
@@ -36,7 +40,10 @@ export async function signup(
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { full_name: fullName, role } },
+    options: {
+      data: { full_name: fullName, role },
+      emailRedirectTo: `${origin}/auth/callback?next=/${lang}/dashboard`,
+    },
   });
 
   if (error) {
@@ -74,6 +81,41 @@ export async function login(
   }
 
   redirect(`/${lang}/dashboard`);
+}
+
+const FORGOT_PASSWORD_SUCCESS =
+  "If an account exists for that email, we've sent a password reset link.";
+
+export async function requestPasswordReset(
+  state: ForgotPasswordFormState,
+  formData: FormData
+): Promise<ForgotPasswordFormState> {
+  const lang = parseLocale(formData.get("lang"));
+
+  const validatedFields = ForgotPasswordFormSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!validatedFields.success) {
+    return { errors: validatedFields.error.flatten().fieldErrors };
+  }
+
+  const { email } = validatedFields.data;
+  const origin = await getOrigin();
+  const supabase = await createClient();
+
+  const nextPath = encodeURIComponent(`/${lang}/set-password?context=recovery`);
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/auth/callback?next=${nextPath}`,
+  });
+
+  // Always return the same neutral message regardless of outcome, so this
+  // form can't be used to enumerate which emails have accounts.
+  if (error) {
+    console.error("[auth] password reset request failed:", error);
+  }
+
+  return { message: FORGOT_PASSWORD_SUCCESS };
 }
 
 export async function setPassword(

@@ -1,8 +1,26 @@
 "use client";
 
-import { useActionState } from "react";
-import { useParams } from "next/navigation";
+import { Suspense, useActionState } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import { setPassword } from "@/app/actions/auth";
+
+function SetPasswordCopy() {
+  const searchParams = useSearchParams();
+  const isRecovery = searchParams.get("context") === "recovery";
+
+  return (
+    <>
+      <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+        {isRecovery ? "Reset your password" : "Set your password"}
+      </h1>
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        {isRecovery
+          ? "Choose a new password for your account."
+          : "You've accepted an invite. Choose a password to finish setting up your account."}
+      </p>
+    </>
+  );
+}
 
 export default function SetPasswordPage() {
   const [state, action, pending] = useActionState(setPassword, undefined);
@@ -16,13 +34,9 @@ export default function SetPasswordPage() {
       >
         <input type="hidden" name="lang" value={lang} />
 
-        <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-          Set your password
-        </h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          You&apos;ve accepted an invite. Choose a password to finish setting
-          up your account.
-        </p>
+        <Suspense fallback={null}>
+          <SetPasswordCopy />
+        </Suspense>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="password" className="text-sm font-medium">
