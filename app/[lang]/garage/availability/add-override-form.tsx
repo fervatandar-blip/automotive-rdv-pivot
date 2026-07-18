@@ -36,11 +36,11 @@ export function AddOverrideForm() {
       </p>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="date" className="text-sm font-medium">
+        <label htmlFor="overrideDate" className="text-sm font-medium">
           Date
         </label>
         <input
-          id="date"
+          id="overrideDate"
           name="date"
           type="date"
           className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
@@ -63,11 +63,11 @@ export function AddOverrideForm() {
       {!isClosed && (
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1">
-            <label htmlFor="startTime" className="text-sm font-medium">
+            <label htmlFor="overrideStartTime" className="text-sm font-medium">
               Start
             </label>
             <input
-              id="startTime"
+              id="overrideStartTime"
               name="startTime"
               type="time"
               defaultValue="09:00"
@@ -81,11 +81,11 @@ export function AddOverrideForm() {
           </div>
 
           <div className="flex flex-col gap-1">
-            <label htmlFor="endTime" className="text-sm font-medium">
+            <label htmlFor="overrideEndTime" className="text-sm font-medium">
               End
             </label>
             <input
-              id="endTime"
+              id="overrideEndTime"
               name="endTime"
               type="time"
               defaultValue="17:00"
