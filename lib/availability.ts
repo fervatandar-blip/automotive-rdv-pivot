@@ -51,19 +51,17 @@ export async function getAvailableSlotsForDate({
   const dayEnd = new Date(dayStart);
   dayEnd.setDate(dayStart.getDate() + 1);
 
-  let appointmentsQuery = supabase
-    .from("appointments")
-    .select("id, start_time, end_time")
-    .eq("garage_id", garageId)
-    .neq("status", "cancelled")
-    .gte("start_time", dayStart.toISOString())
-    .lt("start_time", dayEnd.toISOString());
-
-  if (excludeAppointmentId) {
-    appointmentsQuery = appointmentsQuery.neq("id", excludeAppointmentId);
-  }
-
-  const { data: appointments } = await appointmentsQuery;
+  // A security-definer RPC, not a direct table select: appointments' RLS
+  // only lets the appointment's own client or a garage member see a row, so
+  // a browsing client's session can't see a *different* client's booking --
+  // this returns only start_time/end_time (public availability info, no
+  // client identity) regardless of who's asking.
+  const { data: appointments } = (await supabase.rpc("get_booked_ranges", {
+    target_garage_id: garageId,
+    range_start: dayStart.toISOString(),
+    range_end: dayEnd.toISOString(),
+    exclude_appointment_id: excludeAppointmentId ?? null,
+  })) as { data: { start_time: string; end_time: string }[] | null };
 
   const slots = computeAvailableSlots({
     date,
