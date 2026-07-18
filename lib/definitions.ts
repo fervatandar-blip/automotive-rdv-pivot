@@ -245,6 +245,12 @@ export const RescheduleFormSchema = z.object({
     .regex(/^\d{2}:\d{2}$/, { error: "Invalid start time." }),
 });
 
+export const WaitlistFormSchema = z.object({
+  garageId: z.uuid(),
+  serviceId: z.uuid(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { error: "Invalid date." }),
+});
+
 export const ReviewFormSchema = z.object({
   appointmentId: z.uuid(),
   rating: z.coerce

@@ -13,15 +13,17 @@ import { BookingFormSchema, RescheduleFormSchema } from "@/lib/definitions";
 import {
   notifyAppointmentStatusChange,
   notifyAppointmentRescheduled,
+  notifyWaitlistSlotOpened,
 } from "@/lib/notifications";
 import { renderInvoicePdf } from "@/lib/invoice-pdf";
 
 const PARTIES_SELECT =
-  "id, start_time, services(name), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email)";
+  "id, start_time, garage_id, services(name), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email)";
 
 type AppointmentWithParties = {
   id: string;
   start_time: string;
+  garage_id: string;
   services: { name: string } | null;
   client: { full_name: string; email: string } | null;
   garage: { name: string; email: string | null } | null;
@@ -31,6 +33,13 @@ function revalidateLocalizedPath(path: string) {
   for (const locale of locales) {
     revalidatePath(`/${locale}${path}`);
   }
+}
+
+function toDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const day = date.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 async function notifyStatusChange(
@@ -212,6 +221,58 @@ async function refundIfPaid(appointmentId: string) {
   }
 }
 
+// A cancellation may free up a slot for someone on the waitlist for this
+// exact garage/date -- but that person is very likely a *different* user
+// than whoever is cancelling (a client cancelling their own appointment
+// still needs to notify someone else's waitlist row), so this uses the
+// service-role client the same way refundIfPaid does: `waitlist` has no
+// update policy for the authenticated role, `notified_at` is only ever
+// written here. Each entry is notified at most once, ever.
+async function notifyWaitlistOnCancellation(garageId: string, date: string) {
+  try {
+    const admin = createAdminClient();
+    const { data: entries } = await admin
+      .from("waitlist")
+      .select(
+        "id, client:profiles!waitlist_client_id_fkey(full_name, email), garages(name), services(name)"
+      )
+      .eq("garage_id", garageId)
+      .eq("date", date)
+      .is("notified_at", null);
+
+    if (!entries || entries.length === 0) return;
+
+    for (const entry of entries) {
+      const client = entry.client as unknown as {
+        full_name: string;
+        email: string;
+      } | null;
+      const garage = entry.garages as unknown as { name: string } | null;
+      const service = entry.services as unknown as { name: string } | null;
+
+      if (!client || !garage || !service) continue;
+
+      await notifyWaitlistSlotOpened({
+        recipientEmail: client.email,
+        recipientName: client.full_name,
+        garageName: garage.name,
+        serviceName: service.name,
+        date,
+      });
+    }
+
+    await admin
+      .from("waitlist")
+      .update({ notified_at: new Date().toISOString() })
+      .in(
+        "id",
+        entries.map((entry) => entry.id)
+      );
+  } catch (err) {
+    console.error("[waitlist] notify failed:", err);
+  }
+}
+
 export async function cancelAppointment(formData: FormData) {
   const lang = parseLocale(formData.get("lang"));
   const user = await getAuthedUser(lang);
@@ -232,12 +293,13 @@ export async function cancelAppointment(formData: FormData) {
     .maybeSingle();
 
   if (data) {
-    await notifyStatusChange(
-      data as unknown as AppointmentWithParties,
-      "cancelled",
-      "client"
-    );
+    const appointment = data as unknown as AppointmentWithParties;
+    await notifyStatusChange(appointment, "cancelled", "client");
     await refundIfPaid(id);
+    await notifyWaitlistOnCancellation(
+      appointment.garage_id,
+      toDateKey(new Date(appointment.start_time))
+    );
   }
 
   revalidateLocalizedPath("/dashboard");
@@ -417,12 +479,13 @@ export async function providerCancelAppointment(formData: FormData) {
     .maybeSingle();
 
   if (data) {
-    await notifyStatusChange(
-      data as unknown as AppointmentWithParties,
-      "cancelled",
-      "garage"
-    );
+    const appointment = data as unknown as AppointmentWithParties;
+    await notifyStatusChange(appointment, "cancelled", "garage");
     await refundIfPaid(id);
+    await notifyWaitlistOnCancellation(
+      appointment.garage_id,
+      toDateKey(new Date(appointment.start_time))
+    );
   }
 
   revalidateLocalizedPath("/garage/calendar");

@@ -7,6 +7,7 @@ import { resolveLocale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { GarageMapDisplay } from "@/components/garage-map-display";
 import { bookAppointment } from "@/app/actions/appointments";
+import { joinWaitlist } from "@/app/actions/waitlist";
 import { formatRating } from "@/lib/ratings";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -49,15 +50,17 @@ export default async function GarageDetailPage({
     service?: string;
     date?: string;
     error?: string;
+    waitlisted?: string;
   }>;
 }) {
   const { lang: rawLang, id: garageId } = await params;
   const lang = resolveLocale(rawLang);
-  await getAuthedUser(lang);
+  const user = await getAuthedUser(lang);
   const {
     service: serviceParam,
     date: dateParam,
     error,
+    waitlisted,
   } = await searchParams;
 
   const supabase = await createClient();
@@ -101,6 +104,7 @@ export default async function GarageDetailPage({
 
   let slots: string[] = [];
   let isClosedOverride = false;
+  let alreadyOnWaitlist = false;
   if (selectedService) {
     const result = await getAvailableSlotsForDate({
       supabase,
@@ -110,6 +114,18 @@ export default async function GarageDetailPage({
     });
     slots = result.slots;
     isClosedOverride = result.isClosed;
+
+    if (slots.length === 0) {
+      const { data: waitlistEntry } = await supabase
+        .from("waitlist")
+        .select("id")
+        .eq("garage_id", garageId)
+        .eq("client_id", user.id)
+        .eq("service_id", selectedService.id)
+        .eq("date", selectedDate)
+        .maybeSingle();
+      alreadyOnWaitlist = Boolean(waitlistEntry);
+    }
   }
 
   return (
@@ -148,6 +164,13 @@ export default async function GarageDetailPage({
         {error && ERROR_MESSAGES[error] && (
           <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
             {ERROR_MESSAGES[error]}
+          </p>
+        )}
+
+        {waitlisted === "1" && (
+          <p className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
+            You&apos;re on the waitlist. We&apos;ll email you if a slot opens
+            up.
           </p>
         )}
 
@@ -250,11 +273,35 @@ export default async function GarageDetailPage({
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                {isClosedOverride
-                  ? "This garage is closed on this date."
-                  : "No open times on this day."}
-              </p>
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  {isClosedOverride
+                    ? "This garage is closed on this date."
+                    : "No open times on this day."}
+                </p>
+                {alreadyOnWaitlist ? (
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    You&apos;re on the waitlist for this date.
+                  </p>
+                ) : (
+                  <form action={joinWaitlist}>
+                    <input type="hidden" name="garageId" value={garageId} />
+                    <input
+                      type="hidden"
+                      name="serviceId"
+                      value={selectedService.id}
+                    />
+                    <input type="hidden" name="date" value={selectedDate} />
+                    <input type="hidden" name="lang" value={lang} />
+                    <button
+                      type="submit"
+                      className="self-start rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                    >
+                      Join waitlist for this date
+                    </button>
+                  </form>
+                )}
+              </div>
             )}
           </div>
         )}

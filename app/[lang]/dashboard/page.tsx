@@ -10,6 +10,7 @@ import {
   providerCancelAppointment,
 } from "@/app/actions/appointments";
 import { submitReview } from "@/app/actions/reviews";
+import { leaveWaitlist } from "@/app/actions/waitlist";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
@@ -432,6 +433,7 @@ export default async function DashboardPage({
             <Link href={`/${lang}/garage/documents`}>Documents</Link>
             <Link href={`/${lang}/garage/invoices`}>Invoices</Link>
             <Link href={`/${lang}/garage/payments`}>Payments</Link>
+            <Link href={`/${lang}/garage/waitlist`}>Waitlist</Link>
             <Link href={`/${lang}/garage/stripe-connect`}>Stripe setup</Link>
             <Link href={`/${lang}/garage/onboarding`}>Garage profile</Link>
             <Link href={`/${lang}/garage/staff`}>Staff</Link>
@@ -512,6 +514,22 @@ export default async function DashboardPage({
     }
   }
 
+  const { data: waitlistEntries } = await supabase
+    .from("waitlist")
+    .select(
+      "id, date, notified_at, services(name), garages(name)"
+    )
+    .eq("client_id", profile.id)
+    .order("date", { ascending: true });
+
+  const waitlistRows = (waitlistEntries ?? []) as unknown as {
+    id: string;
+    date: string;
+    notified_at: string | null;
+    services: { name: string } | null;
+    garages: { name: string } | null;
+  }[];
+
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
@@ -565,6 +583,48 @@ export default async function DashboardPage({
             </p>
           )}
         </div>
+
+        {waitlistRows.length > 0 && (
+          <div className="flex flex-col gap-4">
+            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              Waitlist
+            </h2>
+            {waitlistRows.map((entry) => (
+              <div
+                key={entry.id}
+                className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+              >
+                <div>
+                  <h3 className="font-semibold text-black dark:text-zinc-50">
+                    {entry.services?.name ?? "Service"}
+                  </h3>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    with {entry.garages?.name ?? "Garage"} on{" "}
+                    {new Date(`${entry.date}T00:00:00`).toLocaleDateString(
+                      undefined,
+                      { weekday: "short", month: "short", day: "numeric" }
+                    )}
+                  </p>
+                  {entry.notified_at && (
+                    <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
+                      A slot may have opened up &mdash; check availability.
+                    </p>
+                  )}
+                </div>
+                <form action={leaveWaitlist}>
+                  <input type="hidden" name="id" value={entry.id} />
+                  <input type="hidden" name="lang" value={lang} />
+                  <button
+                    type="submit"
+                    className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                  >
+                    Leave
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
 
         {other.length > 0 && (
           <div className="flex flex-col gap-4">

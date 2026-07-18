@@ -66,3 +66,29 @@ export async function notifyAppointmentRescheduled({
     html: `<p>Hi ${recipientName},</p><p>Your <strong>${serviceName}</strong> appointment with ${otherPartyName} has been moved to ${when}.</p>`,
   });
 }
+
+export async function notifyWaitlistSlotOpened({
+  recipientEmail,
+  recipientName,
+  garageName,
+  serviceName,
+  date,
+}: {
+  recipientEmail: string;
+  recipientName: string;
+  garageName: string;
+  serviceName: string;
+  date: string;
+}) {
+  const when = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
+  await sendEmail({
+    to: recipientEmail,
+    subject: "A slot may have opened up",
+    html: `<p>Hi ${recipientName},</p><p>A booking for <strong>${serviceName}</strong> at ${garageName} on ${when} was just cancelled. If you're still interested, book now -- it's first come, first served.</p>`,
+  });
+}
