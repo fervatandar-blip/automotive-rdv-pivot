@@ -74,7 +74,9 @@ function AppointmentChip({
     appointment.status === "pending" || appointment.status === "confirmed";
   const canCancel =
     appointment.status === "pending" || appointment.status === "confirmed";
-  const showActions = !compact && (canConfirm || canComplete || canCancel);
+  const canReschedule = canCancel;
+  const showActions =
+    !compact && (canConfirm || canComplete || canReschedule || canCancel);
   const assignedMechanic = mechanics.find(
     (mechanic) => mechanic.id === appointment.assigned_mechanic_id
   );
@@ -162,6 +164,14 @@ function AppointmentChip({
                   Complete
                 </button>
               </form>
+            )}
+            {canReschedule && (
+              <Link
+                href={`/${lang}/appointments/${appointment.id}/reschedule`}
+                className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
+              >
+                Reschedule
+              </Link>
             )}
             {canCancel && (
               <form action={providerCancelAppointment}>

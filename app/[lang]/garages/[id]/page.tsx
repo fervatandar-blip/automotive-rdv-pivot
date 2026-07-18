@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
-import { computeAvailableSlots } from "@/lib/slots";
+import { getAvailableSlotsForDate } from "@/lib/availability";
 import { resolveLocale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { GarageMapDisplay } from "@/components/garage-map-display";
@@ -102,54 +102,14 @@ export default async function GarageDetailPage({
   let slots: string[] = [];
   let isClosedOverride = false;
   if (selectedService) {
-    const dayOfWeek = new Date(`${selectedDate}T00:00:00`).getDay();
-
-    const { data: overrides } = await supabase
-      .from("availability_overrides")
-      .select("is_closed, start_time, end_time")
-      .eq("garage_id", garageId)
-      .eq("date", selectedDate);
-
-    // Any override for this date replaces the recurring weekly windows --
-    // "closed" wins outright, otherwise the override's own windows are used
-    // instead of (not in addition to) the normal weekly schedule.
-    isClosedOverride = (overrides ?? []).some((override) => override.is_closed);
-
-    let windows: { start_time: string; end_time: string }[];
-    if (isClosedOverride) {
-      windows = [];
-    } else if (overrides && overrides.length > 0) {
-      windows = overrides as { start_time: string; end_time: string }[];
-    } else {
-      const { data: recurringWindows } = await supabase
-        .from("availability")
-        .select("start_time, end_time")
-        .eq("garage_id", garageId)
-        .eq("day_of_week", dayOfWeek);
-      windows = recurringWindows ?? [];
-    }
-
-    const dayStart = new Date(`${selectedDate}T00:00:00`);
-    const dayEnd = new Date(dayStart);
-    dayEnd.setDate(dayStart.getDate() + 1);
-
-    const { data: appointments } = await supabase
-      .from("appointments")
-      .select("start_time, end_time")
-      .eq("garage_id", garageId)
-      .neq("status", "cancelled")
-      .gte("start_time", dayStart.toISOString())
-      .lt("start_time", dayEnd.toISOString());
-
-    slots = computeAvailableSlots({
+    const result = await getAvailableSlotsForDate({
+      supabase,
+      garageId,
       date: selectedDate,
-      windows,
       durationMinutes: selectedService.duration_minutes,
-      bookedRanges: (appointments ?? []).map((appointment) => ({
-        start: new Date(appointment.start_time),
-        end: new Date(appointment.end_time),
-      })),
     });
+    slots = result.slots;
+    isClosedOverride = result.isClosed;
   }
 
   return (

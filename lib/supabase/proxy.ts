@@ -8,6 +8,7 @@ const protectedRoutes = [
   "/garages",
   "/admin",
   "/set-password",
+  "/appointments",
 ];
 
 export async function updateSession(request: NextRequest, locale: Locale) {

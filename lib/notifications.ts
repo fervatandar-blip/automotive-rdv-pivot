@@ -38,3 +38,31 @@ export async function notifyAppointmentStatusChange({
     html: `<p>Hi ${recipientName},</p><p>Your <strong>${serviceName}</strong> appointment with ${otherPartyName} on ${when} has been ${copy.verb}.</p>`,
   });
 }
+
+export async function notifyAppointmentRescheduled({
+  recipientEmail,
+  recipientName,
+  otherPartyName,
+  serviceName,
+  startTime,
+}: {
+  recipientEmail: string;
+  recipientName: string;
+  otherPartyName: string;
+  serviceName: string;
+  startTime: string;
+}) {
+  const when = new Date(startTime).toLocaleString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  await sendEmail({
+    to: recipientEmail,
+    subject: "Your appointment was rescheduled",
+    html: `<p>Hi ${recipientName},</p><p>Your <strong>${serviceName}</strong> appointment with ${otherPartyName} has been moved to ${when}.</p>`,
+  });
+}

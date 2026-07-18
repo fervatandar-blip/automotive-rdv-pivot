@@ -8,8 +8,12 @@ import { getAuthedUser, requireGarageMember, requireGarageOwner } from "@/lib/da
 import { locales, parseLocale } from "@/lib/i18n/config";
 import { getOrigin } from "@/lib/origin";
 import { getStripe, PLATFORM_COMMISSION_PERCENT } from "@/lib/stripe";
-import { BookingFormSchema } from "@/lib/definitions";
-import { notifyAppointmentStatusChange } from "@/lib/notifications";
+import { getAvailableSlotsForDate } from "@/lib/availability";
+import { BookingFormSchema, RescheduleFormSchema } from "@/lib/definitions";
+import {
+  notifyAppointmentStatusChange,
+  notifyAppointmentRescheduled,
+} from "@/lib/notifications";
 import { renderInvoicePdf } from "@/lib/invoice-pdf";
 
 const PARTIES_SELECT =
@@ -423,6 +427,119 @@ export async function providerCancelAppointment(formData: FormData) {
 
   revalidateLocalizedPath("/garage/calendar");
   revalidateLocalizedPath("/dashboard");
+}
+
+export async function rescheduleAppointment(formData: FormData) {
+  const lang = parseLocale(formData.get("lang"));
+  const user = await getAuthedUser(lang);
+
+  const validatedFields = RescheduleFormSchema.safeParse({
+    appointmentId: formData.get("appointmentId"),
+    date: formData.get("date"),
+    startTime: formData.get("startTime"),
+  });
+
+  if (!validatedFields.success) {
+    redirect(`/${lang}/dashboard?error=invalid`);
+  }
+
+  const { appointmentId, date, startTime } = validatedFields.data;
+  const supabase = await createClient();
+  const rescheduleErrorUrl = (reason: string) =>
+    `/${lang}/appointments/${appointmentId}/reschedule?date=${date}&error=${reason}`;
+
+  // Selecting via the session-scoped client relies on the existing
+  // "Participants can update their appointments" RLS policy (client_id =
+  // auth.uid() OR is_garage_member(garage_id)) -- anyone else gets no row
+  // back, with no separate authorization check needed here.
+  const { data: appointment } = await supabase
+    .from("appointments")
+    .select(
+      "id, client_id, garage_id, status, services(name, duration_minutes), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email)"
+    )
+    .eq("id", appointmentId)
+    .single();
+
+  if (!appointment) {
+    redirect(`/${lang}/dashboard?error=not-found`);
+  }
+
+  if (!["pending", "confirmed"].includes(appointment.status)) {
+    redirect(rescheduleErrorUrl("not-reschedulable"));
+  }
+
+  const service = appointment.services as unknown as {
+    name: string;
+    duration_minutes: number;
+  } | null;
+
+  if (!service) {
+    redirect(rescheduleErrorUrl("service"));
+  }
+
+  const { slots } = await getAvailableSlotsForDate({
+    supabase,
+    garageId: appointment.garage_id,
+    date,
+    durationMinutes: service.duration_minutes,
+    excludeAppointmentId: appointmentId,
+  });
+
+  if (!slots.includes(startTime)) {
+    redirect(rescheduleErrorUrl("slot-taken"));
+  }
+
+  const startDate = new Date(`${date}T${startTime}:00`);
+  const endDate = new Date(
+    startDate.getTime() + service.duration_minutes * 60000
+  );
+
+  const { error } = await supabase
+    .from("appointments")
+    .update({
+      start_time: startDate.toISOString(),
+      end_time: endDate.toISOString(),
+    })
+    .eq("id", appointmentId);
+
+  if (error) {
+    // 23P01 = exclusion_violation -- a last-moment race with another booking.
+    redirect(
+      rescheduleErrorUrl(error.code === "23P01" ? "slot-taken" : "error")
+    );
+  }
+
+  const client = appointment.client as unknown as {
+    full_name: string;
+    email: string;
+  } | null;
+  const garage = appointment.garage as unknown as {
+    name: string;
+    email: string | null;
+  } | null;
+  const initiator = user.id === appointment.client_id ? "client" : "garage";
+
+  if (initiator === "client" && garage?.email) {
+    await notifyAppointmentRescheduled({
+      recipientEmail: garage.email,
+      recipientName: garage.name,
+      otherPartyName: client?.full_name ?? "the client",
+      serviceName: service.name,
+      startTime: startDate.toISOString(),
+    });
+  } else if (initiator === "garage" && client) {
+    await notifyAppointmentRescheduled({
+      recipientEmail: client.email,
+      recipientName: client.full_name,
+      otherPartyName: garage?.name ?? "the garage",
+      serviceName: service.name,
+      startTime: startDate.toISOString(),
+    });
+  }
+
+  revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/garage/calendar");
+  redirect(`/${lang}/dashboard?rescheduled=1`);
 }
 
 export async function assignMechanic(formData: FormData) {
