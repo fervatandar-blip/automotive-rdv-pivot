@@ -7,6 +7,8 @@ import { locales, parseLocale } from "@/lib/i18n/config";
 import {
   AvailabilityFormSchema,
   type AvailabilityFormState,
+  AvailabilityOverrideFormSchema,
+  type AvailabilityOverrideFormState,
 } from "@/lib/definitions";
 
 function revalidateLocalizedPath(path: string) {
@@ -62,6 +64,63 @@ export async function deleteAvailability(formData: FormData) {
   const supabase = await createClient();
   await supabase
     .from("availability")
+    .delete()
+    .eq("id", id)
+    .eq("garage_id", garage.id);
+
+  revalidateLocalizedPath("/garage/availability");
+}
+
+export async function createAvailabilityOverride(
+  state: AvailabilityOverrideFormState,
+  formData: FormData
+): Promise<AvailabilityOverrideFormState> {
+  const lang = parseLocale(formData.get("lang"));
+  const { garage } = await requireGarageMember(lang);
+  const isClosed = formData.get("isClosed") === "on";
+
+  const validatedFields = AvailabilityOverrideFormSchema.safeParse({
+    date: formData.get("date"),
+    isClosed,
+    startTime: formData.get("startTime") || undefined,
+    endTime: formData.get("endTime") || undefined,
+  });
+
+  if (!validatedFields.success) {
+    return { errors: validatedFields.error.flatten().fieldErrors };
+  }
+
+  const { date, startTime, endTime } = validatedFields.data;
+  const supabase = await createClient();
+
+  const { error } = await supabase.from("availability_overrides").insert({
+    garage_id: garage.id,
+    date,
+    is_closed: isClosed,
+    start_time: isClosed ? null : startTime,
+    end_time: isClosed ? null : endTime,
+  });
+
+  if (error) {
+    return { message: error.message };
+  }
+
+  revalidateLocalizedPath("/garage/availability");
+  return {};
+}
+
+export async function deleteAvailabilityOverride(formData: FormData) {
+  const lang = parseLocale(formData.get("lang"));
+  const { garage } = await requireGarageMember(lang);
+  const id = formData.get("id");
+
+  if (typeof id !== "string" || !id) {
+    return;
+  }
+
+  const supabase = await createClient();
+  await supabase
+    .from("availability_overrides")
     .delete()
     .eq("id", id)
     .eq("garage_id", garage.id);

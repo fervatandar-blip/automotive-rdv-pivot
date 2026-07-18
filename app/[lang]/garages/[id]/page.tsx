@@ -100,14 +100,34 @@ export default async function GarageDetailPage({
   const selectedDate = dateParam ?? toDateKey(days[0]);
 
   let slots: string[] = [];
+  let isClosedOverride = false;
   if (selectedService) {
     const dayOfWeek = new Date(`${selectedDate}T00:00:00`).getDay();
 
-    const { data: windows } = await supabase
-      .from("availability")
-      .select("start_time, end_time")
+    const { data: overrides } = await supabase
+      .from("availability_overrides")
+      .select("is_closed, start_time, end_time")
       .eq("garage_id", garageId)
-      .eq("day_of_week", dayOfWeek);
+      .eq("date", selectedDate);
+
+    // Any override for this date replaces the recurring weekly windows --
+    // "closed" wins outright, otherwise the override's own windows are used
+    // instead of (not in addition to) the normal weekly schedule.
+    isClosedOverride = (overrides ?? []).some((override) => override.is_closed);
+
+    let windows: { start_time: string; end_time: string }[];
+    if (isClosedOverride) {
+      windows = [];
+    } else if (overrides && overrides.length > 0) {
+      windows = overrides as { start_time: string; end_time: string }[];
+    } else {
+      const { data: recurringWindows } = await supabase
+        .from("availability")
+        .select("start_time, end_time")
+        .eq("garage_id", garageId)
+        .eq("day_of_week", dayOfWeek);
+      windows = recurringWindows ?? [];
+    }
 
     const dayStart = new Date(`${selectedDate}T00:00:00`);
     const dayEnd = new Date(dayStart);
@@ -123,7 +143,7 @@ export default async function GarageDetailPage({
 
     slots = computeAvailableSlots({
       date: selectedDate,
-      windows: windows ?? [],
+      windows,
       durationMinutes: selectedService.duration_minutes,
       bookedRanges: (appointments ?? []).map((appointment) => ({
         start: new Date(appointment.start_time),
@@ -271,7 +291,9 @@ export default async function GarageDetailPage({
               </div>
             ) : (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                No open times on this day.
+                {isClosedOverride
+                  ? "This garage is closed on this date."
+                  : "No open times on this day."}
               </p>
             )}
           </div>

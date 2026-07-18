@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
-import { deleteAvailability } from "@/app/actions/availability";
+import {
+  deleteAvailability,
+  deleteAvailabilityOverride,
+} from "@/app/actions/availability";
 import { resolveLocale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { AddAvailabilityForm } from "./add-availability-form";
+import { AddOverrideForm } from "./add-override-form";
 
 const DAYS = [
   "Sunday",
@@ -18,6 +22,23 @@ const DAYS = [
 
 function formatTime(time: string) {
   return time.slice(0, 5);
+}
+
+function todayDateKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = (now.getMonth() + 1).toString().padStart(2, "0");
+  const day = now.getDate().toString().padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatOverrideDate(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 export default async function GarageAvailabilityPage({
@@ -40,6 +61,13 @@ export default async function GarageAvailabilityPage({
   const byDay = DAYS.map((_, dayOfWeek) =>
     (availability ?? []).filter((slot) => slot.day_of_week === dayOfWeek)
   );
+
+  const { data: overrides } = await supabase
+    .from("availability_overrides")
+    .select("id, date, is_closed, start_time, end_time")
+    .eq("garage_id", garage.id)
+    .gte("date", todayDateKey())
+    .order("date", { ascending: true });
 
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
@@ -99,6 +127,44 @@ export default async function GarageAvailabilityPage({
               )}
             </div>
           ))}
+        </div>
+
+        <AddOverrideForm />
+
+        <div className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            Upcoming date overrides
+          </h2>
+          {overrides && overrides.length > 0 ? (
+            overrides.map((override) => (
+              <div
+                key={override.id}
+                className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+              >
+                <div>
+                  <p className="font-medium text-black dark:text-zinc-50">
+                    {formatOverrideDate(override.date)}
+                  </p>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {override.is_closed
+                      ? "Closed all day"
+                      : `${formatTime(override.start_time)} – ${formatTime(override.end_time)}`}
+                  </p>
+                </div>
+                <form action={deleteAvailabilityOverride}>
+                  <input type="hidden" name="id" value={override.id} />
+                  <input type="hidden" name="lang" value={lang} />
+                  <button type="submit" className="text-red-600 underline">
+                    Delete
+                  </button>
+                </form>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              No upcoming overrides.
+            </p>
+          )}
         </div>
       </div>
     </div>

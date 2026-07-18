@@ -149,6 +149,46 @@ export type AvailabilityFormState =
     }
   | undefined;
 
+export const AvailabilityOverrideFormSchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { error: "Invalid date." }),
+    isClosed: z.boolean(),
+    startTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/, { error: "Enter a valid start time." })
+      .optional(),
+    endTime: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/, { error: "Enter a valid end time." })
+      .optional(),
+  })
+  .refine((data) => data.isClosed || (data.startTime && data.endTime), {
+    error: "Enter a start and end time, or mark the date as closed.",
+    path: ["endTime"],
+  })
+  .refine(
+    (data) =>
+      data.isClosed ||
+      !data.startTime ||
+      !data.endTime ||
+      data.endTime > data.startTime,
+    {
+      error: "End time must be after start time.",
+      path: ["endTime"],
+    }
+  );
+
+export type AvailabilityOverrideFormState =
+  | {
+      errors?: {
+        date?: string[];
+        startTime?: string[];
+        endTime?: string[];
+      };
+      message?: string;
+    }
+  | undefined;
+
 export const GarageOnboardingFormSchema = z.object({
   name: z
     .string()
