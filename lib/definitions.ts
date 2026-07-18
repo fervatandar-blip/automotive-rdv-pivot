@@ -235,6 +235,7 @@ export const BookingFormSchema = z.object({
   startTime: z
     .string()
     .regex(/^\d{2}:\d{2}$/, { error: "Invalid start time." }),
+  vehicleId: z.uuid().optional(),
 });
 
 export const RescheduleFormSchema = z.object({
@@ -250,6 +251,34 @@ export const WaitlistFormSchema = z.object({
   serviceId: z.uuid(),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { error: "Invalid date." }),
 });
+
+export const VehicleFormSchema = z.object({
+  brandId: z.uuid().optional(),
+  model: z.string().trim().max(100, { error: "Keep it under 100 characters." }).optional(),
+  year: z.coerce
+    .number({ error: "Enter a valid year." })
+    .int()
+    .min(1900, { error: "Enter a valid year." })
+    .max(new Date().getFullYear() + 1, { error: "Enter a valid year." })
+    .optional(),
+  licensePlate: z
+    .string()
+    .trim()
+    .max(20, { error: "Keep it under 20 characters." })
+    .optional(),
+});
+
+export type VehicleFormState =
+  | {
+      errors?: {
+        brandId?: string[];
+        model?: string[];
+        year?: string[];
+        licensePlate?: string[];
+      };
+      message?: string;
+    }
+  | undefined;
 
 export const ReviewFormSchema = z.object({
   appointmentId: z.uuid(),

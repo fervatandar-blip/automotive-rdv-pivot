@@ -20,6 +20,7 @@ type Appointment = {
   status: string;
   services: { name: string } | null;
   garages: { name: string } | null;
+  vehicles: { model: string | null; year: number | null } | null;
 };
 
 function isUpcoming(appointment: { status: string; start_time: string }) {
@@ -119,6 +120,14 @@ function AppointmentCard({
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
             {formatDateTime(appointment.start_time)}
           </p>
+          {appointment.vehicles &&
+            (appointment.vehicles.model || appointment.vehicles.year) && (
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                {[appointment.vehicles.model, appointment.vehicles.year]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
           {appointment.status === "pending_payment" && (
             <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
               Payment processing
@@ -472,7 +481,7 @@ export default async function DashboardPage({
   const { data: appointments } = await supabase
     .from("appointments")
     .select(
-      "id, start_time, status, services(name), garages!appointments_garage_id_fkey(name)"
+      "id, start_time, status, services(name), garages!appointments_garage_id_fkey(name), vehicles(model, year)"
     )
     .eq("client_id", profile.id)
     .order("start_time", { ascending: true });
@@ -548,6 +557,12 @@ export default async function DashboardPage({
               className="text-sm font-medium underline"
             >
               Browse garages
+            </Link>
+            <Link
+              href={`/${lang}/vehicles`}
+              className="text-sm font-medium underline"
+            >
+              My vehicles
             </Link>
             <LanguageSwitcher lang={lang} />
             <LogoutButton lang={lang} />

@@ -128,6 +128,19 @@ export default async function GarageDetailPage({
     }
   }
 
+  const { data: vehicles } = await supabase
+    .from("vehicles")
+    .select("id, model, year, brands(name)")
+    .eq("client_id", user.id)
+    .order("created_at", { ascending: false });
+
+  const vehicleRows = (vehicles ?? []) as unknown as {
+    id: string;
+    model: string | null;
+    year: number | null;
+    brands: { name: string } | null;
+  }[];
+
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
@@ -251,27 +264,51 @@ export default async function GarageDetailPage({
               Available times
             </h2>
             {slots.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {slots.map((slot) => (
-                  <form key={slot} action={bookAppointment}>
-                    <input type="hidden" name="garageId" value={garageId} />
-                    <input
-                      type="hidden"
-                      name="serviceId"
-                      value={selectedService.id}
-                    />
-                    <input type="hidden" name="date" value={selectedDate} />
-                    <input type="hidden" name="startTime" value={slot} />
-                    <input type="hidden" name="lang" value={lang} />
+              <form action={bookAppointment} className="flex flex-col gap-3">
+                <input type="hidden" name="garageId" value={garageId} />
+                <input
+                  type="hidden"
+                  name="serviceId"
+                  value={selectedService.id}
+                />
+                <input type="hidden" name="date" value={selectedDate} />
+                <input type="hidden" name="lang" value={lang} />
+                {vehicleRows.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <label htmlFor="vehicleId" className="text-sm font-medium">
+                      Vehicle
+                    </label>
+                    <select
+                      id="vehicleId"
+                      name="vehicleId"
+                      defaultValue=""
+                      className="w-full max-w-xs rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                    >
+                      <option value="">No vehicle specified</option>
+                      {vehicleRows.map((vehicle) => (
+                        <option key={vehicle.id} value={vehicle.id}>
+                          {[vehicle.brands?.name, vehicle.model, vehicle.year]
+                            .filter(Boolean)
+                            .join(" ") || "Vehicle"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {slots.map((slot) => (
                     <button
+                      key={slot}
                       type="submit"
+                      name="startTime"
+                      value={slot}
                       className="rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                     >
                       {slot}
                     </button>
-                  </form>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </form>
             ) : (
               <div className="flex flex-col gap-3">
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">

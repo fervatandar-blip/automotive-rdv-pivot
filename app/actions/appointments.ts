@@ -80,13 +80,15 @@ export async function bookAppointment(formData: FormData) {
     serviceId: formData.get("serviceId"),
     date: formData.get("date"),
     startTime: formData.get("startTime"),
+    vehicleId: formData.get("vehicleId") || undefined,
   });
 
   if (!validatedFields.success) {
     redirect(`/${lang}/garages?error=invalid`);
   }
 
-  const { garageId, serviceId, date, startTime } = validatedFields.data;
+  const { garageId, serviceId, date, startTime, vehicleId } =
+    validatedFields.data;
   const supabase = await createClient();
 
   const { data: service } = await supabase
@@ -123,6 +125,7 @@ export async function bookAppointment(formData: FormData) {
       client_id: user.id,
       garage_id: garageId,
       service_id: serviceId,
+      vehicle_id: vehicleId ?? null,
       start_time: startDate.toISOString(),
       end_time: endDate.toISOString(),
       status: "pending_payment",
