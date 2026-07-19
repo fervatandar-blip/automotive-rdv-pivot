@@ -12,6 +12,11 @@ import { formatRating } from "@/lib/ratings";
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+const currencyFormatter = new Intl.NumberFormat("fr-LU", {
+  style: "currency",
+  currency: "EUR",
+});
+
 function toDateKey(date: Date) {
   const year = date.getFullYear();
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -141,6 +146,11 @@ export default async function GarageDetailPage({
     brands: { name: string } | null;
   }[];
 
+  const vehicleLabel = (vehicle: (typeof vehicleRows)[number]) =>
+    [vehicle.brands?.name, vehicle.model, vehicle.year]
+      .filter(Boolean)
+      .join(" ") || "Vehicle";
+
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
@@ -208,8 +218,8 @@ export default async function GarageDetailPage({
                       {service.name}
                     </span>
                     <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {service.duration_minutes} min &middot; $
-                      {Number(service.price).toFixed(2)}
+                      {service.duration_minutes} min &middot;{" "}
+                      {currencyFormatter.format(Number(service.price))}
                     </span>
                   </div>
                   {service.description && (
@@ -273,7 +283,7 @@ export default async function GarageDetailPage({
                 />
                 <input type="hidden" name="date" value={selectedDate} />
                 <input type="hidden" name="lang" value={lang} />
-                {vehicleRows.length > 0 && (
+                {vehicleRows.length > 0 ? (
                   <div className="flex flex-col gap-1">
                     <label htmlFor="vehicleId" className="text-sm font-medium">
                       Vehicle
@@ -281,20 +291,31 @@ export default async function GarageDetailPage({
                     <select
                       id="vehicleId"
                       name="vehicleId"
-                      defaultValue=""
+                      defaultValue={vehicleRows[0].id}
                       className="w-full max-w-xs rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
                     >
                       <option value="">No vehicle specified</option>
                       {vehicleRows.map((vehicle) => (
                         <option key={vehicle.id} value={vehicle.id}>
-                          {[vehicle.brands?.name, vehicle.model, vehicle.year]
-                            .filter(Boolean)
-                            .join(" ") || "Vehicle"}
+                          {vehicleLabel(vehicle)}
                         </option>
                       ))}
                     </select>
                   </div>
+                ) : (
+                  <Link
+                    href={`/${lang}/vehicles`}
+                    className="self-start text-sm font-medium underline"
+                  >
+                    Add a vehicle for faster booking next time
+                  </Link>
                 )}
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  Booking {selectedService.name}
+                  {vehicleRows.length > 0
+                    ? ` for ${vehicleLabel(vehicleRows[0])}`
+                    : ""}
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {slots.map((slot) => (
                     <button

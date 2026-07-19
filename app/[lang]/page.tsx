@@ -1,22 +1,23 @@
+import Image from "next/image";
 import Link from "next/link";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { resolveLocale } from "@/lib/i18n/config";
 
 const features = [
   {
-    title: "For clients",
+    title: "Search & compare",
     description:
-      "Browse providers, compare services, and book a time that works for you in a few taps.",
+      "Filter garages by brand, specialty, EV capability, and price, and see them on a map before you choose.",
   },
   {
-    title: "For providers",
+    title: "Verified garages",
     description:
-      "List your services, set your availability, and let clients book directly onto your calendar.",
+      "Every garage completes a document verification process, and real client ratings & reviews are right on their profile.",
   },
   {
-    title: "Stay in sync",
+    title: "Book & pay online",
     description:
-      "Every booking updates in real time, so both sides always know what's confirmed.",
+      "Pick a time, pay securely at booking, and get a PDF invoice automatically once the work is done.",
   },
 ];
 
@@ -31,9 +32,14 @@ export default async function Home({
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
       <header className="flex items-center justify-between px-6 py-6 sm:px-12">
-        <span className="text-lg font-semibold tracking-tight text-black dark:text-zinc-50">
-          RDV
-        </span>
+        <Image
+          src="/logo.png"
+          alt="RDV"
+          width={40}
+          height={40}
+          className="rounded-lg"
+          priority
+        />
         <nav className="flex items-center gap-6 text-sm font-medium">
           <LanguageSwitcher lang={lang} />
           <Link
@@ -42,35 +48,29 @@ export default async function Home({
           >
             Log in
           </Link>
-          <Link
-            href={`/${lang}/signup`}
-            className="rounded-full bg-foreground px-4 py-2 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
-          >
-            Sign up
-          </Link>
         </nav>
       </header>
 
       <main className="flex flex-1 flex-col items-center justify-center px-6 py-24 text-center sm:px-12">
         <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-black sm:text-5xl dark:text-zinc-50">
-          Book appointments, simply.
+          Find a trusted garage in Luxembourg.
         </h1>
         <p className="mt-6 max-w-md text-lg text-zinc-600 dark:text-zinc-400">
-          RDV connects clients with providers for fast, reliable scheduling
-          &mdash; no phone tag required.
+          RDV connects car owners with verified garages &mdash; search,
+          compare, and book online in a few taps.
         </p>
         <div className="mt-10 flex flex-col gap-4 sm:flex-row">
           <Link
-            href={`/${lang}/signup`}
+            href={`/${lang}/garages`}
             className="flex h-12 items-center justify-center rounded-full bg-foreground px-8 text-base font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
           >
-            Get started
+            Find a garage
           </Link>
           <Link
-            href={`/${lang}/login`}
+            href={`/${lang}/signup?role=admin_garage`}
             className="flex h-12 items-center justify-center rounded-full border border-black/[.08] px-8 text-base font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
           >
-            Log in
+            List your garage
           </Link>
         </div>
 
