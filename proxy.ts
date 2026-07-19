@@ -7,9 +7,15 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Non-localized routes (Supabase email callback, API routes/webhooks,
-  // etc.) pass through untouched -- locale-prefixing them would break
-  // server-to-server callers like Stripe that hit an exact URL.
-  if (pathname.startsWith("/auth") || pathname.startsWith("/api")) {
+  // the FCM service worker, etc.) pass through untouched -- locale-prefixing
+  // them would break server-to-server callers like Stripe that hit an exact
+  // URL, and the service worker must be served from exactly
+  // /firebase-messaging-sw.js to register at root scope.
+  if (
+    pathname.startsWith("/auth") ||
+    pathname.startsWith("/api") ||
+    pathname === "/firebase-messaging-sw.js"
+  ) {
     return NextResponse.next();
   }
 
