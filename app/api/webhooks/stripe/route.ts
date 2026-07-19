@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { notifyBookingReceived } from "@/lib/notifications";
 
 // Server-to-server call from Stripe -- no user session exists, so every
 // write here goes through the service-role client (the only writer
@@ -35,7 +36,9 @@ export async function POST(request: NextRequest) {
     if (appointmentId && session.payment_intent) {
       const { data: appointment } = await admin
         .from("appointments")
-        .select("garage_id, client_id")
+        .select(
+          "garage_id, client_id, start_time, services(name), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email)"
+        )
         .eq("id", appointmentId)
         .eq("status", "pending_payment")
         .maybeSingle();
@@ -64,6 +67,40 @@ export async function POST(request: NextRequest) {
           stripe_payment_intent_id: paymentIntent.id,
           status: "succeeded",
         });
+
+        const client = appointment.client as unknown as {
+          full_name: string;
+          email: string;
+        } | null;
+        const garage = appointment.garage as unknown as {
+          name: string;
+          email: string | null;
+        } | null;
+        const service = appointment.services as unknown as {
+          name: string;
+        } | null;
+
+        if (client) {
+          await notifyBookingReceived({
+            recipient: "client",
+            recipientEmail: client.email,
+            recipientName: client.full_name,
+            otherPartyName: garage?.name ?? "the garage",
+            serviceName: service?.name ?? "your service",
+            startTime: appointment.start_time,
+          });
+        }
+
+        if (garage?.email) {
+          await notifyBookingReceived({
+            recipient: "garage",
+            recipientEmail: garage.email,
+            recipientName: garage.name,
+            otherPartyName: client?.full_name ?? "the client",
+            serviceName: service?.name ?? "the service",
+            startTime: appointment.start_time,
+          });
+        }
       }
     }
   }

@@ -39,6 +39,45 @@ export async function notifyAppointmentStatusChange({
   });
 }
 
+export async function notifyBookingReceived({
+  recipient,
+  recipientEmail,
+  recipientName,
+  otherPartyName,
+  serviceName,
+  startTime,
+}: {
+  recipient: "client" | "garage";
+  recipientEmail: string;
+  recipientName: string;
+  otherPartyName: string;
+  serviceName: string;
+  startTime: string;
+}) {
+  const when = new Date(startTime).toLocaleString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  if (recipient === "client") {
+    await sendEmail({
+      to: recipientEmail,
+      subject: "Your booking request was received",
+      html: `<p>Hi ${recipientName},</p><p>We've received your <strong>${serviceName}</strong> booking with ${otherPartyName} on ${when}. You'll hear from us as soon as it's confirmed.</p>`,
+    });
+    return;
+  }
+
+  await sendEmail({
+    to: recipientEmail,
+    subject: "New booking request",
+    html: `<p>Hi ${recipientName},</p><p>You have a new <strong>${serviceName}</strong> booking request from ${otherPartyName} on ${when}. Confirm it from your dashboard.</p>`,
+  });
+}
+
 export async function notifyAppointmentRescheduled({
   recipientEmail,
   recipientName,
