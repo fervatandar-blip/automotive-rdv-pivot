@@ -18,15 +18,16 @@ import {
 import { renderInvoicePdf } from "@/lib/invoice-pdf";
 
 const PARTIES_SELECT =
-  "id, start_time, garage_id, services(name), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email)";
+  "id, start_time, garage_id, client_id, services(name), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email, owner_id)";
 
 type AppointmentWithParties = {
   id: string;
   start_time: string;
   garage_id: string;
+  client_id: string;
   services: { name: string } | null;
   client: { full_name: string; email: string } | null;
-  garage: { name: string; email: string | null } | null;
+  garage: { name: string; email: string | null; owner_id: string } | null;
 };
 
 function revalidateLocalizedPath(path: string) {
@@ -51,6 +52,7 @@ async function notifyStatusChange(
     if (!appointment.client) return;
     await notifyAppointmentStatusChange({
       status,
+      recipientProfileId: appointment.client_id,
       recipientEmail: appointment.client.email,
       recipientName: appointment.client.full_name,
       otherPartyName: appointment.garage?.name ?? "the garage",
@@ -60,9 +62,10 @@ async function notifyStatusChange(
     return;
   }
 
-  if (!appointment.garage?.email) return;
+  if (!appointment.garage) return;
   await notifyAppointmentStatusChange({
     status,
+    recipientProfileId: appointment.garage.owner_id,
     recipientEmail: appointment.garage.email,
     recipientName: appointment.garage.name,
     otherPartyName: appointment.client?.full_name ?? "the client",
@@ -237,7 +240,7 @@ async function notifyWaitlistOnCancellation(garageId: string, date: string) {
     const { data: entries } = await admin
       .from("waitlist")
       .select(
-        "id, client:profiles!waitlist_client_id_fkey(full_name, email), garages(name), services(name)"
+        "id, client_id, client:profiles!waitlist_client_id_fkey(full_name, email), garages(name), services(name)"
       )
       .eq("garage_id", garageId)
       .eq("date", date)
@@ -256,6 +259,7 @@ async function notifyWaitlistOnCancellation(garageId: string, date: string) {
       if (!client || !garage || !service) continue;
 
       await notifyWaitlistSlotOpened({
+        recipientProfileId: entry.client_id,
         recipientEmail: client.email,
         recipientName: client.full_name,
         garageName: garage.name,
@@ -521,7 +525,7 @@ export async function rescheduleAppointment(formData: FormData) {
   const { data: appointment } = await supabase
     .from("appointments")
     .select(
-      "id, client_id, garage_id, status, services(name, duration_minutes), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email)"
+      "id, client_id, garage_id, status, services(name, duration_minutes), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email, owner_id)"
     )
     .eq("id", appointmentId)
     .single();
@@ -582,11 +586,13 @@ export async function rescheduleAppointment(formData: FormData) {
   const garage = appointment.garage as unknown as {
     name: string;
     email: string | null;
+    owner_id: string;
   } | null;
   const initiator = user.id === appointment.client_id ? "client" : "garage";
 
-  if (initiator === "client" && garage?.email) {
+  if (initiator === "client" && garage) {
     await notifyAppointmentRescheduled({
+      recipientProfileId: garage.owner_id,
       recipientEmail: garage.email,
       recipientName: garage.name,
       otherPartyName: client?.full_name ?? "the client",
@@ -595,6 +601,7 @@ export async function rescheduleAppointment(formData: FormData) {
     });
   } else if (initiator === "garage" && client) {
     await notifyAppointmentRescheduled({
+      recipientProfileId: appointment.client_id,
       recipientEmail: client.email,
       recipientName: client.full_name,
       otherPartyName: garage?.name ?? "the garage",

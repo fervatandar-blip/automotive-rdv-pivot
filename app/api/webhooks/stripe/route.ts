@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       const { data: appointment } = await admin
         .from("appointments")
         .select(
-          "garage_id, client_id, start_time, services(name), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email)"
+          "garage_id, client_id, start_time, services(name), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email, owner_id)"
         )
         .eq("id", appointmentId)
         .eq("status", "pending_payment")
@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
         const garage = appointment.garage as unknown as {
           name: string;
           email: string | null;
+          owner_id: string;
         } | null;
         const service = appointment.services as unknown as {
           name: string;
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
         if (client) {
           await notifyBookingReceived({
             recipient: "client",
+            recipientProfileId: appointment.client_id,
             recipientEmail: client.email,
             recipientName: client.full_name,
             otherPartyName: garage?.name ?? "the garage",
@@ -91,9 +93,10 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        if (garage?.email) {
+        if (garage) {
           await notifyBookingReceived({
             recipient: "garage",
+            recipientProfileId: garage.owner_id,
             recipientEmail: garage.email,
             recipientName: garage.name,
             otherPartyName: client?.full_name ?? "the client",

@@ -13,6 +13,7 @@ import { submitReview } from "@/app/actions/reviews";
 import { leaveWaitlist } from "@/app/actions/waitlist";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
 
 type Appointment = {
   id: string;
@@ -447,6 +448,7 @@ export default async function DashboardPage({
             <Link href={`/${lang}/garage/onboarding`}>Garage profile</Link>
             <Link href={`/${lang}/garage/staff`}>Staff</Link>
           </div>
+          <PushNotificationOptIn />
           <LanguageSwitcher lang={lang} />
           <LogoutButton lang={lang} />
         </div>
@@ -564,6 +566,7 @@ export default async function DashboardPage({
             >
               My vehicles
             </Link>
+            <PushNotificationOptIn />
             <LanguageSwitcher lang={lang} />
             <LogoutButton lang={lang} />
           </div>
