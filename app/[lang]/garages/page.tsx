@@ -3,6 +3,7 @@ import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { GarageDiscoveryMap } from "@/components/garage-discovery-map";
 import { averageRating, formatRating } from "@/lib/ratings";
 
 function toArray(value: string | string[] | undefined): string[] {
@@ -14,6 +15,8 @@ type GarageRow = {
   id: string;
   name: string;
   city: string | null;
+  latitude: number | null;
+  longitude: number | null;
   ev_capable: boolean;
   mobile_service: boolean;
   emergency_service: boolean;
@@ -56,7 +59,7 @@ export default async function GaragesPage({
       supabase
         .from("garages")
         .select(
-          "id, name, city, ev_capable, mobile_service, emergency_service, pricing_category, services(id), garage_brands(brand_id), garage_specialties(specialty_id), reviews(rating)"
+          "id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, services(id), garage_brands(brand_id), garage_specialties(specialty_id), reviews(rating)"
         )
         .eq("status", "approved")
         .order("name", { ascending: true }),
@@ -292,6 +295,21 @@ export default async function GaragesPage({
             </Link>
           </div>
         </form>
+
+        <GarageDiscoveryMap
+          garages={sorted
+            .filter(
+              (garage): garage is GarageRow & { latitude: number; longitude: number } =>
+                garage.latitude !== null && garage.longitude !== null
+            )
+            .map((garage) => ({
+              id: garage.id,
+              name: garage.name,
+              latitude: garage.latitude,
+              longitude: garage.longitude,
+            }))}
+          lang={lang}
+        />
 
         <div className="flex flex-col gap-4">
           {sorted.length > 0 ? (
