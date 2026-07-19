@@ -70,6 +70,7 @@ export type InvoiceData = {
     city: string | null;
     email: string | null;
     vatNumber: string | null;
+    registrationNumber: string | null;
   };
   client: {
     name: string;
@@ -127,6 +128,9 @@ function InvoiceDocument({ invoice }: { invoice: InvoiceData }) {
             {invoice.garage.email && <Text>{invoice.garage.email}</Text>}
             {invoice.garage.vatNumber && (
               <Text>VAT {invoice.garage.vatNumber}</Text>
+            )}
+            {invoice.garage.registrationNumber && (
+              <Text>Reg. {invoice.garage.registrationNumber}</Text>
             )}
           </View>
           <View>

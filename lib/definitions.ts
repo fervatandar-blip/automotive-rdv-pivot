@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { COUNTRIES, REGISTRATION_CONFIG } from "@/lib/business-registration";
 
 export const SignupFormSchema = z.object({
   fullName: z
@@ -189,28 +190,43 @@ export type AvailabilityOverrideFormState =
     }
   | undefined;
 
-export const GarageOnboardingFormSchema = z.object({
-  name: z
-    .string()
-    .min(2, { error: "Name must be at least 2 characters long." })
-    .trim(),
-  description: z
-    .string()
-    .trim()
-    .max(1000, { error: "Keep the description under 1000 characters." })
-    .optional(),
-  address: z.string().trim().optional(),
-  city: z.string().trim().optional(),
-  phone: z.string().trim().optional(),
-  email: z.email({ error: "Please enter a valid email." }).optional(),
-  vatNumber: z.string().trim().optional(),
-  pricingCategory: z.enum(["budget", "standard", "premium"]).optional(),
-  technicianCount: z.coerce
-    .number({ error: "Enter a number." })
-    .int()
-    .nonnegative({ error: "Can't be negative." })
-    .optional(),
-});
+export const GarageOnboardingFormSchema = z
+  .object({
+    name: z
+      .string()
+      .min(2, { error: "Name must be at least 2 characters long." })
+      .trim(),
+    description: z
+      .string()
+      .trim()
+      .max(1000, { error: "Keep the description under 1000 characters." })
+      .optional(),
+    address: z.string().trim().optional(),
+    city: z.string().trim().optional(),
+    phone: z.string().trim().optional(),
+    email: z.email({ error: "Please enter a valid email." }).optional(),
+    country: z.enum(COUNTRIES, { error: "Select a country." }),
+    registrationNumber: z.string().trim().optional(),
+    vatNumber: z.string().trim().optional(),
+    pricingCategory: z.enum(["budget", "standard", "premium"]).optional(),
+    technicianCount: z.coerce
+      .number({ error: "Enter a number." })
+      .int()
+      .nonnegative({ error: "Can't be negative." })
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.registrationNumber &&
+      !REGISTRATION_CONFIG[data.country].pattern.test(data.registrationNumber)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["registrationNumber"],
+        message: `Doesn't look like a valid ${REGISTRATION_CONFIG[data.country].label}.`,
+      });
+    }
+  });
 
 export type GarageOnboardingFormState =
   | {
@@ -221,6 +237,8 @@ export type GarageOnboardingFormState =
         city?: string[];
         phone?: string[];
         email?: string[];
+        country?: string[];
+        registrationNumber?: string[];
         pricingCategory?: string[];
         technicianCount?: string[];
       };

@@ -353,7 +353,7 @@ async function generateInvoice(
     const { data: appointment } = await supabase
       .from("appointments")
       .select(
-        "start_time, client_id, client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, address, city, email, vat_number), services(name, duration_minutes, price)"
+        "start_time, client_id, client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, address, city, email, vat_number, registration_number), services(name, duration_minutes, price)"
       )
       .eq("id", appointmentId)
       .single();
@@ -370,6 +370,7 @@ async function generateInvoice(
       city: string | null;
       email: string | null;
       vat_number: string | null;
+      registration_number: string | null;
     } | null;
     const service = appointment.services as unknown as {
       name: string;
@@ -399,6 +400,7 @@ async function generateInvoice(
         city: garageInfo.city,
         email: garageInfo.email,
         vatNumber: garageInfo.vat_number,
+        registrationNumber: garageInfo.registration_number,
       },
       client: { name: client.full_name, email: client.email },
       service: {

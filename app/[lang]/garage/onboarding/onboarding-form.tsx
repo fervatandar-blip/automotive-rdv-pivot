@@ -1,10 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { completeOnboarding } from "@/app/actions/garage";
 import { GarageMapPicker } from "@/components/garage-map-picker";
 import type { Locale } from "@/lib/i18n/config";
+import {
+  COUNTRIES,
+  COUNTRY_NAMES,
+  REGISTRATION_CONFIG,
+  type Country,
+} from "@/lib/business-registration";
 
 const DAYS = [
   "Sunday",
@@ -26,6 +32,8 @@ type Garage = {
   city: string | null;
   phone: string | null;
   email: string | null;
+  country: string;
+  registration_number: string | null;
   vat_number: string | null;
   pricing_category: string | null;
   technician_count: number | null;
@@ -65,6 +73,12 @@ export function OnboardingForm({
   );
   const isFirstRun = !garage.platform_terms_accepted_at;
   const languages = garage.languages_spoken ?? [];
+  const [country, setCountry] = useState<Country>(
+    COUNTRIES.includes(garage.country as Country)
+      ? (garage.country as Country)
+      : "LU"
+  );
+  const registrationConfig = REGISTRATION_CONFIG[country];
 
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
@@ -191,6 +205,50 @@ export function OnboardingForm({
               />
               {state?.errors?.email && (
                 <p className="text-sm text-red-600">{state.errors.email[0]}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <label htmlFor="country" className="text-sm font-medium">
+                Country
+              </label>
+              <select
+                id="country"
+                name="country"
+                value={country}
+                onChange={(event) => setCountry(event.target.value as Country)}
+                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+              >
+                {COUNTRIES.map((code) => (
+                  <option key={code} value={code}>
+                    {COUNTRY_NAMES[code]}
+                  </option>
+                ))}
+              </select>
+              {state?.errors?.country && (
+                <p className="text-sm text-red-600">{state.errors.country[0]}</p>
+              )}
+            </div>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="registrationNumber" className="text-sm font-medium">
+                {registrationConfig.label}
+              </label>
+              <input
+                id="registrationNumber"
+                name="registrationNumber"
+                defaultValue={garage.registration_number ?? ""}
+                placeholder={registrationConfig.placeholder}
+                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+              />
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                {registrationConfig.hint}
+              </p>
+              {state?.errors?.registrationNumber && (
+                <p className="text-sm text-red-600">
+                  {state.errors.registrationNumber[0]}
+                </p>
               )}
             </div>
           </div>
