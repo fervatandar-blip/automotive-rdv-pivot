@@ -151,28 +151,36 @@ function AppointmentCard({
             </a>
           )}
         </div>
-        {cancellable &&
-          (appointment.status === "pending" ||
-            appointment.status === "confirmed") && (
-            <div className="flex shrink-0 flex-col gap-1.5">
-              <Link
-                href={`/${lang}/appointments/${appointment.id}/reschedule`}
-                className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-              >
-                Reschedule
-              </Link>
-              <form action={cancelAppointment}>
-                <input type="hidden" name="id" value={appointment.id} />
-                <input type="hidden" name="lang" value={lang} />
-                <button
-                  type="submit"
-                  className="w-full rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+        <div className="flex shrink-0 flex-col gap-1.5">
+          <Link
+            href={`/${lang}/appointments/${appointment.id}/messages`}
+            className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+          >
+            Message
+          </Link>
+          {cancellable &&
+            (appointment.status === "pending" ||
+              appointment.status === "confirmed") && (
+              <>
+                <Link
+                  href={`/${lang}/appointments/${appointment.id}/reschedule`}
+                  className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                 >
-                  Cancel
-                </button>
-              </form>
-            </div>
-          )}
+                  Reschedule
+                </Link>
+                <form action={cancelAppointment}>
+                  <input type="hidden" name="id" value={appointment.id} />
+                  <input type="hidden" name="lang" value={lang} />
+                  <button
+                    type="submit"
+                    className="w-full rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                  >
+                    Cancel
+                  </button>
+                </form>
+              </>
+            )}
+        </div>
       </div>
       {reviewable && (
         <ReviewForm appointmentId={appointment.id} lang={lang} />
@@ -224,54 +232,58 @@ function MechanicAppointmentCard({
           </p>
         )}
       </div>
-      {(canConfirm || canComplete || canReschedule || canCancel) && (
-        <div className="flex shrink-0 flex-col gap-1.5">
-          {canConfirm && (
-            <form action={confirmAppointment}>
-              <input type="hidden" name="id" value={appointment.id} />
-              <input type="hidden" name="lang" value={lang} />
-              <button
-                type="submit"
-                className="w-full rounded-full border border-black/[.08] px-4 py-1 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-              >
-                Confirm
-              </button>
-            </form>
-          )}
-          {canComplete && (
-            <form action={completeAppointment}>
-              <input type="hidden" name="id" value={appointment.id} />
-              <input type="hidden" name="lang" value={lang} />
-              <button
-                type="submit"
-                className="w-full rounded-full border border-black/[.08] px-4 py-1 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-              >
-                Complete
-              </button>
-            </form>
-          )}
-          {canReschedule && (
-            <Link
-              href={`/${lang}/appointments/${appointment.id}/reschedule`}
-              className="w-full rounded-full border border-black/[.08] px-4 py-1 text-center text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+      <div className="flex shrink-0 flex-col gap-1.5">
+        <Link
+          href={`/${lang}/appointments/${appointment.id}/messages`}
+          className="w-full rounded-full border border-black/[.08] px-4 py-1 text-center text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+        >
+          Message
+        </Link>
+        {canConfirm && (
+          <form action={confirmAppointment}>
+            <input type="hidden" name="id" value={appointment.id} />
+            <input type="hidden" name="lang" value={lang} />
+            <button
+              type="submit"
+              className="w-full rounded-full border border-black/[.08] px-4 py-1 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
             >
-              Reschedule
-            </Link>
-          )}
-          {canCancel && (
-            <form action={providerCancelAppointment}>
-              <input type="hidden" name="id" value={appointment.id} />
-              <input type="hidden" name="lang" value={lang} />
-              <button
-                type="submit"
-                className="w-full rounded-full border border-black/[.08] px-4 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-              >
-                Cancel
-              </button>
-            </form>
-          )}
-        </div>
-      )}
+              Confirm
+            </button>
+          </form>
+        )}
+        {canComplete && (
+          <form action={completeAppointment}>
+            <input type="hidden" name="id" value={appointment.id} />
+            <input type="hidden" name="lang" value={lang} />
+            <button
+              type="submit"
+              className="w-full rounded-full border border-black/[.08] px-4 py-1 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+            >
+              Complete
+            </button>
+          </form>
+        )}
+        {canReschedule && (
+          <Link
+            href={`/${lang}/appointments/${appointment.id}/reschedule`}
+            className="w-full rounded-full border border-black/[.08] px-4 py-1 text-center text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+          >
+            Reschedule
+          </Link>
+        )}
+        {canCancel && (
+          <form action={providerCancelAppointment}>
+            <input type="hidden" name="id" value={appointment.id} />
+            <input type="hidden" name="lang" value={lang} />
+            <button
+              type="submit"
+              className="w-full rounded-full border border-black/[.08] px-4 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+            >
+              Cancel
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

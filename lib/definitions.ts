@@ -289,3 +289,12 @@ export const ReviewFormSchema = z.object({
     .max(5),
   comment: z.string().trim().max(1000, { error: "Keep it under 1000 characters." }).optional(),
 });
+
+export const MessageFormSchema = z.object({
+  appointmentId: z.uuid(),
+  body: z
+    .string()
+    .trim()
+    .min(1, { error: "Message can't be empty." })
+    .max(2000, { error: "Keep it under 2000 characters." }),
+});

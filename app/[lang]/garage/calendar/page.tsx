@@ -75,8 +75,6 @@ function AppointmentChip({
   const canCancel =
     appointment.status === "pending" || appointment.status === "confirmed";
   const canReschedule = canCancel;
-  const showActions =
-    !compact && (canConfirm || canComplete || canReschedule || canCancel);
   const assignedMechanic = mechanics.find(
     (mechanic) => mechanic.id === appointment.assigned_mechanic_id
   );
@@ -139,8 +137,14 @@ function AppointmentChip({
             </button>
           </form>
         )}
-        {showActions && (
+        {!compact && (
           <div className="mt-1.5 flex flex-col gap-1">
+            <Link
+              href={`/${lang}/appointments/${appointment.id}/messages`}
+              className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
+            >
+              Message
+            </Link>
             {canConfirm && (
               <form action={confirmAppointment}>
                 <input type="hidden" name="id" value={appointment.id} />
