@@ -33,24 +33,39 @@ export function ChatThread({
 
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel(`messages:${appointmentId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `appointment_id=eq.${appointmentId}`,
-        },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
-        }
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | undefined;
+    let cancelled = false;
+
+    // Realtime needs the user's JWT explicitly pushed to the socket before
+    // subscribing -- otherwise the connection can race ahead of session
+    // hydration and authenticate as anonymous, so every RLS check on the
+    // channel silently fails (no error, messages just never arrive).
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      if (session) {
+        supabase.realtime.setAuth(session.access_token);
+      }
+
+      channel = supabase
+        .channel(`messages:${appointmentId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `appointment_id=eq.${appointmentId}`,
+          },
+          (payload) => {
+            setMessages((prev) => [...prev, payload.new as Message]);
+          }
+        )
+        .subscribe();
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
   }, [appointmentId]);
 
