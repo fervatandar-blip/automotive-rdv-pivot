@@ -1,12 +1,15 @@
 "use client";
 
 import { useActionState } from "react";
+import { ChevronDown } from "lucide-react";
 import { submitGarageLead } from "@/app/actions/leads";
 import {
+  CALLING_CODES,
   COUNTRIES,
   COUNTRY_NAMES,
 } from "@/lib/business-registration";
 import { GARAGE_SIZE_TYPES, GARAGE_SIZE_TYPE_LABELS } from "@/lib/definitions";
+import { StyledSelect } from "@/components/styled-select";
 
 export function DemoLeadForm() {
   const [state, action, pending] = useActionState(submitGarageLead, undefined);
@@ -15,7 +18,7 @@ export function DemoLeadForm() {
     const bookingUrl = process.env.NEXT_PUBLIC_DEMO_BOOKING_URL;
 
     return (
-      <div className="flex flex-col items-center gap-4 rounded-xl border border-black/[.08] bg-white p-8 text-center dark:border-white/[.145] dark:bg-zinc-950">
+      <div className="flex flex-col items-center gap-4 rounded-2xl border border-black/[.08] bg-white p-8 text-center shadow-sm dark:border-white/[.145] dark:bg-zinc-950">
         <h2 className="text-xl font-semibold text-black dark:text-zinc-50">
           Thank you. Your request has been received.
         </h2>
@@ -45,7 +48,7 @@ export function DemoLeadForm() {
   return (
     <form
       action={action}
-      className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-zinc-950"
+      className="flex flex-col gap-4 rounded-2xl border border-black/[.08] bg-white p-8 shadow-sm dark:border-white/[.145] dark:bg-zinc-950"
     >
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
@@ -55,6 +58,8 @@ export function DemoLeadForm() {
           <input
             id="firstName"
             name="firstName"
+            type="text"
+            autoComplete="given-name"
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.firstName && (
@@ -68,6 +73,8 @@ export function DemoLeadForm() {
           <input
             id="lastName"
             name="lastName"
+            type="text"
+            autoComplete="family-name"
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.lastName && (
@@ -85,6 +92,7 @@ export function DemoLeadForm() {
             id="businessEmail"
             name="businessEmail"
             type="email"
+            autoComplete="email"
             placeholder="you@yourgarage.lu"
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
@@ -96,12 +104,34 @@ export function DemoLeadForm() {
           <label htmlFor="phone" className="text-sm font-medium">
             Phone number
           </label>
-          <input
-            id="phone"
-            name="phone"
-            type="tel"
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-          />
+          <div className="flex">
+            <div className="relative shrink-0">
+              <select
+                name="phoneCountryCode"
+                defaultValue="+352"
+                aria-label="Country code"
+                className="h-full appearance-none rounded-l-md border border-r-0 border-black/[.08] bg-white py-2 pl-3 pr-7 text-sm dark:border-white/[.145] dark:bg-black"
+              >
+                {COUNTRIES.map((code) => (
+                  <option key={code} value={CALLING_CODES[code]}>
+                    {CALLING_CODES[code]}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden
+                className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+              />
+            </div>
+            <input
+              id="phone"
+              name="phone"
+              type="tel"
+              autoComplete="tel-national"
+              placeholder="621 123 456"
+              className="w-full rounded-r-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+            />
+          </div>
           {state?.errors?.phone && (
             <p className="text-sm text-red-600">{state.errors.phone[0]}</p>
           )}
@@ -116,6 +146,7 @@ export function DemoLeadForm() {
           <input
             id="garageName"
             name="garageName"
+            type="text"
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.garageName && (
@@ -126,18 +157,13 @@ export function DemoLeadForm() {
           <label htmlFor="country" className="text-sm font-medium">
             Country
           </label>
-          <select
-            id="country"
-            name="country"
-            defaultValue="LU"
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-          >
+          <StyledSelect id="country" name="country" defaultValue="LU">
             {COUNTRIES.map((code) => (
               <option key={code} value={code}>
                 {COUNTRY_NAMES[code]}
               </option>
             ))}
-          </select>
+          </StyledSelect>
           {state?.errors?.country && (
             <p className="text-sm text-red-600">{state.errors.country[0]}</p>
           )}
@@ -148,19 +174,14 @@ export function DemoLeadForm() {
         <label htmlFor="garageSizeType" className="text-sm font-medium">
           Garage size/type
         </label>
-        <select
-          id="garageSizeType"
-          name="garageSizeType"
-          defaultValue=""
-          className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-        >
+        <StyledSelect id="garageSizeType" name="garageSizeType" defaultValue="">
           <option value="">Select an option</option>
           {GARAGE_SIZE_TYPES.map((code) => (
             <option key={code} value={code}>
               {GARAGE_SIZE_TYPE_LABELS[code]}
             </option>
           ))}
-        </select>
+        </StyledSelect>
         {state?.errors?.garageSizeType && (
           <p className="text-sm text-red-600">{state.errors.garageSizeType[0]}</p>
         )}
@@ -168,7 +189,7 @@ export function DemoLeadForm() {
 
       <div className="flex flex-col gap-1">
         <label htmlFor="message" className="text-sm font-medium">
-          Tell us about your needs or any questions you have
+          Additional details (optional)
         </label>
         <textarea
           id="message"
@@ -185,7 +206,7 @@ export function DemoLeadForm() {
       <button
         disabled={pending}
         type="submit"
-        className="mt-2 rounded-full bg-foreground px-6 py-2.5 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
+        className="mt-6 w-full rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-black disabled:opacity-50 dark:bg-zinc-100 dark:text-black dark:hover:bg-white"
       >
         {pending ? "Submitting..." : "Book my free demo"}
       </button>

@@ -9,6 +9,13 @@ export const COUNTRY_NAMES: Record<Country, string> = {
   DE: "Germany",
 };
 
+export const CALLING_CODES: Record<Country, string> = {
+  LU: "+352",
+  BE: "+32",
+  FR: "+33",
+  DE: "+49",
+};
+
 // Lenient sanity checks, not authoritative validation against each
 // country's real business registrar -- the existing vat_number field has
 // no validation at all today, so even a rough format check is an

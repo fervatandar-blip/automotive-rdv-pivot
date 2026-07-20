@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Star } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { resolveLocale } from "@/lib/i18n/config";
 import { DemoLeadForm } from "./demo-lead-form";
@@ -15,7 +16,7 @@ const STEPS = [
   },
   {
     title: "Go live when you're ready",
-    description: "We configure your profile and you start welcoming clients on your own schedule.",
+    description: "We'll configure your profile so you can start welcoming clients on your schedule.",
   },
 ];
 
@@ -52,26 +53,28 @@ export default async function DemoPage({
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
-      <header className="flex items-center justify-between px-6 py-6 sm:px-12">
-        <Link href={`/${lang}`}>
-          <Image
-            src="/logo.png"
-            alt="RDV"
-            width={40}
-            height={40}
-            className="rounded-lg"
-            priority
-          />
-        </Link>
-        <nav className="flex items-center gap-6 text-sm font-medium">
-          <LanguageSwitcher lang={lang} />
-          <Link
-            href={`/${lang}/login`}
-            className="text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
-          >
-            Log in
+      <header className="border-b border-gray-100 px-6 dark:border-white/[.145]">
+        <div className="mx-auto flex max-w-6xl items-center justify-between py-6">
+          <Link href={`/${lang}`}>
+            <Image
+              src="/logo.png"
+              alt="RDV"
+              width={40}
+              height={40}
+              className="rounded-lg"
+              priority
+            />
           </Link>
-        </nav>
+          <nav className="flex items-center gap-6 text-sm font-medium">
+            <LanguageSwitcher lang={lang} />
+            <Link
+              href={`/${lang}/login`}
+              className="text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
+            >
+              Log in
+            </Link>
+          </nav>
+        </div>
       </header>
 
       <main className="flex flex-1 flex-col items-center px-6 py-12 sm:px-12">
@@ -79,7 +82,7 @@ export default async function DemoPage({
           <div className="flex flex-col gap-10">
             <div>
               <h1 className="text-4xl font-semibold tracking-tight text-black sm:text-5xl dark:text-zinc-50">
-                List your garage on RDV Pro.
+                Grow your garage business with RDV Pro.
               </h1>
               <p className="mt-6 max-w-md text-lg text-zinc-600 dark:text-zinc-400">
                 Start with a free, personalized demo. No commitment, no
@@ -89,8 +92,14 @@ export default async function DemoPage({
 
             <ol className="flex flex-col gap-6">
               {STEPS.map((step, index) => (
-                <li key={step.title} className="flex gap-4">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
+                <li key={step.title} className="relative flex gap-4">
+                  {index < STEPS.length - 1 && (
+                    <span
+                      aria-hidden
+                      className="absolute left-4 top-8 -bottom-6 w-px bg-black/[.08] dark:bg-white/[.145]"
+                    />
+                  )}
+                  <span className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
                     {index + 1}
                   </span>
                   <div>
@@ -104,6 +113,17 @@ export default async function DemoPage({
                 </li>
               ))}
             </ol>
+
+            <div className="flex items-center gap-3 border-t border-black/[.08] pt-6 dark:border-white/[.145]">
+              <div className="flex gap-0.5 text-amber-500">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <Star key={index} className="h-4 w-4 fill-current" />
+                ))}
+              </div>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Built for Luxembourg&apos;s automotive professionals.
+              </p>
+            </div>
           </div>
 
           <DemoLeadForm />

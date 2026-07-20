@@ -7,11 +7,21 @@ export async function submitGarageLead(
   state: GarageLeadFormState,
   formData: FormData
 ): Promise<GarageLeadFormState> {
+  // The phone field is submitted as two parts (a calling-code select plus
+  // the number itself) but stored as a single string -- no schema change
+  // needed, just combined before validation.
+  const phoneNumber = formData.get("phone");
+  const phoneCountryCode = formData.get("phoneCountryCode");
+  const combinedPhone =
+    typeof phoneNumber === "string" && phoneNumber.trim()
+      ? `${typeof phoneCountryCode === "string" ? phoneCountryCode : ""} ${phoneNumber.trim()}`.trim()
+      : undefined;
+
   const validatedFields = GarageLeadFormSchema.safeParse({
     firstName: formData.get("firstName"),
     lastName: formData.get("lastName"),
     businessEmail: formData.get("businessEmail"),
-    phone: formData.get("phone") || undefined,
+    phone: combinedPhone,
     garageName: formData.get("garageName"),
     country: formData.get("country"),
     garageSizeType: formData.get("garageSizeType") || undefined,

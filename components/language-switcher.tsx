@@ -18,14 +18,14 @@ export function LanguageSwitcher({ lang }: { lang: Locale }) {
             href={`/${locale}${rest ? `/${rest}` : ""}`}
             className={
               locale === lang
-                ? "text-black dark:text-zinc-50"
+                ? "font-semibold text-black dark:text-zinc-50"
                 : "text-zinc-400 transition-colors hover:text-black dark:text-zinc-600 dark:hover:text-zinc-50"
             }
           >
             {LABELS[locale]}
           </Link>
           {index < locales.length - 1 && (
-            <span className="text-zinc-300 dark:text-zinc-700">/</span>
+            <span className="text-zinc-300 dark:text-zinc-700">|</span>
           )}
         </span>
       ))}
