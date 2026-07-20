@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RDV",
-  description: "Book appointments with providers, simply.",
+  title: "RDV — Find a trusted garage in Luxembourg",
+  description:
+    "RDV connects car owners with verified garages in Luxembourg — search, compare, and book automotive services online in a few taps.",
 };
 
 export function generateStaticParams() {
