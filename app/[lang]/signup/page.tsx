@@ -1,46 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useActionState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useActionState } from "react";
+import { useParams } from "next/navigation";
 import { signup } from "@/app/actions/auth";
-
-function RoleFields({
-  errors,
-}: {
-  errors?: string[];
-}) {
-  const searchParams = useSearchParams();
-  const defaultRole =
-    searchParams.get("role") === "admin_garage" ? "admin_garage" : "client";
-
-  return (
-    <fieldset className="flex flex-col gap-2">
-      <legend className="text-sm font-medium">I am a</legend>
-      <div className="flex gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="radio"
-            name="role"
-            value="client"
-            defaultChecked={defaultRole === "client"}
-          />
-          Client
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="radio"
-            name="role"
-            value="admin_garage"
-            defaultChecked={defaultRole === "admin_garage"}
-          />
-          Garage
-        </label>
-      </div>
-      {errors && <p className="text-sm text-red-600">{errors[0]}</p>}
-    </fieldset>
-  );
-}
 
 export default function SignupPage() {
   const [state, action, pending] = useActionState(signup, undefined);
@@ -53,6 +16,7 @@ export default function SignupPage() {
         className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-zinc-950"
       >
         <input type="hidden" name="lang" value={lang} />
+        <input type="hidden" name="role" value="client" />
 
         <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
           Create an account
@@ -107,26 +71,6 @@ export default function SignupPage() {
             </ul>
           )}
         </div>
-
-        <Suspense
-          fallback={
-            <fieldset className="flex flex-col gap-2">
-              <legend className="text-sm font-medium">I am a</legend>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" name="role" value="client" defaultChecked />
-                  Client
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="radio" name="role" value="admin_garage" />
-                  Garage
-                </label>
-              </div>
-            </fieldset>
-          }
-        >
-          <RoleFields errors={state?.errors?.role} />
-        </Suspense>
 
         <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
           <input

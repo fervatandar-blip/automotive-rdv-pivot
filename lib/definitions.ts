@@ -12,9 +12,7 @@ export const SignupFormSchema = z.object({
     .min(8, { error: "Be at least 8 characters long." })
     .regex(/[a-zA-Z]/, { error: "Contain at least one letter." })
     .regex(/[0-9]/, { error: "Contain at least one number." }),
-  role: z.enum(["client", "admin_garage"], {
-    error: "Choose whether you're a client or a garage.",
-  }),
+  role: z.literal("client"),
 });
 
 export const InviteMechanicFormSchema = z.object({
@@ -316,3 +314,41 @@ export const MessageFormSchema = z.object({
     .min(1, { error: "Message can't be empty." })
     .max(2000, { error: "Keep it under 2000 characters." }),
 });
+
+export const GarageLeadFormSchema = z.object({
+  firstName: z
+    .string()
+    .min(2, { error: "First name must be at least 2 characters long." })
+    .trim(),
+  lastName: z
+    .string()
+    .min(2, { error: "Last name must be at least 2 characters long." })
+    .trim(),
+  businessEmail: z.email({ error: "Please enter a valid email." }).trim(),
+  phone: z.string().trim().optional(),
+  garageName: z
+    .string()
+    .min(2, { error: "Garage name must be at least 2 characters long." })
+    .trim(),
+  country: z.enum(COUNTRIES, { error: "Select a country." }),
+  message: z
+    .string()
+    .trim()
+    .max(2000, { error: "Keep it under 2000 characters." })
+    .optional(),
+});
+
+export type GarageLeadFormState =
+  | {
+      errors?: {
+        firstName?: string[];
+        lastName?: string[];
+        businessEmail?: string[];
+        phone?: string[];
+        garageName?: string[];
+        country?: string[];
+        message?: string[];
+      };
+      success?: boolean;
+    }
+  | undefined;
