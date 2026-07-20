@@ -5,7 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { averageRating } from "@/lib/ratings";
-import { processAccountDeletionNow } from "@/app/actions/account";
+import {
+  processAccountDeletionNow,
+  runRetentionSweepNow,
+} from "@/app/actions/account";
 
 async function headCount(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -123,7 +126,18 @@ export default async function AdminStatsPage({
               Garages list &rarr;
             </Link>
           </div>
-          <LanguageSwitcher lang={lang} />
+          <div className="flex items-center gap-4">
+            <form action={runRetentionSweepNow}>
+              <input type="hidden" name="lang" value={lang} />
+              <button
+                type="submit"
+                className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+              >
+                Run retention sweep now
+              </button>
+            </form>
+            <LanguageSwitcher lang={lang} />
+          </div>
         </div>
 
         <StatSection title="Garages">

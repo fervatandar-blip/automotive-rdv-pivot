@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireSuperAdmin } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
 import { processAccountDeletion } from "@/lib/account-deletion";
+import { runRetentionSweep } from "@/lib/retention-sweep";
 
 function revalidateLocalizedPath(path: string) {
   for (const locale of locales) {
@@ -54,6 +55,15 @@ export async function processAccountDeletionNow(formData: FormData) {
   }
 
   await processAccountDeletion(profileId);
+
+  revalidateLocalizedPath("/admin/stats");
+}
+
+export async function runRetentionSweepNow(formData: FormData) {
+  const lang = parseLocale(formData.get("lang"));
+  await requireSuperAdmin(lang);
+
+  await runRetentionSweep();
 
   revalidateLocalizedPath("/admin/stats");
 }

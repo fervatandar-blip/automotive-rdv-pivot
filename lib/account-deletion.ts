@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { purgeGarageDocuments } from "@/lib/document-retention";
 
 export const ACCOUNT_DELETION_GRACE_PERIOD_DAYS = 30;
 
@@ -48,6 +49,11 @@ export async function processAccountDeletion(profileId: string) {
           deleted_at: new Date().toISOString(),
         })
         .eq("id", garage.id);
+
+      // KYC/verification documents have no ongoing purpose once the
+      // garage is closed -- unlike invoices/payments, there's no legal
+      // retention requirement for them.
+      await purgeGarageDocuments(garage.id);
     }
   }
 
