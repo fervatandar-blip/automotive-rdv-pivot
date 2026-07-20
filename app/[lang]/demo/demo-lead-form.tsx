@@ -50,7 +50,7 @@ export function DemoLeadForm() {
       action={action}
       className="flex flex-col gap-4 rounded-2xl border border-black/[.08] bg-white p-8 shadow-sm dark:border-white/[.145] dark:bg-zinc-950"
     >
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="firstName" className="text-sm font-medium">
             First name
@@ -83,7 +83,7 @@ export function DemoLeadForm() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="businessEmail" className="text-sm font-medium">
             Business email
@@ -138,7 +138,7 @@ export function DemoLeadForm() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="garageName" className="text-sm font-medium">
             Garage name
