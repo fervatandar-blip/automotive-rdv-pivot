@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { averageRating } from "@/lib/ratings";
+import { processAccountDeletionNow } from "@/app/actions/account";
 
 async function headCount(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -89,6 +90,13 @@ export default async function AdminStatsPage({
     supabase.from("payments").select("commission_amount").eq("status", "succeeded"),
   ]);
 
+  const { data: pendingDeletions } = await supabase
+    .from("profiles")
+    .select("id, full_name, email, role, deletion_requested_at")
+    .not("deletion_requested_at", "is", null)
+    .is("deleted_at", null)
+    .order("deletion_requested_at", { ascending: true });
+
   const ratings = (reviews ?? []).map((review) => review.rating);
   const avgRating = averageRating(ratings);
   const totalRevenue = (invoices ?? []).reduce(
@@ -162,6 +170,50 @@ export default async function AdminStatsPage({
             value={pendingDocuments}
           />
         </StatSection>
+
+        {pendingDeletions && pendingDeletions.length > 0 && (
+          <div className="flex flex-col gap-3">
+            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              Pending account deletions
+            </h2>
+            <div className="flex flex-col gap-3">
+              {pendingDeletions.map((request) => (
+                <div
+                  key={request.id}
+                  className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+                >
+                  <div>
+                    <p className="font-medium text-black dark:text-zinc-50">
+                      {request.full_name}{" "}
+                      <span className="font-normal text-zinc-500 dark:text-zinc-500">
+                        &middot; {request.role}
+                      </span>
+                    </p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {request.email}
+                    </p>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      Requested{" "}
+                      {new Date(
+                        request.deletion_requested_at as string
+                      ).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <form action={processAccountDeletionNow}>
+                    <input type="hidden" name="profileId" value={request.id} />
+                    <input type="hidden" name="lang" value={lang} />
+                    <button
+                      type="submit"
+                      className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                    >
+                      Process now
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

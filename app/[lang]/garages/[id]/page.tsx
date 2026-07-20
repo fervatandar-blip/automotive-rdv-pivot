@@ -75,6 +75,7 @@ export default async function GarageDetailPage({
     .select("id, name, address, city, latitude, longitude, stripe_charges_enabled")
     .eq("id", garageId)
     .eq("status", "approved")
+    .is("deleted_at", null)
     .single();
 
   if (!garage) {

@@ -62,6 +62,7 @@ export default async function GaragesPage({
           "id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, services(id), garage_brands(brand_id), garage_specialties(specialty_id), reviews(rating)"
         )
         .eq("status", "approved")
+        .is("deleted_at", null)
         .order("name", { ascending: true }),
       supabase.from("brands").select("id, name").order("name"),
       supabase.from("specialties").select("id, name").order("name"),

@@ -330,6 +330,12 @@ export default async function DashboardPage({
               You&apos;re not currently part of a garage team. Ask your
               garage admin to add you as staff.
             </p>
+            <Link
+              href={`/${lang}/account`}
+              className="text-sm font-medium underline"
+            >
+              Account
+            </Link>
             <LanguageSwitcher lang={lang} />
             <LogoutButton lang={lang} />
           </div>
@@ -379,6 +385,12 @@ export default async function DashboardPage({
                   className="text-sm font-medium underline"
                 >
                   Full calendar
+                </Link>
+                <Link
+                  href={`/${lang}/account`}
+                  className="text-sm font-medium underline"
+                >
+                  Account
                 </Link>
                 <LanguageSwitcher lang={lang} />
                 <LogoutButton lang={lang} />
@@ -461,6 +473,12 @@ export default async function DashboardPage({
             <Link href={`/${lang}/garage/staff`}>Staff</Link>
           </div>
           <PushNotificationOptIn />
+          <Link
+            href={`/${lang}/account`}
+            className="text-sm font-medium underline"
+          >
+            Account
+          </Link>
           <LanguageSwitcher lang={lang} />
           <LogoutButton lang={lang} />
         </div>
@@ -482,6 +500,12 @@ export default async function DashboardPage({
             <Link href={`/${lang}/admin/stats`}>Overview</Link>
             <Link href={`/${lang}/admin/garages`}>Garages</Link>
           </div>
+          <Link
+            href={`/${lang}/account`}
+            className="text-sm font-medium underline"
+          >
+            Account
+          </Link>
           <LanguageSwitcher lang={lang} />
           <LogoutButton lang={lang} />
         </div>
@@ -577,6 +601,12 @@ export default async function DashboardPage({
               className="text-sm font-medium underline"
             >
               My vehicles
+            </Link>
+            <Link
+              href={`/${lang}/account`}
+              className="text-sm font-medium underline"
+            >
+              Account
             </Link>
             <PushNotificationOptIn />
             <LanguageSwitcher lang={lang} />

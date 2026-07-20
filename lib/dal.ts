@@ -22,11 +22,19 @@ export const getAuthedProfile = cache(async (locale: Locale) => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id, role, full_name, email")
+    .select("id, role, full_name, email, deletion_requested_at, deleted_at")
     .eq("id", user.id)
     .single();
 
   if (!profile) {
+    redirect(`/${locale}/login`);
+  }
+
+  // Defense in depth: the account-deletion ban on the auth user should
+  // already block login, but this catches an existing session on a request
+  // that lands before the ban takes effect, independent of that timing.
+  if (profile.deleted_at) {
+    await supabase.auth.signOut();
     redirect(`/${locale}/login`);
   }
 
