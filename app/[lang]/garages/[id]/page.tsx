@@ -44,6 +44,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   "not-payable": "This garage hasn't finished payment setup yet.",
   "payment-cancelled": "Checkout was cancelled. You haven't been charged.",
   "payment-error": "Something went wrong starting checkout. Please try again.",
+  terms: "You must agree to the booking terms to continue.",
 };
 
 export default async function GarageDetailPage({
@@ -317,6 +318,21 @@ export default async function GarageDetailPage({
                     ? ` for ${vehicleLabel(vehicleRows[0])}`
                     : ""}
                 </p>
+                <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                  <input
+                    type="checkbox"
+                    name="termsAccepted"
+                    required
+                    className="mt-1"
+                  />
+                  <span>
+                    I agree to the{" "}
+                    <Link href={`/${lang}/privacy`} className="underline">
+                      booking terms and cancellation policy
+                    </Link>
+                    .
+                  </span>
+                </label>
                 <div className="flex flex-wrap gap-2">
                   {slots.map((slot) => (
                     <button

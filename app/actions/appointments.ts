@@ -92,6 +92,13 @@ export async function bookAppointment(formData: FormData) {
 
   const { garageId, serviceId, date, startTime, vehicleId } =
     validatedFields.data;
+  const bookingErrorUrl = (reason: string) =>
+    `/${lang}/garages/${garageId}?service=${serviceId}&date=${date}&error=${reason}`;
+
+  if (formData.get("termsAccepted") !== "on") {
+    redirect(bookingErrorUrl("terms"));
+  }
+
   const supabase = await createClient();
 
   const { data: service } = await supabase
@@ -119,8 +126,6 @@ export async function bookAppointment(formData: FormData) {
   const endDate = new Date(
     startDate.getTime() + service.duration_minutes * 60000
   );
-  const bookingErrorUrl = (reason: string) =>
-    `/${lang}/garages/${garageId}?service=${serviceId}&date=${date}&error=${reason}`;
 
   const { data: appointment, error } = await supabase
     .from("appointments")
@@ -132,6 +137,7 @@ export async function bookAppointment(formData: FormData) {
       start_time: startDate.toISOString(),
       end_time: endDate.toISOString(),
       status: "pending_payment",
+      terms_accepted_at: new Date().toISOString(),
     })
     .select("id")
     .single();

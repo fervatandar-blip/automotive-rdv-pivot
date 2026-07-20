@@ -128,6 +128,22 @@ export default function SignupPage() {
           <RoleFields errors={state?.errors?.role} />
         </Suspense>
 
+        <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+          <input
+            type="checkbox"
+            name="termsAccepted"
+            required
+            className="mt-1"
+          />
+          <span>
+            I agree to the{" "}
+            <Link href={`/${lang}/privacy`} className="underline">
+              Terms of Service and Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
+
         {state?.message && (
           <p className="text-sm text-red-600">{state.message}</p>
         )}

@@ -31,6 +31,12 @@ export async function signup(
     return { errors: validatedFields.error.flatten().fieldErrors };
   }
 
+  if (formData.get("termsAccepted") !== "on") {
+    return {
+      message: "You must agree to the Terms of Service and Privacy Policy to continue.",
+    };
+  }
+
   const { fullName, email, password, role } = validatedFields.data;
   const origin = await getOrigin();
   const supabase = await createClient();
