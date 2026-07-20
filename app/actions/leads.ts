@@ -14,6 +14,7 @@ export async function submitGarageLead(
     phone: formData.get("phone") || undefined,
     garageName: formData.get("garageName"),
     country: formData.get("country"),
+    garageSizeType: formData.get("garageSizeType") || undefined,
     message: formData.get("message") || undefined,
   });
 
@@ -21,8 +22,16 @@ export async function submitGarageLead(
     return { errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { firstName, lastName, businessEmail, phone, garageName, country, message } =
-    validatedFields.data;
+  const {
+    firstName,
+    lastName,
+    businessEmail,
+    phone,
+    garageName,
+    country,
+    garageSizeType,
+    message,
+  } = validatedFields.data;
 
   // Public submission -- the session-scoped client runs as the anon role
   // here, allowed by "Anyone can submit a garage lead" (0022_garage_leads.sql).
@@ -34,6 +43,7 @@ export async function submitGarageLead(
     phone: phone ?? null,
     garage_name: garageName,
     country,
+    garage_size_type: garageSizeType ?? null,
     message: message ?? null,
   });
 

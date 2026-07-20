@@ -315,6 +315,23 @@ export const MessageFormSchema = z.object({
     .max(2000, { error: "Keep it under 2000 characters." }),
 });
 
+export const GARAGE_SIZE_TYPES = [
+  "independent",
+  "small_chain",
+  "franchise_dealership",
+  "other",
+] as const;
+
+export const GARAGE_SIZE_TYPE_LABELS: Record<
+  (typeof GARAGE_SIZE_TYPES)[number],
+  string
+> = {
+  independent: "Independent garage",
+  small_chain: "Small chain (2–5 locations)",
+  franchise_dealership: "Franchise or dealership network",
+  other: "Other",
+};
+
 export const GarageLeadFormSchema = z.object({
   firstName: z
     .string()
@@ -331,6 +348,7 @@ export const GarageLeadFormSchema = z.object({
     .min(2, { error: "Garage name must be at least 2 characters long." })
     .trim(),
   country: z.enum(COUNTRIES, { error: "Select a country." }),
+  garageSizeType: z.enum(GARAGE_SIZE_TYPES).optional(),
   message: z
     .string()
     .trim()
@@ -347,6 +365,7 @@ export type GarageLeadFormState =
         phone?: string[];
         garageName?: string[];
         country?: string[];
+        garageSizeType?: string[];
         message?: string[];
       };
       success?: boolean;
