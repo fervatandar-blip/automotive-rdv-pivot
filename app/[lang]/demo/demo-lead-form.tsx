@@ -18,7 +18,7 @@ export function DemoLeadForm() {
     const bookingUrl = process.env.NEXT_PUBLIC_DEMO_BOOKING_URL;
 
     return (
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-black/[.08] bg-white p-8 text-center shadow-sm dark:border-white/[.145] dark:bg-zinc-950">
+      <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-blue-600/15 bg-white p-8 text-center shadow-xl shadow-blue-600/5 dark:border-blue-500/20 dark:bg-zinc-950 dark:shadow-blue-500/10">
         <h2 className="text-xl font-semibold text-black dark:text-zinc-50">
           Thank you. Your request has been received.
         </h2>
@@ -48,7 +48,7 @@ export function DemoLeadForm() {
   return (
     <form
       action={action}
-      className="flex flex-col gap-4 rounded-2xl border border-black/[.08] bg-white p-8 shadow-sm dark:border-white/[.145] dark:bg-zinc-950"
+      className="flex flex-col gap-4 rounded-2xl border-2 border-blue-600/15 bg-white p-8 shadow-xl shadow-blue-600/5 dark:border-blue-500/20 dark:bg-zinc-950 dark:shadow-blue-500/10"
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
@@ -60,7 +60,7 @@ export function DemoLeadForm() {
             name="firstName"
             type="text"
             autoComplete="given-name"
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+            className="rounded-md border border-black/[.08] px-3 py-2 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.firstName && (
             <p className="text-sm text-red-600">{state.errors.firstName[0]}</p>
@@ -75,7 +75,7 @@ export function DemoLeadForm() {
             name="lastName"
             type="text"
             autoComplete="family-name"
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+            className="rounded-md border border-black/[.08] px-3 py-2 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.lastName && (
             <p className="text-sm text-red-600">{state.errors.lastName[0]}</p>
@@ -94,7 +94,7 @@ export function DemoLeadForm() {
             type="email"
             autoComplete="email"
             placeholder="you@yourgarage.lu"
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+            className="rounded-md border border-black/[.08] px-3 py-2 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.businessEmail && (
             <p className="text-sm text-red-600">{state.errors.businessEmail[0]}</p>
@@ -110,7 +110,7 @@ export function DemoLeadForm() {
                 name="phoneCountryCode"
                 defaultValue="+352"
                 aria-label="Country code"
-                className="h-full appearance-none rounded-l-md border border-r-0 border-black/[.08] bg-white py-2 pl-3 pr-7 text-sm dark:border-white/[.145] dark:bg-black"
+                className="h-full appearance-none rounded-l-md border border-r-0 border-black/[.08] bg-white py-2 pl-3 pr-7 text-sm focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 dark:border-white/[.145] dark:bg-black"
               >
                 {COUNTRIES.map((code) => (
                   <option key={code} value={CALLING_CODES[code]}>
@@ -129,7 +129,7 @@ export function DemoLeadForm() {
               type="tel"
               autoComplete="tel-national"
               placeholder="621 123 456"
-              className="w-full rounded-r-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+              className="w-full rounded-r-md border border-black/[.08] px-3 py-2 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 dark:border-white/[.145] dark:bg-black"
             />
           </div>
           {state?.errors?.phone && (
@@ -147,7 +147,7 @@ export function DemoLeadForm() {
             id="garageName"
             name="garageName"
             type="text"
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+            className="rounded-md border border-black/[.08] px-3 py-2 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.garageName && (
             <p className="text-sm text-red-600">{state.errors.garageName[0]}</p>
@@ -196,7 +196,7 @@ export function DemoLeadForm() {
           name="message"
           rows={4}
           placeholder="How many bays, what services you offer, anything you'd like us to know before the call..."
-          className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+          className="rounded-md border border-black/[.08] px-3 py-2 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 dark:border-white/[.145] dark:bg-black"
         />
         {state?.errors?.message && (
           <p className="text-sm text-red-600">{state.errors.message[0]}</p>
@@ -206,9 +206,9 @@ export function DemoLeadForm() {
       <button
         disabled={pending}
         type="submit"
-        className="mt-6 w-full rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-black disabled:opacity-50 dark:bg-zinc-100 dark:text-black dark:hover:bg-white"
+        className="mt-6 w-full rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 disabled:opacity-50 dark:bg-zinc-100 dark:text-black dark:hover:bg-blue-500"
       >
-        {pending ? "Submitting..." : "Book my free demo"}
+        {pending ? "Submitting..." : "Book my garage's free demo."}
       </button>
     </form>
   );

@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Star } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { resolveLocale } from "@/lib/i18n/config";
 import { DemoLeadForm } from "./demo-lead-form";
@@ -65,7 +64,28 @@ export default async function DemoPage({
               priority
             />
           </Link>
-          <nav className="flex items-center gap-6 text-sm font-medium">
+          <nav className="hidden items-center gap-8 text-sm font-medium md:flex">
+            <Link
+              href={`/${lang}`}
+              className="text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
+            >
+              For drivers
+            </Link>
+            <Link
+              href={`/${lang}/demo`}
+              className="text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
+            >
+              For garages
+            </Link>
+            <a
+              href="#lead-form"
+              className="text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
+            >
+              Contact
+            </a>
+          </nav>
+
+          <div className="flex items-center gap-4 text-sm font-medium">
             <LanguageSwitcher lang={lang} />
             <Link
               href={`/${lang}/login`}
@@ -73,7 +93,13 @@ export default async function DemoPage({
             >
               Log in
             </Link>
-          </nav>
+            <a
+              href="#lead-form"
+              className="rounded-full bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+            >
+              Book a demo
+            </a>
+          </div>
         </div>
       </header>
 
@@ -81,7 +107,7 @@ export default async function DemoPage({
         <div className="grid w-full max-w-5xl gap-12 lg:grid-cols-2 lg:items-start lg:gap-16">
           <div className="flex flex-col gap-10">
             <div>
-              <h1 className="text-4xl font-semibold tracking-tight text-black sm:text-5xl dark:text-zinc-50">
+              <h1 className="text-4xl font-black tracking-tighter text-black sm:text-5xl dark:text-zinc-50">
                 Grow your garage business with RDV Pro.
               </h1>
               <p className="mt-6 max-w-md text-lg text-zinc-600 dark:text-zinc-400">
@@ -99,7 +125,7 @@ export default async function DemoPage({
                       className="absolute left-4 top-8 -bottom-6 w-px bg-black/[.08] dark:bg-white/[.145]"
                     />
                   )}
-                  <span className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-semibold text-background">
+                  <span className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
                     {index + 1}
                   </span>
                   <div>
@@ -114,19 +140,14 @@ export default async function DemoPage({
               ))}
             </ol>
 
-            <div className="flex items-center gap-3 border-t border-black/[.08] pt-6 dark:border-white/[.145]">
-              <div className="flex gap-0.5 text-amber-500">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <Star key={index} className="h-4 w-4 fill-current" />
-                ))}
-              </div>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Built for Luxembourg&apos;s automotive professionals.
-              </p>
-            </div>
+            <span className="inline-flex w-fit items-center rounded-full border border-blue-600/20 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-500/30 dark:bg-blue-950 dark:text-blue-400">
+              Now onboarding garages across Luxembourg
+            </span>
           </div>
 
-          <DemoLeadForm />
+          <div id="lead-form">
+            <DemoLeadForm />
+          </div>
         </div>
 
         <div className="mt-24 grid w-full max-w-5xl gap-6 sm:grid-cols-2">
