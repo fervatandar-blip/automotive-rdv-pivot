@@ -10,7 +10,7 @@ export function StyledSelect({
     <div className="relative">
       <select
         {...props}
-        className={`w-full appearance-none rounded-md border border-black/[.08] bg-white px-3 py-2 pr-9 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/20 dark:border-white/[.145] dark:bg-black ${className}`}
+        className={`w-full appearance-none rounded-md border border-black/[.08] bg-white px-3 py-2 pr-9 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-white/[.145] dark:bg-black ${className}`}
       >
         {children}
       </select>

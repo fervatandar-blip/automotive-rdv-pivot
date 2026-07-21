@@ -95,7 +95,7 @@ export default async function DemoPage({
             </Link>
             <a
               href="#lead-form"
-              className="rounded-full bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+              className="rounded-full bg-brand-600 px-4 py-2 text-white transition-colors hover:bg-brand-700"
             >
               Book a demo
             </a>
@@ -125,7 +125,7 @@ export default async function DemoPage({
                       className="absolute left-4 top-8 -bottom-6 w-px bg-black/[.08] dark:bg-white/[.145]"
                     />
                   )}
-                  <span className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                  <span className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
                     {index + 1}
                   </span>
                   <div>
@@ -140,7 +140,7 @@ export default async function DemoPage({
               ))}
             </ol>
 
-            <span className="inline-flex w-fit items-center rounded-full border border-blue-600/20 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-500/30 dark:bg-blue-950 dark:text-blue-400">
+            <span className="inline-flex w-fit items-center rounded-full border border-brand-600/20 bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 dark:border-brand-500/30 dark:bg-brand-950 dark:text-brand-400">
               Now onboarding garages across Luxembourg
             </span>
           </div>
