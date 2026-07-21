@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { CalendarPlus, Car, Wrench } from "lucide-react";
 import { getAuthedProfile, getGarageMembership } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/actions/auth";
@@ -20,7 +21,7 @@ type Appointment = {
   start_time: string;
   status: string;
   services: { name: string } | null;
-  garages: { name: string } | null;
+  garages: { name: string; city: string | null } | null;
   vehicles: { model: string | null; year: number | null } | null;
 };
 
@@ -38,6 +39,14 @@ function formatDateTime(iso: string) {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+  });
+}
+
+function formatDateHeader(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
   });
 }
 
@@ -80,7 +89,7 @@ function ReviewForm({
         </select>
         <button
           type="submit"
-          className="rounded-full border border-black/[.08] px-4 py-1 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+          className="rounded-full bg-brand-600 px-4 py-1 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
         >
           Submit
         </button>
@@ -112,11 +121,22 @@ function AppointmentCard({
     <div className="flex flex-col rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="font-semibold text-black dark:text-zinc-50">
-            {appointment.services?.name ?? "Service"}
-          </h3>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-400">
+              <Wrench className="h-4 w-4" strokeWidth={1.5} />
+            </div>
+            <div>
+              <h3 className="font-semibold text-black dark:text-zinc-50">
+                {appointment.services?.name ?? "Service"}
+              </h3>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                {formatDateHeader(appointment.start_time)}
+              </p>
+            </div>
+          </div>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
             with {appointment.garages?.name ?? "Garage"}
+            {appointment.garages?.city ? ` · ${appointment.garages.city}` : ""}
           </p>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
             {formatDateTime(appointment.start_time)}
@@ -154,7 +174,7 @@ function AppointmentCard({
         <div className="flex shrink-0 flex-col gap-1.5">
           <Link
             href={`/${lang}/appointments/${appointment.id}/messages`}
-            className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+            className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:border-brand-600 hover:bg-brand-50 hover:text-brand-700 dark:border-white/[.145] dark:hover:border-brand-500 dark:hover:bg-brand-950 dark:hover:text-brand-400"
           >
             Message
           </Link>
@@ -164,7 +184,7 @@ function AppointmentCard({
               <>
                 <Link
                   href={`/${lang}/appointments/${appointment.id}/reschedule`}
-                  className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                  className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:border-brand-600 hover:bg-brand-50 hover:text-brand-700 dark:border-white/[.145] dark:hover:border-brand-500 dark:hover:bg-brand-950 dark:hover:text-brand-400"
                 >
                   Reschedule
                 </Link>
@@ -284,6 +304,40 @@ function MechanicAppointmentCard({
           </form>
         )}
       </div>
+    </div>
+  );
+}
+
+function EmptyStateCard({
+  icon: Icon,
+  title,
+  description,
+  ctaHref,
+  ctaLabel,
+}: {
+  icon: typeof CalendarPlus;
+  title: string;
+  description: string;
+  ctaHref: string;
+  ctaLabel: string;
+}) {
+  return (
+    <div className="flex flex-col items-start gap-3 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white">
+        <Icon className="h-5 w-5" strokeWidth={1.5} />
+      </div>
+      <div>
+        <h3 className="font-semibold text-black dark:text-zinc-50">{title}</h3>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          {description}
+        </p>
+      </div>
+      <Link
+        href={ctaHref}
+        className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+      >
+        {ctaLabel}
+      </Link>
     </div>
   );
 }
@@ -519,7 +573,7 @@ export default async function DashboardPage({
   const { data: appointments } = await supabase
     .from("appointments")
     .select(
-      "id, start_time, status, services(name), garages!appointments_garage_id_fkey(name), vehicles(model, year)"
+      "id, start_time, status, services(name), garages!appointments_garage_id_fkey(name, city), vehicles(model, year)"
     )
     .eq("client_id", profile.id)
     .order("start_time", { ascending: true });
@@ -577,10 +631,24 @@ export default async function DashboardPage({
     garages: { name: string } | null;
   }[];
 
+  const { data: vehicles } = await supabase
+    .from("vehicles")
+    .select("id, model, year, license_plate, brands(name)")
+    .eq("client_id", profile.id)
+    .order("created_at", { ascending: false });
+
+  const vehicleRows = (vehicles ?? []) as unknown as {
+    id: string;
+    model: string | null;
+    year: number | null;
+    license_plate: string | null;
+    brands: { name: string } | null;
+  }[];
+
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
               Welcome, {profile.full_name || profile.email}
@@ -592,9 +660,9 @@ export default async function DashboardPage({
           <div className="flex items-center gap-4">
             <Link
               href={`/${lang}/garages`}
-              className="text-sm font-medium underline"
+              className="flex h-11 items-center justify-center rounded-full bg-brand-600 px-6 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
             >
-              Browse garages
+              Book an Appointment
             </Link>
             <Link
               href={`/${lang}/vehicles`}
@@ -608,9 +676,6 @@ export default async function DashboardPage({
             >
               Account
             </Link>
-            <PushNotificationOptIn />
-            <LanguageSwitcher lang={lang} />
-            <LogoutButton lang={lang} />
           </div>
         </div>
 
@@ -619,6 +684,51 @@ export default async function DashboardPage({
             Your appointment is booked.
           </p>
         )}
+
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              Vehicle Management
+            </h2>
+            {vehicleRows.length > 0 && (
+              <Link
+                href={`/${lang}/vehicles`}
+                className="text-sm font-medium underline"
+              >
+                Manage vehicles
+              </Link>
+            )}
+          </div>
+          {vehicleRows.length > 0 ? (
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {vehicleRows.map((vehicle) => (
+                <div
+                  key={vehicle.id}
+                  className="flex shrink-0 flex-col gap-1 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+                >
+                  <h3 className="font-semibold text-black dark:text-zinc-50">
+                    {[vehicle.brands?.name, vehicle.model]
+                      .filter(Boolean)
+                      .join(" ") || "Vehicle"}
+                  </h3>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    {[vehicle.year, vehicle.license_plate]
+                      .filter(Boolean)
+                      .join(" · ") || "No details added"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyStateCard
+              icon={Car}
+              title="No vehicles yet"
+              description="Add a vehicle to speed up booking and keep your service history in one place."
+              ctaHref={`/${lang}/vehicles`}
+              ctaLabel="Add a vehicle"
+            />
+          )}
+        </div>
 
         <div className="flex flex-col gap-4">
           <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
@@ -634,13 +744,13 @@ export default async function DashboardPage({
               />
             ))
           ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No upcoming appointments.{" "}
-              <Link href={`/${lang}/garages`} className="underline">
-                Browse garages
-              </Link>{" "}
-              to book one.
-            </p>
+            <EmptyStateCard
+              icon={CalendarPlus}
+              title="No upcoming appointments"
+              description="Find a garage and book your next service in a couple of taps."
+              ctaHref={`/${lang}/garages`}
+              ctaLabel="Find a garage"
+            />
           )}
         </div>
 

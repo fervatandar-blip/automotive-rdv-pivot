@@ -1,10 +1,19 @@
 import Link from "next/link";
+import { Search, MapPin } from "lucide-react";
 import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
-import { LanguageSwitcher } from "@/components/language-switcher";
 import { GarageDiscoveryMap } from "@/components/garage-discovery-map";
+import { BrandLogoBadge } from "@/components/brand-logo-badge";
 import { averageRating, formatRating } from "@/lib/ratings";
+
+const CURATED_BRANDS: { name: string; slug: string }[] = [
+  { name: "Volkswagen", slug: "volkswagen" },
+  { name: "Audi", slug: "audi" },
+  { name: "BMW", slug: "bmw" },
+  { name: "Tesla", slug: "tesla" },
+  { name: "Renault", slug: "renault" },
+];
 
 function toArray(value: string | string[] | undefined): string[] {
   if (!value) return [];
@@ -116,42 +125,58 @@ export default async function GaragesPage({
     return a.name.localeCompare(b.name);
   });
 
+  const curatedBrands = CURATED_BRANDS.map((curated) => {
+    const brand = (brands ?? []).find(
+      (row) => row.name.toLowerCase() === curated.name.toLowerCase()
+    );
+    return brand ? { ...brand, slug: curated.slug } : null;
+  }).filter(
+    (brand): brand is { id: string; name: string; slug: string } =>
+      Boolean(brand)
+  );
+
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-            Browse garages
-          </h1>
-          <LanguageSwitcher lang={lang} />
-        </div>
+        <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+          Find a Trusted Garage
+        </h1>
 
         <form
           method="GET"
           className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
         >
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="q" className="text-sm font-medium">
+          <div className="flex flex-col overflow-hidden rounded-full border border-black/[.08] dark:border-white/[.145] sm:flex-row sm:items-center">
+            <div className="flex flex-1 items-center gap-2 px-4 py-2.5">
+              <Search
+                className="h-4 w-4 shrink-0 text-zinc-400"
+                strokeWidth={1.5}
+              />
+              <label htmlFor="q" className="sr-only">
                 Search by name
               </label>
               <input
                 id="q"
                 name="q"
                 defaultValue={filters.q ?? ""}
-                placeholder="Garage name"
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                placeholder="Search by garage name"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="city" className="text-sm font-medium">
+            <div className="h-px w-full bg-black/[.08] dark:bg-white/[.145] sm:h-6 sm:w-px" />
+            <div className="flex flex-1 items-center gap-2 px-4 py-2.5">
+              <MapPin
+                className="h-4 w-4 shrink-0 text-zinc-400"
+                strokeWidth={1.5}
+              />
+              <label htmlFor="city" className="sr-only">
                 City
               </label>
               <select
                 id="city"
                 name="city"
                 defaultValue={filters.city ?? ""}
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                className="w-full bg-transparent text-sm outline-none"
               >
                 <option value="">Any city</option>
                 {cities.map((city) => (
@@ -161,6 +186,9 @@ export default async function GaragesPage({
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="flex flex-col gap-1">
               <label htmlFor="pricing" className="text-sm font-medium">
                 Pricing
@@ -241,19 +269,48 @@ export default async function GaragesPage({
           {brands && brands.length > 0 && (
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">Brands</span>
-              <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-                {brands.map((brand) => (
-                  <label key={brand.id} className="flex items-center gap-1.5">
-                    <input
-                      type="checkbox"
-                      name="brand"
-                      value={brand.id}
-                      defaultChecked={selectedBrandIds.includes(brand.id)}
-                    />
-                    {brand.name}
-                  </label>
-                ))}
-              </div>
+
+              {curatedBrands.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                    Popular brands
+                  </span>
+                  <div className="flex flex-wrap gap-3">
+                    {curatedBrands.map((brand) => (
+                      <BrandLogoBadge
+                        key={brand.id}
+                        htmlFor={`brand-${brand.id}`}
+                        slug={brand.slug}
+                        name={brand.name}
+                        selected={selectedBrandIds.includes(brand.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <details className="text-sm">
+                <summary className="cursor-pointer select-none font-medium text-zinc-600 dark:text-zinc-400">
+                  More brands
+                </summary>
+                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {brands.map((brand) => (
+                    <label
+                      key={brand.id}
+                      className="flex items-center gap-1.5"
+                    >
+                      <input
+                        id={`brand-${brand.id}`}
+                        type="checkbox"
+                        name="brand"
+                        value={brand.id}
+                        defaultChecked={selectedBrandIds.includes(brand.id)}
+                      />
+                      {brand.name}
+                    </label>
+                  ))}
+                </div>
+              </details>
             </div>
           )}
 
@@ -284,7 +341,7 @@ export default async function GaragesPage({
           <div className="flex items-center gap-4">
             <button
               type="submit"
-              className="rounded-full bg-foreground px-5 py-2 text-sm text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+              className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
             >
               Apply filters
             </button>
