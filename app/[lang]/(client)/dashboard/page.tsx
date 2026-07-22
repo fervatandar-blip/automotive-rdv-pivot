@@ -520,6 +520,7 @@ export default async function DashboardPage({
           <div className="flex gap-4 text-sm font-medium underline">
             <Link href={`/${lang}/admin/stats`}>Overview</Link>
             <Link href={`/${lang}/admin/garages`}>Garages</Link>
+            <Link href={`/${lang}/admin/leads`}>Leads</Link>
           </div>
           <Link
             href={`/${lang}/account`}

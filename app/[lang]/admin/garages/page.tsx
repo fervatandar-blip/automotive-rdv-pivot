@@ -32,9 +32,16 @@ export default async function AdminGaragesPage({
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-            Garages
-          </h1>
+          <div>
+            <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+              Garages
+            </h1>
+            <div className="mt-1 flex gap-4 text-sm font-medium underline">
+              <Link href={`/${lang}/admin/stats`}>Overview</Link>
+              <Link href={`/${lang}/admin/garages`}>Garages</Link>
+              <Link href={`/${lang}/admin/leads`}>Leads</Link>
+            </div>
+          </div>
           <LanguageSwitcher lang={lang} />
         </div>
 
