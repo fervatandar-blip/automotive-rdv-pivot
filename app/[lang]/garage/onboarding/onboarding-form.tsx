@@ -92,12 +92,18 @@ export function OnboardingForm({
         <input type="hidden" name="lang" value={lang} />
 
         <div>
-          <Link
-            href={`/${lang}/dashboard`}
-            className="text-sm font-medium underline"
-          >
-            &larr; Back to dashboard
-          </Link>
+          {/* Pre-onboarding, app/[lang]/garage/layout.tsx already renders its
+              own "Back to dashboard" link in the minimal header -- only add
+              this one once onboarded, where that layout instead shows the
+              full sidebar with no such link. */}
+          {!isFirstRun && (
+            <Link
+              href={`/${lang}/dashboard`}
+              className="text-sm font-medium underline"
+            >
+              &larr; Back to dashboard
+            </Link>
+          )}
           <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
             {isFirstRun ? "Set up your garage" : "Garage profile"}
           </h1>
