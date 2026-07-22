@@ -1,9 +1,9 @@
-import { Car } from "lucide-react";
+import Link from "next/link";
 import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { LanguageSwitcher } from "@/components/language-switcher";
 import { deleteVehicle } from "@/app/actions/vehicles";
-import { EmptyStateCard } from "@/components/empty-state-card";
 import { AddVehicleForm } from "./add-vehicle-form";
 
 type VehicleRow = {
@@ -38,9 +38,20 @@ export default async function VehiclesPage({
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-          My vehicles
-        </h1>
+        <div className="flex items-center justify-between">
+          <div>
+            <Link
+              href={`/${lang}/dashboard`}
+              className="text-sm font-medium underline"
+            >
+              &larr; Back to dashboard
+            </Link>
+            <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
+              My vehicles
+            </h1>
+          </div>
+          <LanguageSwitcher lang={lang} />
+        </div>
 
         <AddVehicleForm brands={brands ?? []} />
 
@@ -51,22 +62,17 @@ export default async function VehiclesPage({
                 key={vehicle.id}
                 className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-400">
-                    <Car className="h-4 w-4" strokeWidth={1.5} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-black dark:text-zinc-50">
-                      {[vehicle.brands?.name, vehicle.model]
-                        .filter(Boolean)
-                        .join(" ") || "Vehicle"}
-                    </h3>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      {[vehicle.year, vehicle.license_plate]
-                        .filter(Boolean)
-                        .join(" · ") || "No details added"}
-                    </p>
-                  </div>
+                <div>
+                  <h3 className="font-semibold text-black dark:text-zinc-50">
+                    {[vehicle.brands?.name, vehicle.model]
+                      .filter(Boolean)
+                      .join(" ") || "Vehicle"}
+                  </h3>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    {[vehicle.year, vehicle.license_plate]
+                      .filter(Boolean)
+                      .join(" · ") || "No details added"}
+                  </p>
                 </div>
                 <form action={deleteVehicle}>
                   <input type="hidden" name="id" value={vehicle.id} />
@@ -81,11 +87,9 @@ export default async function VehiclesPage({
               </div>
             ))
           ) : (
-            <EmptyStateCard
-              icon={Car}
-              title="No vehicles saved yet"
-              description="Add a vehicle above to speed up booking and keep your service history in one place."
-            />
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              No vehicles saved yet.
+            </p>
           )}
         </div>
       </div>
