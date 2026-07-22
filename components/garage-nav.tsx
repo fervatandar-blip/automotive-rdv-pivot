@@ -25,7 +25,7 @@ const LOCALE_LABELS: Record<Locale, string> = { fr: "FR", en: "EN" };
 
 function primaryItems(lang: Locale) {
   return [
-    { href: `/${lang}/dashboard`, label: "Dashboard", icon: LayoutDashboard },
+    { href: `/${lang}/garage/dashboard`, label: "Dashboard", icon: LayoutDashboard },
     { href: `/${lang}/garage/calendar`, label: "Calendar", icon: Calendar },
     { href: `/${lang}/garage/clients`, label: "Clients", icon: Users },
     { href: `/${lang}/garage/services`, label: "Services", icon: Wrench },
@@ -80,7 +80,7 @@ export function GarageTopBar({
   return (
     <header className="flex items-center justify-between gap-4 border-b border-black/[.08] bg-white px-6 py-4 dark:border-white/[.145] dark:bg-zinc-950 sm:px-8">
       <div className="flex items-center gap-3">
-        <Link href={`/${lang}/dashboard`}>
+        <Link href={`/${lang}/garage/dashboard`}>
           <AnimatedLogo size={32} />
         </Link>
         <h1 className="text-lg font-semibold text-black dark:text-zinc-50">
@@ -136,7 +136,7 @@ export function GarageSidebar({ lang }: { lang: Locale }) {
   return (
     <aside className="hidden w-60 shrink-0 flex-col bg-zinc-950 px-4 py-6 sm:flex">
       <Link
-        href={`/${lang}/dashboard`}
+        href={`/${lang}/garage/dashboard`}
         className="mb-8 flex items-center gap-2 px-2"
       >
         <AnimatedLogo size={32} />

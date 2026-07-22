@@ -77,13 +77,23 @@ export async function login(
   const { email, password } = validatedFields.data;
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
   if (error) {
     return { message: "Invalid email or password." };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", data.user.id)
+    .single();
+
+  if (profile?.role === "admin_garage" || profile?.role === "mecanicien") {
+    redirect(`/${lang}/garage/dashboard`);
   }
 
   redirect(`/${lang}/dashboard`);
