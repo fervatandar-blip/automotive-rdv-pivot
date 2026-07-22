@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useActionState, useEffect, useRef } from "react";
 import { addVehicle } from "@/app/actions/vehicles";
+import { StyledSelect } from "@/components/styled-select";
 
 export function AddVehicleForm({
   brands,
@@ -31,24 +32,19 @@ export function AddVehicleForm({
         Add a vehicle
       </h2>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="brandId" className="text-sm font-medium">
             Brand
           </label>
-          <select
-            id="brandId"
-            name="brandId"
-            defaultValue=""
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-          >
+          <StyledSelect id="brandId" name="brandId" defaultValue="">
             <option value="">Not specified</option>
             {brands.map((brand) => (
               <option key={brand.id} value={brand.id}>
                 {brand.name}
               </option>
             ))}
-          </select>
+          </StyledSelect>
           {state?.errors?.brandId && (
             <p className="text-sm text-red-600">{state.errors.brandId[0]}</p>
           )}
@@ -110,7 +106,7 @@ export function AddVehicleForm({
       <button
         disabled={pending}
         type="submit"
-        className="self-start rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
+        className="self-start rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
       >
         {pending ? "Adding..." : "Add vehicle"}
       </button>
