@@ -1,43 +1,13 @@
 import Link from "next/link";
-import { Search, MapPin, Check } from "lucide-react";
+import { Search, MapPin } from "lucide-react";
 import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { GarageDiscoveryMap } from "@/components/garage-discovery-map";
 import { BrandLogoBadge } from "@/components/brand-logo-badge";
 import { StyledSelect } from "@/components/styled-select";
+import { CheckboxChip } from "@/components/checkbox-chip";
 import { averageRating, formatRating } from "@/lib/ratings";
-
-function FilterCheckbox({
-  id,
-  name,
-  value,
-  label,
-  defaultChecked,
-}: {
-  id?: string;
-  name: string;
-  value: string;
-  label: string;
-  defaultChecked: boolean;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm">
-      <input
-        id={id}
-        type="checkbox"
-        name={name}
-        value={value}
-        defaultChecked={defaultChecked}
-        className="peer sr-only"
-      />
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-black/[.08] transition-colors peer-checked:border-brand-600 peer-checked:bg-brand-600 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-600/40 peer-focus-visible:ring-offset-2 dark:border-white/[.145] [&>svg]:opacity-0 [&>svg]:transition-opacity peer-checked:[&>svg]:opacity-100">
-        <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
-      </span>
-      {label}
-    </label>
-  );
-}
 
 const CURATED_BRANDS: { name: string; slug: string }[] = [
   { name: "Volkswagen", slug: "volkswagen" },
@@ -249,19 +219,19 @@ export default async function GaragesPage({
           </div>
 
           <div className="flex flex-wrap gap-4 border-t border-black/[.08] pt-4 dark:border-white/[.145]">
-            <FilterCheckbox
+            <CheckboxChip
               name="ev"
               value="1"
               label="EV capable"
               defaultChecked={filters.ev === "1"}
             />
-            <FilterCheckbox
+            <CheckboxChip
               name="mobile"
               value="1"
               label="Mobile service"
               defaultChecked={filters.mobile === "1"}
             />
-            <FilterCheckbox
+            <CheckboxChip
               name="emergency"
               value="1"
               label="Emergency service"
@@ -297,7 +267,7 @@ export default async function GaragesPage({
                 </summary>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {brands.map((brand) => (
-                    <FilterCheckbox
+                    <CheckboxChip
                       key={brand.id}
                       id={`brand-${brand.id}`}
                       name="brand"
@@ -316,7 +286,7 @@ export default async function GaragesPage({
               <span className="text-sm font-medium">Specialties</span>
               <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
                 {specialties.map((specialty) => (
-                  <FilterCheckbox
+                  <CheckboxChip
                     key={specialty.id}
                     name="specialty"
                     value={specialty.id}

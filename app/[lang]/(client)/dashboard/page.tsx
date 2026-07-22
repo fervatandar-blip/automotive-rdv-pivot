@@ -417,6 +417,23 @@ function MechanicAppointmentCard({
   );
 }
 
+function OwnerStatTile({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
+      <p className="text-sm text-zinc-600 dark:text-zinc-400">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-black dark:text-zinc-50">
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function LogoutButton({ lang }: { lang: Locale }) {
   return (
     <form action={logout}>
@@ -498,32 +515,13 @@ export default async function DashboardPage({
       return (
         <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
           <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-                  {garage.name}
-                </h1>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {profile.full_name || profile.email}{" "}
-                  &middot; Mécanicien
-                </p>
-              </div>
-              <div className="flex items-center gap-4">
-                <Link
-                  href={`/${lang}/garage/calendar`}
-                  className="text-sm font-medium underline"
-                >
-                  Full calendar
-                </Link>
-                <Link
-                  href={`/${lang}/account`}
-                  className="text-sm font-medium underline"
-                >
-                  Account
-                </Link>
-                <LanguageSwitcher lang={lang} />
-                <LogoutButton lang={lang} />
-              </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+                Welcome, {profile.full_name || profile.email}
+              </h1>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                Mécanicien at {garage.name}
+              </p>
             </div>
 
             <div className="flex flex-col gap-4">
@@ -564,52 +562,146 @@ export default async function DashboardPage({
       );
     }
 
+    const ownerSupabase = await createClient();
+    const nowIso = new Date().toISOString();
+
+    const startOfWeek = new Date();
+    const diffToMonday = (startOfWeek.getDay() + 6) % 7;
+    startOfWeek.setDate(startOfWeek.getDate() - diffToMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const [
+      { count: upcomingCount },
+      { count: pendingCount },
+      { count: completedThisWeekCount },
+      { data: ownerAppointments },
+    ] = await Promise.all([
+      ownerSupabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("garage_id", garage.id)
+        .in("status", ["pending", "confirmed"])
+        .gte("start_time", nowIso),
+      ownerSupabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("garage_id", garage.id)
+        .eq("status", "pending"),
+      ownerSupabase
+        .from("appointments")
+        .select("*", { count: "exact", head: true })
+        .eq("garage_id", garage.id)
+        .eq("status", "completed")
+        .gte("start_time", startOfWeek.toISOString()),
+      ownerSupabase
+        .from("appointments")
+        .select(
+          "id, start_time, status, repair_stage, services(name), profiles!appointments_client_id_fkey(full_name)"
+        )
+        .eq("garage_id", garage.id)
+        .in("status", ["pending", "confirmed"])
+        .gte("start_time", nowIso)
+        .order("start_time", { ascending: true })
+        .limit(5),
+    ]);
+
+    const ownerUpcoming = (ownerAppointments ?? []) as unknown as AssignedAppointment[];
+
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-zinc-50 px-4 py-16 dark:bg-black">
-        <div className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-zinc-950">
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-            {garage.name}
-          </h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {profile.full_name || profile.email}{" "}
-            &middot; Garage admin
-          </p>
-          {garage.status !== "approved" && (
-            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
-              Your garage is {garage.status === "rejected" ? "not approved" : "pending approval"}.
-              {garage.status === "pending" &&
-                " You can still set up services and availability in the meantime."}
+      <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
+          <div>
+            <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+              Welcome, {profile.full_name || profile.email}
+            </h1>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Owner of {garage.name}
             </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <OwnerStatTile label="Upcoming" value={upcomingCount ?? 0} />
+            <OwnerStatTile
+              label="Awaiting confirmation"
+              value={pendingCount ?? 0}
+            />
+            <OwnerStatTile
+              label="Completed this week"
+              value={completedThisWeekCount ?? 0}
+            />
+          </div>
+
+          {garage.status !== "approved" && (
+            <div className="flex flex-col items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-semibold text-amber-900 dark:text-amber-300">
+                  {garage.status === "rejected"
+                    ? "Your garage was not approved"
+                    : "Your garage is pending approval"}
+                </h3>
+                <p className="mt-1 text-sm text-amber-800 dark:text-amber-400">
+                  {garage.status === "pending"
+                    ? "You can still set up services and availability while you wait."
+                    : "Review your profile and resubmit for approval."}
+                </p>
+              </div>
+              <Link
+                href={`/${lang}/garage/onboarding`}
+                className="shrink-0 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+              >
+                Review profile
+              </Link>
+            </div>
           )}
+
           {!garage.stripe_charges_enabled && (
-            <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
-              Connect a Stripe account to start accepting bookings.{" "}
-              <Link href={`/${lang}/garage/stripe-connect`} className="underline">
+            <div className="flex flex-col items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-semibold text-amber-900 dark:text-amber-300">
+                  Connect Stripe to accept bookings
+                </h3>
+                <p className="mt-1 text-sm text-amber-800 dark:text-amber-400">
+                  Clients can&apos;t book paid appointments until payments are
+                  set up.
+                </p>
+              </div>
+              <Link
+                href={`/${lang}/garage/stripe-connect`}
+                className="shrink-0 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+              >
                 Set up payments
               </Link>
-            </p>
+            </div>
           )}
-          <div className="flex flex-wrap gap-4 text-sm font-medium underline">
-            <Link href={`/${lang}/garage/calendar`}>Calendar</Link>
-            <Link href={`/${lang}/garage/services`}>Services</Link>
-            <Link href={`/${lang}/garage/availability`}>Availability</Link>
-            <Link href={`/${lang}/garage/documents`}>Documents</Link>
-            <Link href={`/${lang}/garage/invoices`}>Invoices</Link>
-            <Link href={`/${lang}/garage/payments`}>Payments</Link>
-            <Link href={`/${lang}/garage/waitlist`}>Waitlist</Link>
-            <Link href={`/${lang}/garage/stripe-connect`}>Stripe setup</Link>
-            <Link href={`/${lang}/garage/onboarding`}>Garage profile</Link>
-            <Link href={`/${lang}/garage/staff`}>Staff</Link>
+
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                Upcoming appointments
+              </h2>
+              <Link
+                href={`/${lang}/garage/calendar`}
+                className="text-sm font-medium underline"
+              >
+                View full calendar &rarr;
+              </Link>
+            </div>
+            {ownerUpcoming.length > 0 ? (
+              ownerUpcoming.map((appointment) => (
+                <MechanicAppointmentCard
+                  key={appointment.id}
+                  appointment={appointment}
+                  lang={lang}
+                />
+              ))
+            ) : (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                No upcoming appointments.
+              </p>
+            )}
           </div>
+
           <PushNotificationOptIn />
-          <Link
-            href={`/${lang}/account`}
-            className="text-sm font-medium underline"
-          >
-            Account
-          </Link>
-          <LanguageSwitcher lang={lang} />
-          <LogoutButton lang={lang} />
         </div>
       </div>
     );

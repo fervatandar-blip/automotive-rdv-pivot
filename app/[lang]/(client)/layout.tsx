@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Car } from "lucide-react";
-import { getAuthedProfile } from "@/lib/dal";
+import { getAuthedProfile, getGarageMembership } from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { ClientSidebar, ClientMobileNav } from "@/components/client-nav";
 import { ClientPageTitle } from "@/components/client-page-title";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
+import { GarageSidebar, GarageTopBar } from "@/components/garage-nav";
 
 function initialsFor(name: string) {
   return name
@@ -26,6 +27,37 @@ export default async function ClientLayout({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const profile = await getAuthedProfile(lang);
+
+  // /dashboard lives in this route group regardless of role, but garage
+  // layout chrome (components/garage-nav.tsx) lives under app/[lang]/garage/
+  // -- a sibling folder that layout can't reach. Rendering it here too is
+  // what gives admin_garage/mecanicien identical chrome on /dashboard as on
+  // every /garage/* page, instead of only after their first click into one.
+  if (profile.role === "admin_garage" || profile.role === "mecanicien") {
+    const membership = await getGarageMembership(lang);
+
+    if (membership?.garage.platform_terms_accepted_at) {
+      return (
+        <div className="flex flex-1">
+          <GarageSidebar lang={lang} />
+          <div className="flex flex-1 flex-col">
+            <GarageTopBar
+              lang={lang}
+              garageName={membership.garage.name}
+              status={membership.garage.status}
+            />
+            <main className="flex flex-1 flex-col">{children}</main>
+          </div>
+        </div>
+      );
+    }
+
+    // No membership, or not yet onboarded -- /dashboard's own admin_garage
+    // branch already redirects the not-onboarded case to
+    // /garage/onboarding, which the garage layout itself renders the
+    // minimal pre-onboarding header for. Nothing to add here.
+    return <>{children}</>;
+  }
 
   if (profile.role !== "client") {
     return <>{children}</>;

@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { ImageOff } from "lucide-react";
 import { useActionState, useState } from "react";
 import { completeOnboarding } from "@/app/actions/garage";
 import { GarageMapPicker } from "@/components/garage-map-picker";
+import { StyledSelect } from "@/components/styled-select";
+import { CheckboxChip } from "@/components/checkbox-chip";
 import type { Locale } from "@/lib/i18n/config";
 import {
   COUNTRIES,
@@ -117,6 +120,20 @@ export function OnboardingForm({
           </p>
         )}
 
+        <div className="flex items-center gap-4 rounded-xl border border-dashed border-black/[.15] bg-white p-6 dark:border-white/[.2] dark:bg-zinc-950">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-black/[.04] text-zinc-400 dark:bg-white/[.06] dark:text-zinc-500">
+            <ImageOff className="h-6 w-6" strokeWidth={1.5} />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-black dark:text-zinc-50">
+              No logo uploaded yet
+            </p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Logo uploads aren&apos;t available yet — coming soon.
+            </p>
+          </div>
+        </div>
+
         <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
           <h2 className="font-semibold text-black dark:text-zinc-50">
             Garage details
@@ -214,19 +231,18 @@ export function OnboardingForm({
               <label htmlFor="country" className="text-sm font-medium">
                 Country
               </label>
-              <select
+              <StyledSelect
                 id="country"
                 name="country"
                 value={country}
                 onChange={(event) => setCountry(event.target.value as Country)}
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
               >
                 {COUNTRIES.map((code) => (
                   <option key={code} value={code}>
                     {COUNTRY_NAMES[code]}
                   </option>
                 ))}
-              </select>
+              </StyledSelect>
               {state?.errors?.country && (
                 <p className="text-sm text-red-600">{state.errors.country[0]}</p>
               )}
@@ -270,7 +286,7 @@ export function OnboardingForm({
           </div>
         </section>
 
-        <section className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+        <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
           <h2 className="font-semibold text-black dark:text-zinc-50">
             Location
           </h2>
@@ -280,7 +296,7 @@ export function OnboardingForm({
           />
         </section>
 
-        <section className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+        <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
           <h2 className="font-semibold text-black dark:text-zinc-50">
             Opening hours
           </h2>
@@ -294,14 +310,11 @@ export function OnboardingForm({
               return (
                 <div key={day} className="flex items-center gap-3 text-sm">
                   <span className="w-24 shrink-0">{day}</span>
-                  <label className="flex items-center gap-1.5">
-                    <input
-                      type="checkbox"
-                      name={`hours_${index}_closed`}
-                      defaultChecked={closed}
-                    />
-                    Closed
-                  </label>
+                  <CheckboxChip
+                    name={`hours_${index}_closed`}
+                    label="Closed"
+                    defaultChecked={closed}
+                  />
                   <input
                     type="time"
                     name={`hours_${index}_open`}
@@ -327,30 +340,21 @@ export function OnboardingForm({
           </h2>
 
           <div className="flex flex-wrap gap-4 text-sm">
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                name="evCapable"
-                defaultChecked={garage.ev_capable}
-              />
-              EV / high-voltage capable
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                name="mobileService"
-                defaultChecked={garage.mobile_service}
-              />
-              Mobile service available
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                name="emergencyService"
-                defaultChecked={garage.emergency_service}
-              />
-              Emergency assistance available
-            </label>
+            <CheckboxChip
+              name="evCapable"
+              label="EV / high-voltage capable"
+              defaultChecked={garage.ev_capable}
+            />
+            <CheckboxChip
+              name="mobileService"
+              label="Mobile service available"
+              defaultChecked={garage.mobile_service}
+            />
+            <CheckboxChip
+              name="emergencyService"
+              label="Emergency assistance available"
+              defaultChecked={garage.emergency_service}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -358,17 +362,16 @@ export function OnboardingForm({
               <label htmlFor="pricingCategory" className="text-sm font-medium">
                 Pricing category
               </label>
-              <select
+              <StyledSelect
                 id="pricingCategory"
                 name="pricingCategory"
                 defaultValue={garage.pricing_category ?? ""}
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
               >
                 <option value="">Not set</option>
                 <option value="budget">Budget</option>
                 <option value="standard">Standard</option>
                 <option value="premium">Premium</option>
-              </select>
+              </StyledSelect>
             </div>
             <div className="flex flex-col gap-1">
               <label htmlFor="technicianCount" className="text-sm font-medium">
@@ -394,59 +397,53 @@ export function OnboardingForm({
             <span className="text-sm font-medium">Languages spoken</span>
             <div className="flex flex-wrap gap-4 text-sm">
               {LANGUAGES.map((language) => (
-                <label key={language} className="flex items-center gap-1.5">
-                  <input
-                    type="checkbox"
-                    name="languages"
-                    value={language}
-                    defaultChecked={languages.includes(language)}
-                  />
-                  {language}
-                </label>
+                <CheckboxChip
+                  key={language}
+                  name="languages"
+                  value={language}
+                  label={language}
+                  defaultChecked={languages.includes(language)}
+                />
               ))}
             </div>
           </div>
         </section>
 
-        <section className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+        <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
           <h2 className="font-semibold text-black dark:text-zinc-50">
             Brands supported
           </h2>
           <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
             {brands.map((brand) => (
-              <label key={brand.id} className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  name="brandIds"
-                  value={brand.id}
-                  defaultChecked={selectedBrandIds.includes(brand.id)}
-                />
-                {brand.name}
-              </label>
+              <CheckboxChip
+                key={brand.id}
+                name="brandIds"
+                value={brand.id}
+                label={brand.name}
+                defaultChecked={selectedBrandIds.includes(brand.id)}
+              />
             ))}
           </div>
         </section>
 
-        <section className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+        <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
           <h2 className="font-semibold text-black dark:text-zinc-50">
             Specialties
           </h2>
           <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
             {specialties.map((specialty) => (
-              <label key={specialty.id} className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  name="specialtyIds"
-                  value={specialty.id}
-                  defaultChecked={selectedSpecialtyIds.includes(specialty.id)}
-                />
-                {specialty.name}
-              </label>
+              <CheckboxChip
+                key={specialty.id}
+                name="specialtyIds"
+                value={specialty.id}
+                label={specialty.name}
+                defaultChecked={selectedSpecialtyIds.includes(specialty.id)}
+              />
             ))}
           </div>
         </section>
 
-        <section className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+        <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
           <h2 className="font-semibold text-black dark:text-zinc-50">
             Platform verification terms
           </h2>
@@ -470,7 +467,7 @@ export function OnboardingForm({
         <button
           disabled={pending}
           type="submit"
-          className="self-start rounded-full bg-foreground px-6 py-2.5 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
+          className="self-start rounded-full bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
         >
           {pending
             ? "Saving..."
