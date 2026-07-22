@@ -50,6 +50,56 @@ export async function notifyAppointmentStatusChange({
   });
 }
 
+const REPAIR_STAGE_COPY: Record<string, { subject: string; label: string }> = {
+  received: { subject: "Your vehicle has been received", label: "received" },
+  diagnosis: {
+    subject: "Your vehicle is being diagnosed",
+    label: "in diagnosis",
+  },
+  in_repair: { subject: "Your vehicle is being repaired", label: "in repair" },
+  quality_check: {
+    subject: "Your vehicle is in quality check",
+    label: "in quality check",
+  },
+  ready_for_pickup: {
+    subject: "Your vehicle is ready for pickup",
+    label: "ready for pickup",
+  },
+};
+
+export async function notifyRepairStageChange({
+  stage,
+  recipientProfileId,
+  recipientEmail,
+  recipientName,
+  otherPartyName,
+  serviceName,
+}: {
+  stage: string;
+  recipientProfileId: string;
+  recipientEmail: string | null;
+  recipientName: string;
+  otherPartyName: string;
+  serviceName: string;
+}) {
+  const copy = REPAIR_STAGE_COPY[stage];
+  if (!copy) return;
+
+  if (recipientEmail) {
+    await sendEmail({
+      to: recipientEmail,
+      subject: copy.subject,
+      html: `<p>Hi ${recipientName},</p><p>Your <strong>${serviceName}</strong> service with ${otherPartyName} is now <strong>${copy.label}</strong>.</p>`,
+    });
+  }
+
+  await sendPushToProfile({
+    profileId: recipientProfileId,
+    title: copy.subject,
+    body: `${serviceName} with ${otherPartyName} is now ${copy.label}.`,
+  });
+}
+
 export async function notifyBookingReceived({
   recipient,
   recipientProfileId,

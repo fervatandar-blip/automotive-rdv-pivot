@@ -14,8 +14,10 @@ import {
   notifyAppointmentStatusChange,
   notifyAppointmentRescheduled,
   notifyWaitlistSlotOpened,
+  notifyRepairStageChange,
 } from "@/lib/notifications";
 import { renderInvoicePdf } from "@/lib/invoice-pdf";
+import { REPAIR_STAGES } from "@/lib/definitions";
 
 const PARTIES_SELECT =
   "id, start_time, garage_id, client_id, services(name), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email, owner_id)";
@@ -344,6 +346,51 @@ export async function confirmAppointment(formData: FormData) {
       "confirmed",
       "garage"
     );
+  }
+
+  revalidateLocalizedPath("/garage/calendar");
+  revalidateLocalizedPath("/dashboard");
+}
+
+export async function updateRepairStage(formData: FormData) {
+  const lang = parseLocale(formData.get("lang"));
+  const { garage } = await requireGarageMember(lang);
+  const id = formData.get("id");
+  const stage = formData.get("stage");
+
+  if (typeof id !== "string" || !id) {
+    return;
+  }
+
+  if (
+    typeof stage !== "string" ||
+    !(REPAIR_STAGES as readonly string[]).includes(stage)
+  ) {
+    return;
+  }
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("appointments")
+    .update({ repair_stage: stage })
+    .eq("id", id)
+    .eq("garage_id", garage.id)
+    .eq("status", "confirmed")
+    .select(PARTIES_SELECT)
+    .maybeSingle();
+
+  if (data) {
+    const appointment = data as unknown as AppointmentWithParties;
+    if (appointment.client) {
+      await notifyRepairStageChange({
+        stage,
+        recipientProfileId: appointment.client_id,
+        recipientEmail: appointment.client.email,
+        recipientName: appointment.client.full_name,
+        otherPartyName: appointment.garage?.name ?? "the garage",
+        serviceName: appointment.services?.name ?? "your service",
+      });
+    }
   }
 
   revalidateLocalizedPath("/garage/calendar");

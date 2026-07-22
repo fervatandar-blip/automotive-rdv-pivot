@@ -371,3 +371,22 @@ export type GarageLeadFormState =
       success?: boolean;
     }
   | undefined;
+
+export const REPAIR_STAGES = [
+  "received",
+  "diagnosis",
+  "in_repair",
+  "quality_check",
+  "ready_for_pickup",
+] as const;
+
+export const REPAIR_STAGE_LABELS: Record<
+  (typeof REPAIR_STAGES)[number],
+  string
+> = {
+  received: "Received",
+  diagnosis: "Diagnosis",
+  in_repair: "In repair",
+  quality_check: "Quality check",
+  ready_for_pickup: "Ready for pickup",
+};

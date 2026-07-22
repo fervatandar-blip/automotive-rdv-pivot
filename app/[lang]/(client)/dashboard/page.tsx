@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarPlus, Car, Wrench } from "lucide-react";
+import { CalendarPlus, Car, Check, Wrench } from "lucide-react";
 import { getAuthedProfile, getGarageMembership } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/actions/auth";
@@ -9,6 +9,7 @@ import {
   completeAppointment,
   confirmAppointment,
   providerCancelAppointment,
+  updateRepairStage,
 } from "@/app/actions/appointments";
 import { submitReview } from "@/app/actions/reviews";
 import { leaveWaitlist } from "@/app/actions/waitlist";
@@ -16,15 +17,85 @@ import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
 import { EmptyStateCard } from "@/components/empty-state-card";
+import { StyledSelect } from "@/components/styled-select";
+import { REPAIR_STAGES, REPAIR_STAGE_LABELS } from "@/lib/definitions";
 
 type Appointment = {
   id: string;
   start_time: string;
   status: string;
+  repair_stage: string | null;
   services: { name: string } | null;
   garages: { name: string; city: string | null } | null;
   vehicles: { model: string | null; year: number | null } | null;
 };
+
+type StepStatus = "complete" | "current" | "upcoming";
+
+function RepairStageIndicator({
+  steps,
+}: {
+  steps: { label: string; status: StepStatus }[];
+}) {
+  return (
+    <div className="flex items-center">
+      {steps.map((step, index) => (
+        <div key={step.label} className="flex flex-1 items-center last:flex-none">
+          <div className="flex flex-col items-center gap-1.5">
+            <div
+              className={
+                step.status === "complete"
+                  ? "flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-white dark:bg-brand-500"
+                  : step.status === "current"
+                    ? "flex h-7 w-7 items-center justify-center rounded-full border-2 border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-400"
+                    : "flex h-7 w-7 items-center justify-center rounded-full border-2 border-zinc-300 text-zinc-400 dark:border-zinc-700 dark:text-zinc-500"
+              }
+            >
+              {step.status === "complete" ? (
+                <Check className="h-4 w-4" strokeWidth={2.5} />
+              ) : (
+                <span className="text-xs font-semibold">{index + 1}</span>
+              )}
+            </div>
+            <span
+              className={
+                step.status === "upcoming"
+                  ? "text-xs font-medium text-zinc-400 dark:text-zinc-500"
+                  : "text-xs font-medium text-black dark:text-zinc-50"
+              }
+            >
+              {step.label}
+            </span>
+          </div>
+          {index < steps.length - 1 && (
+            <div
+              className={
+                step.status === "complete"
+                  ? "mx-2 h-0.5 flex-1 rounded-full bg-brand-600 dark:bg-brand-500"
+                  : "mx-2 h-0.5 flex-1 rounded-full bg-black/[.08] dark:bg-white/[.145]"
+              }
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function repairStageSteps(currentStage: string | null) {
+  const currentIndex = currentStage
+    ? REPAIR_STAGES.indexOf(currentStage as (typeof REPAIR_STAGES)[number])
+    : -1;
+
+  return REPAIR_STAGES.map((stage, index) => ({
+    label: REPAIR_STAGE_LABELS[stage],
+    status: (index < currentIndex
+      ? "complete"
+      : index === currentIndex
+        ? "current"
+        : "upcoming") as StepStatus,
+  }));
+}
 
 function isUpcoming(appointment: { status: string; start_time: string }) {
   return (
@@ -150,6 +221,13 @@ function AppointmentCard({
                   .join(" · ")}
               </p>
             )}
+          {cancellable && appointment.repair_stage && (
+            <div className="mt-4 max-w-xs">
+              <RepairStageIndicator
+                steps={repairStageSteps(appointment.repair_stage)}
+              />
+            </div>
+          )}
           {appointment.status === "pending_payment" && (
             <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
               Payment processing
@@ -214,6 +292,7 @@ type AssignedAppointment = {
   id: string;
   start_time: string;
   status: string;
+  repair_stage: string | null;
   services: { name: string } | null;
   profiles: { full_name: string } | null;
 };
@@ -251,6 +330,35 @@ function MechanicAppointmentCard({
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             Completed
           </p>
+        )}
+        {appointment.status === "confirmed" && (
+          <form
+            action={updateRepairStage}
+            className="mt-2 flex items-center gap-2"
+          >
+            <input type="hidden" name="id" value={appointment.id} />
+            <input type="hidden" name="lang" value={lang} />
+            <StyledSelect
+              name="stage"
+              defaultValue={appointment.repair_stage ?? ""}
+              className="text-xs"
+            >
+              <option value="" disabled>
+                Repair stage
+              </option>
+              {REPAIR_STAGES.map((stage) => (
+                <option key={stage} value={stage}>
+                  {REPAIR_STAGE_LABELS[stage]}
+                </option>
+              ))}
+            </StyledSelect>
+            <button
+              type="submit"
+              className="shrink-0 rounded-full border border-black/[.08] px-3 py-1 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+            >
+              Update
+            </button>
+          </form>
         )}
       </div>
       <div className="flex shrink-0 flex-col gap-1.5">
@@ -375,7 +483,7 @@ export default async function DashboardPage({
       const { data: appointments } = await supabase
         .from("appointments")
         .select(
-          "id, start_time, status, services(name), profiles!appointments_client_id_fkey(full_name)"
+          "id, start_time, status, repair_stage, services(name), profiles!appointments_client_id_fkey(full_name)"
         )
         .eq("garage_id", garage.id)
         .eq("assigned_mechanic_id", profile.id)
@@ -541,7 +649,7 @@ export default async function DashboardPage({
   const { data: appointments } = await supabase
     .from("appointments")
     .select(
-      "id, start_time, status, services(name), garages!appointments_garage_id_fkey(name, city), vehicles(model, year)"
+      "id, start_time, status, repair_stage, services(name), garages!appointments_garage_id_fkey(name, city), vehicles(model, year)"
     )
     .eq("client_id", profile.id)
     .order("start_time", { ascending: true });
