@@ -1,11 +1,43 @@
 import Link from "next/link";
-import { Search, MapPin } from "lucide-react";
+import { Search, MapPin, Check } from "lucide-react";
 import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { GarageDiscoveryMap } from "@/components/garage-discovery-map";
 import { BrandLogoBadge } from "@/components/brand-logo-badge";
+import { StyledSelect } from "@/components/styled-select";
 import { averageRating, formatRating } from "@/lib/ratings";
+
+function FilterCheckbox({
+  id,
+  name,
+  value,
+  label,
+  defaultChecked,
+}: {
+  id?: string;
+  name: string;
+  value: string;
+  label: string;
+  defaultChecked: boolean;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 text-sm">
+      <input
+        id={id}
+        type="checkbox"
+        name={name}
+        value={value}
+        defaultChecked={defaultChecked}
+        className="peer sr-only"
+      />
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-black/[.08] transition-colors peer-checked:border-brand-600 peer-checked:bg-brand-600 peer-focus-visible:ring-2 peer-focus-visible:ring-brand-600/40 peer-focus-visible:ring-offset-2 dark:border-white/[.145] [&>svg]:opacity-0 [&>svg]:transition-opacity peer-checked:[&>svg]:opacity-100">
+        <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+      </span>
+      {label}
+    </label>
+  );
+}
 
 const CURATED_BRANDS: { name: string; slug: string }[] = [
   { name: "Volkswagen", slug: "volkswagen" },
@@ -44,7 +76,6 @@ type SearchParams = {
   ev?: string;
   mobile?: string;
   emergency?: string;
-  pricing?: string;
   minRating?: string;
   sort?: string;
 };
@@ -93,8 +124,6 @@ export default async function GaragesPage({
     if (filters.ev === "1" && !garage.ev_capable) return false;
     if (filters.mobile === "1" && !garage.mobile_service) return false;
     if (filters.emergency === "1" && !garage.emergency_service) return false;
-    if (filters.pricing && garage.pricing_category !== filters.pricing)
-      return false;
     if (
       selectedBrandIds.length > 0 &&
       !garage.garage_brands.some((link) =>
@@ -144,148 +173,121 @@ export default async function GaragesPage({
 
         <form
           method="GET"
-          className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+          className="flex flex-col gap-8 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
         >
-          <div className="flex flex-col overflow-hidden rounded-full border border-black/[.08] dark:border-white/[.145] sm:flex-row sm:items-center">
-            <div className="flex flex-1 items-center gap-2 px-4 py-2.5">
-              <Search
-                className="h-4 w-4 shrink-0 text-zinc-400"
-                strokeWidth={1.5}
-              />
-              <label htmlFor="q" className="sr-only">
-                Search by name
-              </label>
-              <input
-                id="q"
-                name="q"
-                defaultValue={filters.q ?? ""}
-                placeholder="Search by garage name"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
-              />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col overflow-hidden rounded-full border border-black/[.08] dark:border-white/[.145] sm:flex-row sm:items-center">
+              <div className="flex flex-1 items-center gap-2 px-4 py-2.5">
+                <Search
+                  className="h-4 w-4 shrink-0 text-zinc-400"
+                  strokeWidth={1.5}
+                />
+                <label htmlFor="q" className="sr-only">
+                  Search by name
+                </label>
+                <input
+                  id="q"
+                  name="q"
+                  defaultValue={filters.q ?? ""}
+                  placeholder="Search by garage name"
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
+                />
+              </div>
+              <div className="h-px w-full bg-black/[.08] dark:bg-white/[.145] sm:h-6 sm:w-px" />
+              <div className="flex flex-1 items-center gap-2 px-4 py-2.5">
+                <MapPin
+                  className="h-4 w-4 shrink-0 text-zinc-400"
+                  strokeWidth={1.5}
+                />
+                <label htmlFor="city" className="sr-only">
+                  City
+                </label>
+                <StyledSelect
+                  id="city"
+                  name="city"
+                  defaultValue={filters.city ?? ""}
+                >
+                  <option value="">Any city</option>
+                  {cities.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </StyledSelect>
+              </div>
             </div>
-            <div className="h-px w-full bg-black/[.08] dark:bg-white/[.145] sm:h-6 sm:w-px" />
-            <div className="flex flex-1 items-center gap-2 px-4 py-2.5">
-              <MapPin
-                className="h-4 w-4 shrink-0 text-zinc-400"
-                strokeWidth={1.5}
-              />
-              <label htmlFor="city" className="sr-only">
-                City
-              </label>
-              <select
-                id="city"
-                name="city"
-                defaultValue={filters.city ?? ""}
-                className="w-full bg-transparent text-sm outline-none"
-              >
-                <option value="">Any city</option>
-                {cities.map((city) => (
-                  <option key={city} value={city}>
-                    {city}
-                  </option>
-                ))}
-              </select>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1">
+                <label htmlFor="minRating" className="text-sm font-medium">
+                  Minimum rating
+                </label>
+                <StyledSelect
+                  id="minRating"
+                  name="minRating"
+                  defaultValue={filters.minRating ?? ""}
+                >
+                  <option value="">Any</option>
+                  <option value="4">4+ stars</option>
+                  <option value="3">3+ stars</option>
+                </StyledSelect>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label htmlFor="sort" className="text-sm font-medium">
+                  Sort by
+                </label>
+                <StyledSelect
+                  id="sort"
+                  name="sort"
+                  defaultValue={filters.sort ?? "name"}
+                >
+                  <option value="name">Name</option>
+                  <option value="rating">Rating</option>
+                </StyledSelect>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="pricing" className="text-sm font-medium">
-                Pricing
-              </label>
-              <select
-                id="pricing"
-                name="pricing"
-                defaultValue={filters.pricing ?? ""}
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-              >
-                <option value="">Any</option>
-                <option value="budget">Budget</option>
-                <option value="standard">Standard</option>
-                <option value="premium">Premium</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="minRating" className="text-sm font-medium">
-                Minimum rating
-              </label>
-              <select
-                id="minRating"
-                name="minRating"
-                defaultValue={filters.minRating ?? ""}
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-              >
-                <option value="">Any</option>
-                <option value="4">4+ stars</option>
-                <option value="3">3+ stars</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label htmlFor="sort" className="text-sm font-medium">
-                Sort by
-              </label>
-              <select
-                id="sort"
-                name="sort"
-                defaultValue={filters.sort ?? "name"}
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-              >
-                <option value="name">Name</option>
-                <option value="rating">Rating</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-4 text-sm">
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                name="ev"
-                value="1"
-                defaultChecked={filters.ev === "1"}
-              />
-              EV capable
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                name="mobile"
-                value="1"
-                defaultChecked={filters.mobile === "1"}
-              />
-              Mobile service
-            </label>
-            <label className="flex items-center gap-1.5">
-              <input
-                type="checkbox"
-                name="emergency"
-                value="1"
-                defaultChecked={filters.emergency === "1"}
-              />
-              Emergency service
-            </label>
+          <div className="flex flex-wrap gap-4 border-t border-black/[.08] pt-4 dark:border-white/[.145]">
+            <FilterCheckbox
+              name="ev"
+              value="1"
+              label="EV capable"
+              defaultChecked={filters.ev === "1"}
+            />
+            <FilterCheckbox
+              name="mobile"
+              value="1"
+              label="Mobile service"
+              defaultChecked={filters.mobile === "1"}
+            />
+            <FilterCheckbox
+              name="emergency"
+              value="1"
+              label="Emergency service"
+              defaultChecked={filters.emergency === "1"}
+            />
           </div>
 
           {brands && brands.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Brands</span>
+            <div className="flex flex-col gap-3 border-t border-black/[.08] pt-4 dark:border-white/[.145]">
+              {curatedBrands.length > 0 ? (
+                <span className="text-sm font-medium">Popular brands</span>
+              ) : (
+                <span className="text-sm font-medium">Brands</span>
+              )}
 
               {curatedBrands.length > 0 && (
-                <div className="flex flex-col gap-2">
-                  <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                    Popular brands
-                  </span>
-                  <div className="flex flex-wrap gap-3">
-                    {curatedBrands.map((brand) => (
-                      <BrandLogoBadge
-                        key={brand.id}
-                        htmlFor={`brand-${brand.id}`}
-                        slug={brand.slug}
-                        name={brand.name}
-                        selected={selectedBrandIds.includes(brand.id)}
-                      />
-                    ))}
-                  </div>
+                <div className="flex flex-wrap gap-3">
+                  {curatedBrands.map((brand) => (
+                    <BrandLogoBadge
+                      key={brand.id}
+                      htmlFor={`brand-${brand.id}`}
+                      slug={brand.slug}
+                      name={brand.name}
+                      selected={selectedBrandIds.includes(brand.id)}
+                    />
+                  ))}
                 </div>
               )}
 
@@ -295,19 +297,14 @@ export default async function GaragesPage({
                 </summary>
                 <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                   {brands.map((brand) => (
-                    <label
+                    <FilterCheckbox
                       key={brand.id}
-                      className="flex items-center gap-1.5"
-                    >
-                      <input
-                        id={`brand-${brand.id}`}
-                        type="checkbox"
-                        name="brand"
-                        value={brand.id}
-                        defaultChecked={selectedBrandIds.includes(brand.id)}
-                      />
-                      {brand.name}
-                    </label>
+                      id={`brand-${brand.id}`}
+                      name="brand"
+                      value={brand.id}
+                      label={brand.name}
+                      defaultChecked={selectedBrandIds.includes(brand.id)}
+                    />
                   ))}
                 </div>
               </details>
@@ -315,24 +312,19 @@ export default async function GaragesPage({
           )}
 
           {specialties && specialties.length > 0 && (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3 border-t border-black/[.08] pt-4 dark:border-white/[.145]">
               <span className="text-sm font-medium">Specialties</span>
               <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
                 {specialties.map((specialty) => (
-                  <label
+                  <FilterCheckbox
                     key={specialty.id}
-                    className="flex items-center gap-1.5"
-                  >
-                    <input
-                      type="checkbox"
-                      name="specialty"
-                      value={specialty.id}
-                      defaultChecked={selectedSpecialtyIds.includes(
-                        specialty.id
-                      )}
-                    />
-                    {specialty.name}
-                  </label>
+                    name="specialty"
+                    value={specialty.id}
+                    label={specialty.name}
+                    defaultChecked={selectedSpecialtyIds.includes(
+                      specialty.id
+                    )}
+                  />
                 ))}
               </div>
             </div>

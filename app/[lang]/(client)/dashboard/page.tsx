@@ -1,6 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarPlus, Car, Wrench } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import {
+  CalendarPlus,
+  Car,
+  MessageSquare,
+  Search,
+  ShieldCheck,
+  Wrench,
+} from "lucide-react";
 import { getAuthedProfile, getGarageMembership } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/actions/auth";
@@ -15,6 +23,8 @@ import { leaveWaitlist } from "@/app/actions/waitlist";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
+import { EmptyStateCard } from "@/components/empty-state-card";
+import { averageRating, formatRating } from "@/lib/ratings";
 
 type Appointment = {
   id: string;
@@ -48,6 +58,33 @@ function formatDateHeader(iso: string) {
     day: "numeric",
     month: "long",
   });
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  confirmed: "Confirmed",
+  pending_payment: "Payment processing",
+  cancelled: "Cancelled",
+  completed: "Completed",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const className =
+    status === "confirmed"
+      ? "bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-400"
+      : status === "pending" || status === "pending_payment"
+        ? "bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-400"
+        : status === "cancelled"
+          ? "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-400"
+          : "bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400";
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${className}`}
+    >
+      {STATUS_LABELS[status] ?? status}
+    </span>
+  );
 }
 
 const RATING_OPTIONS = [
@@ -126,9 +163,12 @@ function AppointmentCard({
               <Wrench className="h-4 w-4" strokeWidth={1.5} />
             </div>
             <div>
-              <h3 className="font-semibold text-black dark:text-zinc-50">
-                {appointment.services?.name ?? "Service"}
-              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-semibold text-black dark:text-zinc-50">
+                  {appointment.services?.name ?? "Service"}
+                </h3>
+                <StatusBadge status={appointment.status} />
+              </div>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 {formatDateHeader(appointment.start_time)}
               </p>
@@ -149,19 +189,6 @@ function AppointmentCard({
                   .join(" · ")}
               </p>
             )}
-          {appointment.status === "pending_payment" && (
-            <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
-              Payment processing
-            </p>
-          )}
-          {appointment.status === "cancelled" && (
-            <p className="mt-1 text-sm text-red-600">Cancelled</p>
-          )}
-          {appointment.status === "completed" && (
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Completed
-            </p>
-          )}
           {invoiceUrl && (
             <a
               href={invoiceUrl}
@@ -308,21 +335,19 @@ function MechanicAppointmentCard({
   );
 }
 
-function EmptyStateCard({
+function QuickActionCard({
+  href,
   icon: Icon,
   title,
   description,
-  ctaHref,
-  ctaLabel,
 }: {
-  icon: typeof CalendarPlus;
+  href?: string;
+  icon: LucideIcon;
   title: string;
   description: string;
-  ctaHref: string;
-  ctaLabel: string;
 }) {
-  return (
-    <div className="flex flex-col items-start gap-3 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+  const content = (
+    <>
       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white">
         <Icon className="h-5 w-5" strokeWidth={1.5} />
       </div>
@@ -332,13 +357,24 @@ function EmptyStateCard({
           {description}
         </p>
       </div>
-      <Link
-        href={ctaHref}
-        className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
-      >
-        {ctaLabel}
-      </Link>
-    </div>
+    </>
+  );
+
+  if (!href) {
+    return (
+      <div className="flex flex-col items-start gap-3 rounded-xl border border-black/[.08] bg-white p-5 opacity-60 dark:border-white/[.145] dark:bg-zinc-950">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="flex flex-col items-start gap-3 rounded-xl border border-black/[.08] bg-white p-5 transition-colors hover:border-brand-600 hover:bg-brand-50 dark:border-white/[.145] dark:bg-zinc-950 dark:hover:border-brand-500 dark:hover:bg-brand-950"
+    >
+      {content}
+    </Link>
   );
 }
 
@@ -644,37 +680,58 @@ export default async function DashboardPage({
     license_plate: string | null;
     brands: { name: string } | null;
   }[];
+  const featuredVehicle = vehicleRows[0];
+
+  const { data: featuredGaragesData } = await supabase
+    .from("garages")
+    .select("id, name, city, reviews(rating)")
+    .eq("status", "approved")
+    .is("deleted_at", null);
+
+  const featuredGarages = (
+    (featuredGaragesData ?? []) as unknown as {
+      id: string;
+      name: string;
+      city: string | null;
+      reviews: { rating: number }[];
+    }[]
+  )
+    .map((garage) => ({
+      ...garage,
+      average: averageRating(garage.reviews.map((review) => review.rating)),
+    }))
+    .filter((garage) => garage.average !== null)
+    .sort((a, b) => (b.average ?? 0) - (a.average ?? 0))
+    .slice(0, 3);
+
+  const firstName = (profile.full_name || profile.email.split("@")[0]).split(
+    " "
+  )[0];
+  const mostRecentAppointment = upcoming[0] ?? other[other.length - 1];
 
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-              Welcome, {profile.full_name || profile.email}
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {profile.email}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <div className="rounded-2xl bg-gradient-to-br from-brand-600 to-brand-700 p-8 text-white dark:from-brand-500 dark:to-brand-700 sm:p-10">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Welcome back, {firstName} 👋
+          </h1>
+          <p className="mt-2 max-w-xl text-sm text-brand-50/90 sm:text-base">
+            Manage your vehicles, track service history, and schedule
+            appointments with top Luxembourg garages.
+          </p>
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Link
               href={`/${lang}/garages`}
-              className="flex h-11 items-center justify-center rounded-full bg-brand-600 px-6 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+              className="flex h-11 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-brand-700 transition-colors hover:bg-brand-50"
             >
               Book an Appointment
             </Link>
             <Link
               href={`/${lang}/vehicles`}
-              className="text-sm font-medium underline"
+              className="flex h-11 items-center justify-center rounded-full border border-white/40 bg-white/10 px-6 text-sm font-medium text-white transition-colors hover:bg-white/20"
             >
-              My vehicles
-            </Link>
-            <Link
-              href={`/${lang}/account`}
-              className="text-sm font-medium underline"
-            >
-              Account
+              Add a Vehicle
             </Link>
           </div>
         </div>
@@ -685,136 +742,232 @@ export default async function DashboardPage({
           </p>
         )}
 
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Vehicle Management
-            </h2>
-            {vehicleRows.length > 0 && (
-              <Link
-                href={`/${lang}/vehicles`}
-                className="text-sm font-medium underline"
-              >
-                Manage vehicles
-              </Link>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="flex flex-col gap-8 lg:col-span-2">
+            <div className="flex flex-col gap-4">
+              <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                Quick Actions
+              </h2>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <QuickActionCard
+                  href={`/${lang}/garages`}
+                  icon={Search}
+                  title="Book an Appointment"
+                  description="Find a garage and pick a time."
+                />
+                <QuickActionCard
+                  href={`/${lang}/vehicles`}
+                  icon={Car}
+                  title="Vehicle Wallet"
+                  description="Manage your saved vehicles."
+                />
+                <QuickActionCard
+                  href={
+                    mostRecentAppointment
+                      ? `/${lang}/appointments/${mostRecentAppointment.id}/messages`
+                      : undefined
+                  }
+                  icon={MessageSquare}
+                  title="Messages"
+                  description={
+                    mostRecentAppointment
+                      ? "Chat with your garage."
+                      : "Available after your first booking."
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                  My Vehicles
+                </h2>
+                {vehicleRows.length > 0 && (
+                  <Link
+                    href={`/${lang}/vehicles`}
+                    className="text-sm font-medium underline"
+                  >
+                    View all vehicles
+                    {vehicleRows.length > 1 ? ` (${vehicleRows.length})` : ""}
+                  </Link>
+                )}
+              </div>
+              {featuredVehicle ? (
+                <div className="flex items-center gap-4 rounded-xl border border-black/[.08] bg-white p-5 dark:border-white/[.145] dark:bg-zinc-950">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-400">
+                    <Car className="h-6 w-6" strokeWidth={1.5} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-black dark:text-zinc-50">
+                      {[featuredVehicle.brands?.name, featuredVehicle.model]
+                        .filter(Boolean)
+                        .join(" ") || "Vehicle"}
+                    </h3>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {[featuredVehicle.year, featuredVehicle.license_plate]
+                        .filter(Boolean)
+                        .join(" · ") || "No details added"}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <EmptyStateCard
+                  icon={Car}
+                  title="Register your car"
+                  description="Add a vehicle to speed up booking and keep your service history in one place."
+                  ctaHref={`/${lang}/vehicles`}
+                  ctaLabel="Add a vehicle"
+                />
+              )}
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                Upcoming Appointments
+              </h2>
+              {upcoming.length > 0 ? (
+                upcoming.map((appointment) => (
+                  <AppointmentCard
+                    key={appointment.id}
+                    appointment={appointment}
+                    lang={lang}
+                    cancellable
+                  />
+                ))
+              ) : (
+                <EmptyStateCard
+                  icon={CalendarPlus}
+                  title="No upcoming appointments"
+                  description="Find a garage and book your next service in a couple of taps."
+                  ctaHref={`/${lang}/garages`}
+                  ctaLabel="Find a garage"
+                />
+              )}
+            </div>
+
+            {waitlistRows.length > 0 && (
+              <div className="flex flex-col gap-4">
+                <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                  Waitlist
+                </h2>
+                {waitlistRows.map((entry) => (
+                  <div
+                    key={entry.id}
+                    className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+                  >
+                    <div>
+                      <h3 className="font-semibold text-black dark:text-zinc-50">
+                        {entry.services?.name ?? "Service"}
+                      </h3>
+                      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                        with {entry.garages?.name ?? "Garage"} on{" "}
+                        {new Date(`${entry.date}T00:00:00`).toLocaleDateString(
+                          undefined,
+                          { weekday: "short", month: "short", day: "numeric" }
+                        )}
+                      </p>
+                      {entry.notified_at && (
+                        <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
+                          A slot may have opened up &mdash; check availability.
+                        </p>
+                      )}
+                    </div>
+                    <form action={leaveWaitlist}>
+                      <input type="hidden" name="id" value={entry.id} />
+                      <input type="hidden" name="lang" value={lang} />
+                      <button
+                        type="submit"
+                        className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                      >
+                        Leave
+                      </button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {other.length > 0 && (
+              <div className="flex flex-col gap-4">
+                <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                  Past &amp; cancelled
+                </h2>
+                {other.map((appointment) => (
+                  <AppointmentCard
+                    key={appointment.id}
+                    appointment={appointment}
+                    lang={lang}
+                    invoiceUrl={invoiceUrls.get(appointment.id)}
+                    reviewable={
+                      appointment.status === "completed" &&
+                      !reviewedAppointmentIds.has(appointment.id)
+                    }
+                  />
+                ))}
+              </div>
             )}
           </div>
-          {vehicleRows.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {vehicleRows.map((vehicle) => (
-                <div
-                  key={vehicle.id}
-                  className="flex shrink-0 flex-col gap-1 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
-                >
-                  <h3 className="font-semibold text-black dark:text-zinc-50">
-                    {[vehicle.brands?.name, vehicle.model]
-                      .filter(Boolean)
-                      .join(" ") || "Vehicle"}
-                  </h3>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {[vehicle.year, vehicle.license_plate]
-                      .filter(Boolean)
-                      .join(" · ") || "No details added"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyStateCard
-              icon={Car}
-              title="No vehicles yet"
-              description="Add a vehicle to speed up booking and keep your service history in one place."
-              ctaHref={`/${lang}/vehicles`}
-              ctaLabel="Add a vehicle"
-            />
-          )}
-        </div>
 
-        <div className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            Upcoming
-          </h2>
-          {upcoming.length > 0 ? (
-            upcoming.map((appointment) => (
-              <AppointmentCard
-                key={appointment.id}
-                appointment={appointment}
-                lang={lang}
-                cancellable
-              />
-            ))
-          ) : (
-            <EmptyStateCard
-              icon={CalendarPlus}
-              title="No upcoming appointments"
-              description="Find a garage and book your next service in a couple of taps."
-              ctaHref={`/${lang}/garages`}
-              ctaLabel="Find a garage"
-            />
-          )}
-        </div>
-
-        {waitlistRows.length > 0 && (
-          <div className="flex flex-col gap-4">
-            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Waitlist
-            </h2>
-            {waitlistRows.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
-              >
-                <div>
-                  <h3 className="font-semibold text-black dark:text-zinc-50">
-                    {entry.services?.name ?? "Service"}
-                  </h3>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    with {entry.garages?.name ?? "Garage"} on{" "}
-                    {new Date(`${entry.date}T00:00:00`).toLocaleDateString(
-                      undefined,
-                      { weekday: "short", month: "short", day: "numeric" }
-                    )}
-                  </p>
-                  {entry.notified_at && (
-                    <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
-                      A slot may have opened up &mdash; check availability.
-                    </p>
-                  )}
-                </div>
-                <form action={leaveWaitlist}>
-                  <input type="hidden" name="id" value={entry.id} />
-                  <input type="hidden" name="lang" value={lang} />
-                  <button
-                    type="submit"
-                    className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-                  >
-                    Leave
-                  </button>
-                </form>
+          <div className="flex flex-col gap-6 lg:col-span-1">
+            <div className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-5 dark:border-white/[.145] dark:bg-zinc-950">
+              <div>
+                <h2 className="font-semibold text-black dark:text-zinc-50">
+                  Featured Garages
+                </h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Top-rated in Luxembourg
+                </p>
               </div>
-            ))}
-          </div>
-        )}
+              {featuredGarages.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {featuredGarages.map((garage) => (
+                    <div
+                      key={garage.id}
+                      className="flex items-center justify-between gap-3 border-t border-black/[.08] pt-3 first:border-t-0 first:pt-0 dark:border-white/[.145]"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-black dark:text-zinc-50">
+                          {garage.name}
+                        </p>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {garage.city ? `${garage.city} · ` : ""}
+                          {formatRating(
+                            garage.reviews.map((review) => review.rating)
+                          )}
+                        </p>
+                      </div>
+                      <Link
+                        href={`/${lang}/garages/${garage.id}`}
+                        className="shrink-0 rounded-full border border-black/[.08] px-3 py-1 text-xs font-medium transition-colors hover:border-brand-600 hover:bg-brand-50 hover:text-brand-700 dark:border-white/[.145] dark:hover:border-brand-500 dark:hover:bg-brand-950 dark:hover:text-brand-400"
+                      >
+                        Book
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  No rated garages yet.
+                </p>
+              )}
+            </div>
 
-        {other.length > 0 && (
-          <div className="flex flex-col gap-4">
-            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Past &amp; cancelled
-            </h2>
-            {other.map((appointment) => (
-              <AppointmentCard
-                key={appointment.id}
-                appointment={appointment}
-                lang={lang}
-                invoiceUrl={invoiceUrls.get(appointment.id)}
-                reviewable={
-                  appointment.status === "completed" &&
-                  !reviewedAppointmentIds.has(appointment.id)
-                }
-              />
-            ))}
+            <div className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-5 dark:border-white/[.145] dark:bg-zinc-950">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white">
+                <ShieldCheck className="h-5 w-5" strokeWidth={1.5} />
+              </div>
+              <h2 className="font-semibold text-black dark:text-zinc-50">
+                Maintenance &amp; CT Reminders
+              </h2>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                Luxembourg vehicles need a periodic Contrôle Technique
+                inspection. Check your vehicle&apos;s due date and book a
+                slot a few weeks ahead to avoid delays.
+              </p>
+            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
