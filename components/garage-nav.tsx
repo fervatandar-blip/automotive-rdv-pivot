@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Calendar,
   Users,
+  Star,
   Wrench,
   Clock,
   ListPlus,
@@ -15,6 +16,7 @@ import {
   CreditCard,
   Landmark,
   Building2,
+  User,
   LogOut,
 } from "lucide-react";
 import { logout } from "@/app/actions/auth";
@@ -28,6 +30,7 @@ function primaryItems(lang: Locale) {
     { href: `/${lang}/garage/dashboard`, label: "Dashboard", icon: LayoutDashboard },
     { href: `/${lang}/garage/calendar`, label: "Calendar", icon: Calendar },
     { href: `/${lang}/garage/clients`, label: "Clients", icon: Users },
+    { href: `/${lang}/garage/reviews`, label: "Reviews", icon: Star },
     { href: `/${lang}/garage/services`, label: "Services", icon: Wrench },
     {
       href: `/${lang}/garage/availability`,
@@ -54,6 +57,7 @@ function secondaryItems(lang: Locale) {
       label: "Garage Profile",
       icon: Building2,
     },
+    { href: `/${lang}/account`, label: "Account", icon: User },
   ];
 }
 

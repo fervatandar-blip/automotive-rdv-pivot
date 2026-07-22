@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Car } from "lucide-react";
-import { getAuthedProfile } from "@/lib/dal";
+import { getAuthedProfile, getGarageMembership } from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { ClientSidebar, ClientMobileNav } from "@/components/client-nav";
 import { ClientPageTitle } from "@/components/client-page-title";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
+import { GarageSidebar, GarageTopBar } from "@/components/garage-nav";
 
 function initialsFor(name: string) {
   return name
@@ -26,6 +27,36 @@ export default async function ClientLayout({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const profile = await getAuthedProfile(lang);
+
+  // This route group also covers /account (role-agnostic, no chrome of its
+  // own) plus /garages, /garages/[id] and /vehicles -- a garage owner or
+  // mechanic can land on any of these directly (e.g. from the new "Account"
+  // sidebar item), and garage layout chrome (components/garage-nav.tsx)
+  // lives under app/[lang]/garage/, a sibling folder that layout can't
+  // reach. Render the same sidebar/top bar here instead of passing through.
+  if (profile.role === "admin_garage" || profile.role === "mecanicien") {
+    const membership = await getGarageMembership(lang);
+
+    if (membership?.garage.platform_terms_accepted_at) {
+      return (
+        <div className="flex flex-1">
+          <GarageSidebar lang={lang} />
+          <div className="flex flex-1 flex-col">
+            <GarageTopBar
+              lang={lang}
+              garageName={membership.garage.name}
+              status={membership.garage.status}
+            />
+            <main className="flex flex-1 flex-col">{children}</main>
+          </div>
+        </div>
+      );
+    }
+
+    // No membership, or not yet onboarded -- nothing to wrap with, same as
+    // app/[lang]/garage/layout.tsx's own pre-onboarding passthrough.
+    return <>{children}</>;
+  }
 
   if (profile.role !== "client") {
     return <>{children}</>;
