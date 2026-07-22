@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getAuthedProfile } from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
 import {
   requestAccountDeletion,
   cancelAccountDeletion,
@@ -16,6 +17,8 @@ export default async function AccountPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const profile = await getAuthedProfile(lang);
+  const isGarageRole =
+    profile.role === "admin_garage" || profile.role === "mecanicien";
 
   const requestedAt = profile.deletion_requested_at
     ? new Date(profile.deletion_requested_at)
@@ -54,10 +57,47 @@ export default async function AccountPage({
           </p>
         </div>
 
+        {isGarageRole && (
+          <section className="flex flex-col gap-3 border-t border-black/[.08] pt-6 dark:border-white/[.145]">
+            <h2 className="font-semibold text-black dark:text-zinc-50">
+              Notifications
+            </h2>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Get notified about new bookings and messages on this device.
+            </p>
+            <PushNotificationOptIn />
+          </section>
+        )}
+
+        {profile.role === "admin_garage" && (
+          <section className="flex flex-col gap-3 border-t border-black/[.08] pt-6 dark:border-white/[.145]">
+            <h2 className="font-semibold text-black dark:text-zinc-50">
+              Team access
+            </h2>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Manage which mécaniciens can access your garage&apos;s
+              dashboard.
+            </p>
+            <Link
+              href={`/${lang}/garage/staff`}
+              className="self-start rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+            >
+              Manage staff
+            </Link>
+          </section>
+        )}
+
         <section className="flex flex-col gap-3 border-t border-black/[.08] pt-6 dark:border-white/[.145]">
           <h2 className="font-semibold text-black dark:text-zinc-50">
-            Delete account
+            Security
           </h2>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            Manage your account&apos;s security and data.
+          </p>
+
+          <h3 className="font-medium text-black dark:text-zinc-50">
+            Delete account
+          </h3>
 
           {requestedAt && eligibleAt ? (
             <>

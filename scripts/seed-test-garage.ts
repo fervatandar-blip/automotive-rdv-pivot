@@ -164,6 +164,8 @@ async function main() {
       languages_spoken: ["French", "English", "German"],
       platform_terms_accepted_at: new Date().toISOString(),
       status: "approved",
+      registration_number: "B198234",
+      vat_number: "LU21234567",
     })
     .eq("id", garage.id);
 
