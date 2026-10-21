@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSuperAdmin } from "@/lib/dal";
 import { locales, parseLocale, defaultLocale } from "@/lib/i18n/config";
 import { getOrigin } from "@/lib/origin";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { GarageLeadFormSchema, type GarageLeadFormState } from "@/lib/definitions";
 
 function revalidateLocalizedPath(path: string) {
@@ -19,6 +20,13 @@ export async function submitGarageLead(
   state: GarageLeadFormState,
   formData: FormData
 ): Promise<GarageLeadFormState> {
+  // Public, unauthenticated form -- no signal about who's calling other
+  // than IP, same as the other public-form rate limits in app/actions/auth.ts.
+  const ip = await getClientIp();
+  if (!(await checkRateLimit(`garage-lead:${ip}`, 5, 60 * 60 * 1000))) {
+    return { formError: "Too many submissions. Please wait a bit and try again." };
+  }
+
   // The phone field is submitted as two parts (a calling-code select plus
   // the number itself) but stored as a single string -- no schema change
   // needed, just combined before validation.
@@ -70,7 +78,7 @@ export async function submitGarageLead(
   });
 
   if (error) {
-    return { errors: {} };
+    return { formError: "Something went wrong submitting your request. Please try again." };
   }
 
   return { success: true };

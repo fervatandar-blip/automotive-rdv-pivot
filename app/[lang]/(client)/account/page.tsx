@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAuthedProfile } from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
 import {
@@ -17,6 +18,9 @@ export default async function AccountPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const profile = await getAuthedProfile(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.account;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const isGarageRole =
     profile.role === "admin_garage" || profile.role === "mecanicien";
 
@@ -39,10 +43,10 @@ export default async function AccountPage({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; Back to dashboard
+              &larr; {d.backToDashboard}
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
-              Account
+              {d.title}
             </h1>
           </div>
           <LanguageSwitcher lang={lang} />
@@ -60,81 +64,80 @@ export default async function AccountPage({
         {isGarageRole && (
           <section className="flex flex-col gap-3 border-t border-black/[.08] pt-6 dark:border-white/[.145]">
             <h2 className="font-semibold text-black dark:text-zinc-50">
-              Notifications
+              {d.notifications}
             </h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Get notified about new bookings and messages on this device.
+              {d.notificationsDescription}
             </p>
-            <PushNotificationOptIn />
+            <PushNotificationOptIn
+              enableLabel={d.enablePush}
+              enablingLabel={d.enablingPush}
+            />
           </section>
         )}
 
         {profile.role === "admin_garage" && (
           <section className="flex flex-col gap-3 border-t border-black/[.08] pt-6 dark:border-white/[.145]">
             <h2 className="font-semibold text-black dark:text-zinc-50">
-              Team access
+              {d.teamAccess}
             </h2>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Manage which mécaniciens can access your garage&apos;s
-              dashboard.
+              {d.teamAccessDescription}
             </p>
             <Link
               href={`/${lang}/garage/staff`}
               className="self-start rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
             >
-              Manage staff
+              {d.manageStaff}
             </Link>
           </section>
         )}
 
         <section className="flex flex-col gap-3 border-t border-black/[.08] pt-6 dark:border-white/[.145]">
           <h2 className="font-semibold text-black dark:text-zinc-50">
-            Security
+            {d.security}
           </h2>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Manage your account&apos;s security and data.
+            {d.securityDescription}
           </p>
 
           <h3 className="font-medium text-black dark:text-zinc-50">
-            Delete account
+            {d.deleteAccount}
           </h3>
 
           {requestedAt && eligibleAt ? (
             <>
               <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
-                Your account is scheduled for deletion on{" "}
-                {eligibleAt.toLocaleDateString(undefined, {
+                {d.scheduledForDeletionPrefix}{" "}
+                {eligibleAt.toLocaleDateString(dateLocale, {
                   year: "numeric",
                   month: "long",
                   day: "numeric",
                 })}
-                . You can cancel this any time before then.
+                {d.scheduledForDeletionSuffix}
               </p>
               <form action={cancelAccountDeletion}>
                 <button
                   type="submit"
                   className="rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                 >
-                  Cancel deletion request
+                  {d.cancelDeletionRequest}
                 </button>
               </form>
             </>
           ) : (
             <>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Requesting deletion schedules your account and profile
-                information to be anonymized after a{" "}
-                {ACCOUNT_DELETION_GRACE_PERIOD_DAYS}-day grace period, during
-                which you can cancel the request. Invoices and payment
-                records tied to your account are retained as required by
-                law and are not affected.
+                {d.deletionExplanationPrefix}{" "}
+                {ACCOUNT_DELETION_GRACE_PERIOD_DAYS}
+                {d.deletionExplanationSuffix}
               </p>
               <form action={requestAccountDeletion}>
                 <button
                   type="submit"
                   className="rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                 >
-                  Delete my account
+                  {d.deleteMyAccount}
                 </button>
               </form>
             </>

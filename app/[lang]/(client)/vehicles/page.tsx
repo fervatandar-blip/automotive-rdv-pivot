@@ -2,6 +2,7 @@ import { Car } from "lucide-react";
 import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { deleteVehicle } from "@/app/actions/vehicles";
 import { EmptyStateCard } from "@/components/empty-state-card";
 import { AddVehicleForm } from "./add-vehicle-form";
@@ -22,6 +23,8 @@ export default async function VehiclesPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const user = await getAuthedUser(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.vehicles;
   const supabase = await createClient();
 
   const [{ data: vehicles }, { data: brands }] = await Promise.all([
@@ -39,10 +42,10 @@ export default async function VehiclesPage({
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-          My vehicles
+          {d.title}
         </h1>
 
-        <AddVehicleForm brands={brands ?? []} />
+        <AddVehicleForm brands={brands ?? []} dictionary={d.form} />
 
         <div className="flex flex-col gap-3">
           {rows.length > 0 ? (
@@ -59,12 +62,12 @@ export default async function VehiclesPage({
                     <h3 className="font-semibold text-black dark:text-zinc-50">
                       {[vehicle.brands?.name, vehicle.model]
                         .filter(Boolean)
-                        .join(" ") || "Vehicle"}
+                        .join(" ") || d.vehicleFallback}
                     </h3>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                       {[vehicle.year, vehicle.license_plate]
                         .filter(Boolean)
-                        .join(" · ") || "No details added"}
+                        .join(" · ") || d.noDetailsAdded}
                     </p>
                   </div>
                 </div>
@@ -75,7 +78,7 @@ export default async function VehiclesPage({
                     type="submit"
                     className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                   >
-                    Delete
+                    {d.delete}
                   </button>
                 </form>
               </div>
@@ -83,8 +86,8 @@ export default async function VehiclesPage({
           ) : (
             <EmptyStateCard
               icon={Car}
-              title="No vehicles saved yet"
-              description="Add a vehicle above to speed up booking and keep your service history in one place."
+              title={d.noVehiclesTitle}
+              description={d.noVehiclesDescription}
             />
           )}
         </div>

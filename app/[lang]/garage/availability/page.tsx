@@ -6,19 +6,10 @@ import {
   deleteAvailabilityOverride,
 } from "@/app/actions/availability";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { AddAvailabilityForm } from "./add-availability-form";
 import { AddOverrideForm } from "./add-override-form";
-
-const DAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
 
 function formatTime(time: string) {
   return time.slice(0, 5);
@@ -32,8 +23,8 @@ function todayDateKey() {
   return `${year}-${month}-${day}`;
 }
 
-function formatOverrideDate(date: string) {
-  return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+function formatOverrideDate(date: string, dateLocale: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString(dateLocale, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -49,6 +40,9 @@ export default async function GarageAvailabilityPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageMember(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageAvailability;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const supabase = await createClient();
 
   const { data: availability } = await supabase
@@ -58,7 +52,7 @@ export default async function GarageAvailabilityPage({
     .order("day_of_week", { ascending: true })
     .order("start_time", { ascending: true });
 
-  const byDay = DAYS.map((_, dayOfWeek) =>
+  const byDay = d.days.map((_: string, dayOfWeek: number) =>
     (availability ?? []).filter((slot) => slot.day_of_week === dayOfWeek)
   );
 
@@ -74,21 +68,23 @@ export default async function GarageAvailabilityPage({
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-            {garage.name} &mdash; availability
+            {garage.name} &mdash; {d.availabilitySuffix}
           </h1>
           <div className="flex items-center gap-4 text-sm font-medium">
             <div className="flex gap-4 underline">
-              <Link href={`/${lang}/garage/calendar`}>Calendar</Link>
-              <Link href={`/${lang}/garage/services`}>Manage services</Link>
+              <Link href={`/${lang}/garage/calendar`}>{d.calendar}</Link>
+              <Link href={`/${lang}/garage/services`}>
+                {d.manageServices}
+              </Link>
             </div>
             <LanguageSwitcher lang={lang} />
           </div>
         </div>
 
-        <AddAvailabilityForm />
+        <AddAvailabilityForm dictionary={d.addForm} days={d.days} />
 
         <div className="flex flex-col gap-4">
-          {DAYS.map((day, dayOfWeek) => (
+          {d.days.map((day: string, dayOfWeek: number) => (
             <div
               key={day}
               className="rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
@@ -98,7 +94,7 @@ export default async function GarageAvailabilityPage({
               </h3>
               {byDay[dayOfWeek].length === 0 ? (
                 <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                  No availability set.
+                  {d.noAvailabilitySet}
                 </p>
               ) : (
                 <ul className="mt-2 flex flex-col gap-2">
@@ -118,7 +114,7 @@ export default async function GarageAvailabilityPage({
                           type="submit"
                           className="text-red-600 underline"
                         >
-                          Delete
+                          {d.delete}
                         </button>
                       </form>
                     </li>
@@ -129,11 +125,11 @@ export default async function GarageAvailabilityPage({
           ))}
         </div>
 
-        <AddOverrideForm />
+        <AddOverrideForm dictionary={d.overrideForm} />
 
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            Upcoming date overrides
+            {d.upcomingOverrides}
           </h2>
           {overrides && overrides.length > 0 ? (
             overrides.map((override) => (
@@ -143,11 +139,11 @@ export default async function GarageAvailabilityPage({
               >
                 <div>
                   <p className="font-medium text-black dark:text-zinc-50">
-                    {formatOverrideDate(override.date)}
+                    {formatOverrideDate(override.date, dateLocale)}
                   </p>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
                     {override.is_closed
-                      ? "Closed all day"
+                      ? d.closedAllDay
                       : `${formatTime(override.start_time)} – ${formatTime(override.end_time)}`}
                   </p>
                 </div>
@@ -155,14 +151,14 @@ export default async function GarageAvailabilityPage({
                   <input type="hidden" name="id" value={override.id} />
                   <input type="hidden" name="lang" value={lang} />
                   <button type="submit" className="text-red-600 underline">
-                    Delete
+                    {d.delete}
                   </button>
                 </form>
               </div>
             ))
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No upcoming overrides.
+              {d.noUpcomingOverrides}
             </p>
           )}
         </div>

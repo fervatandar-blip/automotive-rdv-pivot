@@ -11,7 +11,31 @@ import {
 import { GARAGE_SIZE_TYPES, GARAGE_SIZE_TYPE_LABELS } from "@/lib/definitions";
 import { StyledSelect } from "@/components/styled-select";
 
-export function DemoLeadForm() {
+type DemoLeadFormDictionary = {
+  successTitle: string;
+  successDescription: string;
+  scheduleCall: string;
+  willBeInTouch: string;
+  firstName: string;
+  lastName: string;
+  businessEmail: string;
+  phone: string;
+  countryCode: string;
+  garageName: string;
+  country: string;
+  garageSizeType: string;
+  selectAnOption: string;
+  additionalDetails: string;
+  additionalDetailsPlaceholder: string;
+  submit: string;
+  submitPending: string;
+};
+
+export function DemoLeadForm({
+  dictionary: d,
+}: {
+  dictionary: DemoLeadFormDictionary;
+}) {
   const [state, action, pending] = useActionState(submitGarageLead, undefined);
 
   if (state?.success) {
@@ -20,12 +44,10 @@ export function DemoLeadForm() {
     return (
       <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-brand-600/15 bg-white p-8 text-center shadow-xl shadow-brand-600/5 dark:border-brand-500/20 dark:bg-zinc-950 dark:shadow-brand-500/10">
         <h2 className="text-xl font-semibold text-black dark:text-zinc-50">
-          Thank you. Your request has been received.
+          {d.successTitle}
         </h2>
         <p className="max-w-sm text-sm text-zinc-600 dark:text-zinc-400">
-          A member of our team will be in touch shortly to confirm your
-          personalized demo. In the meantime, feel free to choose a time that
-          suits you.
+          {d.successDescription}
         </p>
         {bookingUrl ? (
           <a
@@ -34,11 +56,11 @@ export function DemoLeadForm() {
             rel="noopener noreferrer"
             className="mt-2 rounded-full bg-foreground px-6 py-2.5 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
           >
-            Schedule your demo call
+            {d.scheduleCall}
           </a>
         ) : (
           <p className="mt-2 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            We&apos;ll be in touch by email shortly.
+            {d.willBeInTouch}
           </p>
         )}
       </div>
@@ -50,10 +72,14 @@ export function DemoLeadForm() {
       action={action}
       className="flex flex-col gap-4 rounded-2xl border-2 border-brand-600/15 bg-white p-8 shadow-xl shadow-brand-600/5 dark:border-brand-500/20 dark:bg-zinc-950 dark:shadow-brand-500/10"
     >
+      {state?.formError && (
+        <p className="text-sm text-red-600">{state.formError}</p>
+      )}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="firstName" className="text-sm font-medium">
-            First name
+            {d.firstName}
           </label>
           <input
             id="firstName"
@@ -68,7 +94,7 @@ export function DemoLeadForm() {
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="lastName" className="text-sm font-medium">
-            Last name
+            {d.lastName}
           </label>
           <input
             id="lastName"
@@ -86,7 +112,7 @@ export function DemoLeadForm() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="businessEmail" className="text-sm font-medium">
-            Business email
+            {d.businessEmail}
           </label>
           <input
             id="businessEmail"
@@ -102,14 +128,14 @@ export function DemoLeadForm() {
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="phone" className="text-sm font-medium">
-            Phone number
+            {d.phone}
           </label>
           <div className="flex">
             <div className="relative shrink-0">
               <select
                 name="phoneCountryCode"
                 defaultValue="+352"
-                aria-label="Country code"
+                aria-label={d.countryCode}
                 className="h-full appearance-none rounded-l-md border border-r-0 border-black/[.08] bg-white py-2 pl-3 pr-7 text-sm focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-white/[.145] dark:bg-black"
               >
                 {COUNTRIES.map((code) => (
@@ -141,7 +167,7 @@ export function DemoLeadForm() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="garageName" className="text-sm font-medium">
-            Garage name
+            {d.garageName}
           </label>
           <input
             id="garageName"
@@ -155,7 +181,7 @@ export function DemoLeadForm() {
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="country" className="text-sm font-medium">
-            Country
+            {d.country}
           </label>
           <StyledSelect id="country" name="country" defaultValue="LU">
             {COUNTRIES.map((code) => (
@@ -172,10 +198,10 @@ export function DemoLeadForm() {
 
       <div className="flex flex-col gap-1">
         <label htmlFor="garageSizeType" className="text-sm font-medium">
-          Garage size/type
+          {d.garageSizeType}
         </label>
         <StyledSelect id="garageSizeType" name="garageSizeType" defaultValue="">
-          <option value="">Select an option</option>
+          <option value="">{d.selectAnOption}</option>
           {GARAGE_SIZE_TYPES.map((code) => (
             <option key={code} value={code}>
               {GARAGE_SIZE_TYPE_LABELS[code]}
@@ -189,13 +215,13 @@ export function DemoLeadForm() {
 
       <div className="flex flex-col gap-1">
         <label htmlFor="message" className="text-sm font-medium">
-          Additional details (optional)
+          {d.additionalDetails}
         </label>
         <textarea
           id="message"
           name="message"
           rows={4}
-          placeholder="How many bays, what services you offer, anything you'd like us to know before the call..."
+          placeholder={d.additionalDetailsPlaceholder}
           className="rounded-md border border-black/[.08] px-3 py-2 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-white/[.145] dark:bg-black"
         />
         {state?.errors?.message && (
@@ -208,7 +234,7 @@ export function DemoLeadForm() {
         type="submit"
         className="mt-6 w-full rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-600 disabled:opacity-50 dark:bg-zinc-100 dark:text-black dark:hover:bg-brand-500"
       >
-        {pending ? "Submitting..." : "Book my garage's free demo."}
+        {pending ? d.submitPending : d.submit}
       </button>
     </form>
   );

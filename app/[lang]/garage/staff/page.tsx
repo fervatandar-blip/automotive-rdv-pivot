@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireGarageOwner } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { removeMechanic } from "@/app/actions/staff";
 import { InviteMechanicForm } from "./invite-form";
@@ -19,6 +20,8 @@ export default async function GarageStaffPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageOwner(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageStaff;
   const supabase = await createClient();
 
   const { data: staff } = await supabase
@@ -35,16 +38,16 @@ export default async function GarageStaffPage({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; Back to dashboard
+              &larr; {d.backToDashboard}
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
-              {garage.name} &mdash; staff
+              {garage.name} &mdash; {d.staffSuffix}
             </h1>
           </div>
           <LanguageSwitcher lang={lang} />
         </div>
 
-        <InviteMechanicForm />
+        <InviteMechanicForm dictionary={d.inviteForm} />
 
         <div className="flex flex-col gap-4">
           {staff && staff.length > 0 ? (
@@ -55,7 +58,7 @@ export default async function GarageStaffPage({
               >
                 <div>
                   <p className="font-medium text-black dark:text-zinc-50">
-                    {row.profiles?.full_name ?? "Mécanicien"}
+                    {row.profiles?.full_name ?? d.mechanicFallback}
                   </p>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
                     {row.profiles?.email}
@@ -72,14 +75,14 @@ export default async function GarageStaffPage({
                     type="submit"
                     className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                   >
-                    Remove
+                    {d.remove}
                   </button>
                 </form>
               </div>
             ))
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No mécaniciens yet.
+              {d.noMechanicsYet}
             </p>
           )}
         </div>

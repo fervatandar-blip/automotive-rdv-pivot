@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireSuperAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { DOCUMENT_CATEGORIES } from "@/lib/documents";
 import {
@@ -11,21 +12,12 @@ import {
   setVerificationLevel,
 } from "@/app/actions/documents";
 
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  pending: {
-    label: "Pending review",
-    className:
-      "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-400",
-  },
-  approved: {
-    label: "Approved",
-    className:
-      "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-400",
-  },
-  rejected: {
-    label: "Rejected",
-    className: "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-400",
-  },
+const STATUS_BADGE_CLASSNAME: Record<string, string> = {
+  pending:
+    "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-400",
+  approved:
+    "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-400",
+  rejected: "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-400",
 };
 
 const VERIFICATION_LEVELS = [
@@ -52,6 +44,8 @@ export default async function AdminGarageDetailPage({
   const { lang: rawLang, id: garageId } = await params;
   const lang = resolveLocale(rawLang);
   await requireSuperAdmin(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.adminGarageDetail;
   const supabase = await createClient();
 
   const { data: garage } = await supabase
@@ -74,12 +68,28 @@ export default async function AdminGarageDetailPage({
     byType.set(doc.document_type, doc);
   }
 
+  // One batched Storage call instead of one sequential round-trip per
+  // document -- createSignedUrls preserves input order, so results line up
+  // with docsToSign by index.
+  const docsToSign = Array.from(byType.values());
   const signedUrls = new Map<string, string>();
-  for (const doc of byType.values()) {
-    const { data } = await supabase.storage
+  if (docsToSign.length > 0) {
+    const { data: signedUrlResults } = await supabase.storage
       .from("garage-documents")
-      .createSignedUrl(doc.file_path, 60 * 10);
-    if (data?.signedUrl) signedUrls.set(doc.document_type, data.signedUrl);
+      .createSignedUrls(
+        docsToSign.map((doc) => doc.file_path),
+        60 * 10
+      );
+
+    signedUrlResults?.forEach((result, index) => {
+      if (result.signedUrl) {
+        signedUrls.set(docsToSign[index].document_type, result.signedUrl);
+      }
+    });
+  }
+
+  function statusLabel(status: string) {
+    return d.statusLabels[status as keyof typeof d.statusLabels] ?? status;
   }
 
   return (
@@ -91,13 +101,13 @@ export default async function AdminGarageDetailPage({
               href={`/${lang}/admin/garages`}
               className="text-sm font-medium underline"
             >
-              &larr; All garages
+              &larr; {d.backToAllGarages}
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
               {garage.name}
             </h1>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {garage.city ?? "No city set"} &middot; {garage.email ?? "no email"}
+              {garage.city ?? d.noCitySet} &middot; {garage.email ?? d.noEmail}
             </p>
           </div>
           <LanguageSwitcher lang={lang} />
@@ -106,9 +116,9 @@ export default async function AdminGarageDetailPage({
         <div className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
           <div className="flex flex-wrap items-center gap-3">
             <span
-              className={`rounded-full px-3 py-1 text-sm font-medium ${STATUS_BADGE[garage.status]?.className ?? ""}`}
+              className={`rounded-full px-3 py-1 text-sm font-medium ${STATUS_BADGE_CLASSNAME[garage.status] ?? ""}`}
             >
-              {STATUS_BADGE[garage.status]?.label ?? garage.status}
+              {statusLabel(garage.status)}
             </span>
 
             <form action={setGarageStatus} className="flex gap-2">
@@ -119,7 +129,7 @@ export default async function AdminGarageDetailPage({
                 type="submit"
                 className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
               >
-                Approve garage
+                {d.approveGarage}
               </button>
             </form>
             <form action={setGarageStatus} className="flex gap-2">
@@ -130,7 +140,7 @@ export default async function AdminGarageDetailPage({
                 type="submit"
                 className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
               >
-                Reject garage
+                {d.rejectGarage}
               </button>
             </form>
           </div>
@@ -139,7 +149,7 @@ export default async function AdminGarageDetailPage({
             <input type="hidden" name="lang" value={lang} />
             <input type="hidden" name="garageId" value={garage.id} />
             <label htmlFor="verificationLevel" className="text-sm font-medium">
-              Verification level
+              {d.verificationLevel}
             </label>
             <select
               id="verificationLevel"
@@ -157,7 +167,7 @@ export default async function AdminGarageDetailPage({
               type="submit"
               className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
             >
-              Save
+              {d.save}
             </button>
           </form>
         </div>
@@ -185,9 +195,9 @@ export default async function AdminGarageDetailPage({
                         {doc ? (
                           <>
                             <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[doc.status]?.className ?? ""}`}
+                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASSNAME[doc.status] ?? ""}`}
                             >
-                              {STATUS_BADGE[doc.status]?.label ?? doc.status}
+                              {statusLabel(doc.status)}
                             </span>
                             {signedUrls.has(type.key) && (
                               <a
@@ -202,7 +212,7 @@ export default async function AdminGarageDetailPage({
                           </>
                         ) : (
                           <span className="text-xs text-zinc-400 dark:text-zinc-600">
-                            Not uploaded
+                            {d.notUploaded}
                           </span>
                         )}
                       </div>
@@ -219,7 +229,7 @@ export default async function AdminGarageDetailPage({
                             type="submit"
                             className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                           >
-                            Approve
+                            {d.approve}
                           </button>
                         </form>
                         <form action={reviewDocument} className="flex gap-1">
@@ -230,14 +240,14 @@ export default async function AdminGarageDetailPage({
                           <input
                             type="text"
                             name="notes"
-                            placeholder="Reason (optional)"
+                            placeholder={d.reasonPlaceholder}
                             className="w-32 rounded-md border border-black/[.08] px-2 py-1 text-xs dark:border-white/[.145] dark:bg-black"
                           />
                           <button
                             type="submit"
                             className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                           >
-                            Reject
+                            {d.reject}
                           </button>
                         </form>
                       </div>

@@ -3,30 +3,7 @@ import { Search, ShieldCheck, Zap } from "lucide-react";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { AnimatedLogo } from "@/components/animated-logo";
 import { resolveLocale } from "@/lib/i18n/config";
-
-const features = [
-  {
-    icon: Search,
-    title: "Search & compare",
-    description:
-      "Filter garages by brand, specialty, EV capability, and price, and see them on a map before you choose.",
-    emphasized: false,
-  },
-  {
-    icon: ShieldCheck,
-    title: "Verified garages",
-    description:
-      "Every garage completes a document verification process, and real client ratings & reviews are right on their profile.",
-    emphasized: false,
-  },
-  {
-    icon: Zap,
-    title: "Book instantly",
-    description:
-      "See real-time availability and lock in a time in a couple of taps — no phone calls, no waiting to hear back.",
-    emphasized: true,
-  },
-];
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 
 export default async function Home({
   params,
@@ -35,6 +12,28 @@ export default async function Home({
 }) {
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
+  const dictionary = await getDictionary(lang);
+
+  const features = [
+    {
+      icon: Search,
+      title: dictionary.home.features.search.title,
+      description: dictionary.home.features.search.description,
+      emphasized: false,
+    },
+    {
+      icon: ShieldCheck,
+      title: dictionary.home.features.verified.title,
+      description: dictionary.home.features.verified.description,
+      emphasized: false,
+    },
+    {
+      icon: Zap,
+      title: dictionary.home.features.instant.title,
+      description: dictionary.home.features.instant.description,
+      emphasized: true,
+    },
+  ];
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden bg-zinc-50 dark:bg-black">
@@ -54,7 +53,7 @@ export default async function Home({
               href={`/${lang}/login`}
               className="text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
             >
-              Log in
+              {dictionary.common.logIn}
             </Link>
           </nav>
         </header>
@@ -63,24 +62,23 @@ export default async function Home({
           <div className="mx-auto grid w-full max-w-6xl gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
             <div className="flex flex-col items-start text-left">
               <h1 className="max-w-xl text-4xl font-black tracking-tighter text-black sm:text-5xl lg:text-6xl dark:text-zinc-50">
-                Find a trusted garage in Luxembourg.
+                {dictionary.home.heroTitle}
               </h1>
               <p className="mt-6 max-w-md text-lg text-zinc-600 dark:text-zinc-400">
-                RDV connects car owners with verified garages &mdash; search,
-                compare, and book online in a few taps.
+                {dictionary.home.heroSubtitle}
               </p>
               <div className="mt-10 flex flex-col gap-4 sm:flex-row">
                 <Link
                   href={`/${lang}/garages`}
                   className="flex h-12 items-center justify-center rounded-full bg-brand-600 px-8 text-base font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
                 >
-                  Find a garage
+                  {dictionary.home.findGarageCta}
                 </Link>
                 <Link
                   href={`/${lang}/demo`}
                   className="flex h-12 items-center justify-center rounded-full border border-black/[.08] px-8 text-base font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                 >
-                  List your garage
+                  {dictionary.home.listGarageCta}
                 </Link>
               </div>
             </div>

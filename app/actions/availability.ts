@@ -93,6 +93,24 @@ export async function createAvailabilityOverride(
   const { date, startTime, endTime } = validatedFields.data;
   const supabase = await createClient();
 
+  // Replace, not add to, any existing override for this date. There's no DB
+  // uniqueness on (garage_id, date) yet (see supabase/migrations/0029 --
+  // written but not applied, needs a management token to run), so without
+  // this a second submission for the same date -- e.g. switching it from
+  // "closed" to custom hours without deleting the old row first -- leaves
+  // both rows in place. getAvailableSlotsForDate unions every override row
+  // for a date together, so the stale row keeps silently affecting what's
+  // actually bookable.
+  const { error: deleteError } = await supabase
+    .from("availability_overrides")
+    .delete()
+    .eq("garage_id", garage.id)
+    .eq("date", date);
+
+  if (deleteError) {
+    return { message: deleteError.message };
+  }
+
   const { error } = await supabase.from("availability_overrides").insert({
     garage_id: garage.id,
     date,

@@ -2,45 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { DemoLeadForm } from "./demo-lead-form";
-
-const STEPS = [
-  {
-    title: "Fill in the form",
-    description: "Share a few details about your garage — it takes less than a minute.",
-  },
-  {
-    title: "Get a free demo",
-    description: "A member of our team will walk you through the platform, tailored to your specialty.",
-  },
-  {
-    title: "Go live when you're ready",
-    description: "We'll configure your profile so you can start welcoming clients on your schedule.",
-  },
-];
-
-const BENEFITS = [
-  {
-    title: "Expand your local reach",
-    description:
-      "Be discovered by car owners across Luxembourg actively searching for a trusted garage near them.",
-  },
-  {
-    title: "Streamlined scheduling",
-    description:
-      "A calendar built for a garage floor — confirmations, rescheduling, and staff assignment, all in one place.",
-  },
-  {
-    title: "Automated digital workflow",
-    description:
-      "From the first request to the completed job, RDV Pro automates the busywork so your team can focus on the work itself.",
-  },
-  {
-    title: "Stand out with verification",
-    description:
-      "A document verification process and genuine client reviews on your profile establish credibility from day one.",
-  },
-];
 
 export default async function DemoPage({
   params,
@@ -49,6 +12,8 @@ export default async function DemoPage({
 }) {
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.demo;
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
@@ -69,19 +34,19 @@ export default async function DemoPage({
               href={`/${lang}`}
               className="text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
             >
-              For drivers
+              {d.forDrivers}
             </Link>
             <Link
               href={`/${lang}/demo`}
               className="text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
             >
-              For garages
+              {d.forGarages}
             </Link>
             <a
               href="#lead-form"
               className="text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
             >
-              Contact
+              {d.contact}
             </a>
           </nav>
 
@@ -91,13 +56,13 @@ export default async function DemoPage({
               href={`/${lang}/login`}
               className="text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
             >
-              Log in
+              {d.logIn}
             </Link>
             <a
               href="#lead-form"
               className="rounded-full bg-brand-600 px-4 py-2 text-white transition-colors hover:bg-brand-700"
             >
-              Book a demo
+              {d.bookADemo}
             </a>
           </div>
         </div>
@@ -108,18 +73,17 @@ export default async function DemoPage({
           <div className="flex flex-col gap-10">
             <div>
               <h1 className="text-4xl font-black tracking-tighter text-black sm:text-5xl dark:text-zinc-50">
-                Grow your garage business with RDV Pro.
+                {d.heroTitle}
               </h1>
               <p className="mt-6 max-w-md text-lg text-zinc-600 dark:text-zinc-400">
-                Start with a free, personalized demo. No commitment, no
-                credit card, just a walkthrough tailored to your specialty.
+                {d.heroSubtitle}
               </p>
             </div>
 
             <ol className="flex flex-col gap-6">
-              {STEPS.map((step, index) => (
+              {d.steps.map((step, index) => (
                 <li key={step.title} className="relative flex gap-4">
-                  {index < STEPS.length - 1 && (
+                  {index < d.steps.length - 1 && (
                     <span
                       aria-hidden
                       className="absolute left-4 top-8 -bottom-6 w-px bg-black/[.08] dark:bg-white/[.145]"
@@ -141,17 +105,17 @@ export default async function DemoPage({
             </ol>
 
             <span className="inline-flex w-fit items-center rounded-full border border-brand-600/20 bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700 dark:border-brand-500/30 dark:bg-brand-950 dark:text-brand-400">
-              Now onboarding garages across Luxembourg
+              {d.badge}
             </span>
           </div>
 
           <div id="lead-form">
-            <DemoLeadForm />
+            <DemoLeadForm dictionary={d.leadForm} />
           </div>
         </div>
 
         <div className="mt-24 grid w-full max-w-5xl gap-6 sm:grid-cols-2">
-          {BENEFITS.map((benefit) => (
+          {d.benefits.map((benefit) => (
             <div
               key={benefit.title}
               className="rounded-xl border border-black/[.08] bg-white p-6 text-left dark:border-white/[.145] dark:bg-zinc-950"

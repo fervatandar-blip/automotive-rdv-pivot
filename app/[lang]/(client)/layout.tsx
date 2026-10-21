@@ -1,6 +1,11 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { Car } from "lucide-react";
-import { getAuthedProfile, getGarageMembership } from "@/lib/dal";
+import {
+  getAuthedProfile,
+  getOptionalAuthedProfile,
+  getGarageMembership,
+} from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { ClientSidebar, ClientMobileNav } from "@/components/client-nav";
 import { ClientPageTitle } from "@/components/client-page-title";
@@ -17,6 +22,16 @@ function initialsFor(name: string) {
     .toUpperCase();
 }
 
+// /garages and /garages/[id] are public discovery/booking pages -- an
+// anonymous visitor must be able to reach them (see
+// lib/supabase/proxy.ts's protectedRoutes, which deliberately excludes
+// "/garages"). Every other route in this group still requires a session,
+// enforced below via the unconditional getAuthedProfile call.
+function isPublicDiscoveryRoute(pathname: string, lang: string) {
+  const withoutLocale = pathname.replace(`/${lang}`, "") || "/";
+  return withoutLocale === "/garages" || withoutLocale.startsWith("/garages/");
+}
+
 export default async function ClientLayout({
   children,
   params,
@@ -26,7 +41,18 @@ export default async function ClientLayout({
 }) {
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
-  const profile = await getAuthedProfile(lang);
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") ?? "";
+
+  const profile = isPublicDiscoveryRoute(pathname, lang)
+    ? await getOptionalAuthedProfile()
+    : await getAuthedProfile(lang);
+
+  if (!profile) {
+    // Only reachable for an anonymous visitor on a public discovery route --
+    // getAuthedProfile above always redirects rather than returning null.
+    return <>{children}</>;
+  }
 
   // This route group also covers /account (role-agnostic, no chrome of its
   // own) plus /garages, /garages/[id] and /vehicles -- a garage owner or
@@ -40,7 +66,7 @@ export default async function ClientLayout({
     if (membership?.garage.platform_terms_accepted_at) {
       return (
         <div className="flex flex-1">
-          <GarageSidebar lang={lang} />
+          <GarageSidebar lang={lang} isOwner={membership.isOwner} />
           <div className="flex flex-1 flex-col">
             <GarageTopBar
               lang={lang}

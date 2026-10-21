@@ -1,9 +1,12 @@
 import { requireGarageOwner } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
+import { retryInvoiceGeneration } from "@/app/actions/appointments";
 
 type InvoiceRow = {
   id: string;
+  appointment_id: string;
   invoice_number: string;
   amount: number;
   currency: string;
@@ -13,6 +16,13 @@ type InvoiceRow = {
     services: { name: string } | null;
     client: { full_name: string } | null;
   } | null;
+};
+
+type CompletedAppointmentRow = {
+  id: string;
+  start_time: string;
+  services: { name: string } | null;
+  client: { full_name: string } | null;
 };
 
 type PaymentRow = {
@@ -50,34 +60,72 @@ export default async function GarageInvoicesPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageOwner(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageInvoices;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const supabase = await createClient();
 
-  const [{ data: invoices }, { data: payments }] = await Promise.all([
-    supabase
-      .from("invoices")
-      .select(
-        "id, invoice_number, amount, currency, issued_at, file_path, appointments(services(name), client:profiles!appointments_client_id_fkey(full_name))"
-      )
-      .eq("garage_id", garage.id)
-      .order("issued_at", { ascending: false }),
-    supabase
-      .from("payments")
-      .select(
-        "id, amount, commission_amount, payout_amount, currency, status, created_at, appointments(services(name), client:profiles!appointments_client_id_fkey(full_name))"
-      )
-      .eq("garage_id", garage.id)
-      .order("created_at", { ascending: false }),
-  ]);
+  const [{ data: invoices }, { data: payments }, { data: completedAppointments }] =
+    await Promise.all([
+      supabase
+        .from("invoices")
+        .select(
+          "id, appointment_id, invoice_number, amount, currency, issued_at, file_path, appointments(services(name), client:profiles!appointments_client_id_fkey(full_name))"
+        )
+        .eq("garage_id", garage.id)
+        .order("issued_at", { ascending: false }),
+      supabase
+        .from("payments")
+        .select(
+          "id, amount, commission_amount, payout_amount, currency, status, created_at, appointments(services(name), client:profiles!appointments_client_id_fkey(full_name))"
+        )
+        .eq("garage_id", garage.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("appointments")
+        .select(
+          "id, start_time, services(name), client:profiles!appointments_client_id_fkey(full_name)"
+        )
+        .eq("garage_id", garage.id)
+        .eq("status", "completed")
+        .order("start_time", { ascending: false }),
+    ]);
 
   const invoiceRows = (invoices ?? []) as unknown as InvoiceRow[];
   const paymentRows = (payments ?? []) as unknown as PaymentRow[];
+  const completedAppointmentRows = (completedAppointments ??
+    []) as unknown as CompletedAppointmentRow[];
 
+  // generateInvoice (app/actions/appointments.ts) is best-effort: a PDF
+  // render or Storage failure leaves a completed appointment with no
+  // invoice and no other visible sign anything went wrong. Diffed
+  // client-side rather than a NOT IN subquery, matching the pattern
+  // already used elsewhere in this app for the same kind of "per-parent
+  // latest/missing child row" problem (see garage/messages/page.tsx).
+  const invoicedAppointmentIds = new Set(
+    invoiceRows.map((invoice) => invoice.appointment_id)
+  );
+  const missingInvoiceAppointments = completedAppointmentRows.filter(
+    (appointment) => !invoicedAppointmentIds.has(appointment.id)
+  );
+
+  // One batched Storage call instead of one sequential round-trip per
+  // invoice -- createSignedUrls preserves input order, so results line up
+  // with invoiceRows by index.
   const signedUrls = new Map<string, string>();
-  for (const invoice of invoiceRows) {
-    const { data } = await supabase.storage
+  if (invoiceRows.length > 0) {
+    const { data: signedUrlResults } = await supabase.storage
       .from("invoices")
-      .createSignedUrl(invoice.file_path, 60 * 10);
-    if (data?.signedUrl) signedUrls.set(invoice.id, data.signedUrl);
+      .createSignedUrls(
+        invoiceRows.map((invoice) => invoice.file_path),
+        60 * 10
+      );
+
+    signedUrlResults?.forEach((result, index) => {
+      if (result.signedUrl) {
+        signedUrls.set(invoiceRows[index].id, result.signedUrl);
+      }
+    });
   }
 
   const succeededPayments = paymentRows.filter(
@@ -100,13 +148,13 @@ export default async function GarageInvoicesPage({
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-          {garage.name} &mdash; Invoices &amp; Financials
+          {garage.name} &mdash; {d.titleSuffix}
         </h1>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
-              Total revenue
+              {d.totalRevenue}
             </p>
             <p className="mt-1 text-xl font-semibold text-black dark:text-zinc-50">
               {formatMoney(totalRevenue, "eur")}
@@ -114,7 +162,7 @@ export default async function GarageInvoicesPage({
           </div>
           <div className="rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
-              Total commission
+              {d.totalCommission}
             </p>
             <p className="mt-1 text-xl font-semibold text-black dark:text-zinc-50">
               {formatMoney(totalCommission, "eur")}
@@ -122,7 +170,7 @@ export default async function GarageInvoicesPage({
           </div>
           <div className="rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
             <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
-              Total payout to date
+              {d.totalPayout}
             </p>
             <p className="mt-1 text-xl font-semibold text-black dark:text-zinc-50">
               {formatMoney(totalPayout, "eur")}
@@ -132,11 +180,11 @@ export default async function GarageInvoicesPage({
 
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-            Payments
+            {d.payments}
           </h2>
           {paymentRows.length === 0 ? (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No payments yet.
+              {d.noPaymentsYet}
             </p>
           ) : (
             <div className="flex flex-col gap-3">
@@ -147,21 +195,21 @@ export default async function GarageInvoicesPage({
                 >
                   <div>
                     <h3 className="font-semibold text-black dark:text-zinc-50">
-                      {payment.appointments?.services?.name ?? "Service"}
+                      {payment.appointments?.services?.name ?? d.serviceFallback}
                     </h3>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      {payment.appointments?.client?.full_name ?? "Client"}{" "}
+                      {payment.appointments?.client?.full_name ?? d.clientFallback}{" "}
                       &middot;{" "}
-                      {new Date(payment.created_at).toLocaleDateString()}
+                      {new Date(payment.created_at).toLocaleDateString(dateLocale)}
                     </p>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      Charged {formatMoney(payment.amount, payment.currency)}{" "}
-                      &middot; commission{" "}
+                      {d.charged} {formatMoney(payment.amount, payment.currency)}{" "}
+                      &middot; {d.commission}{" "}
                       {formatMoney(
                         payment.commission_amount,
                         payment.currency
                       )}{" "}
-                      &middot; payout{" "}
+                      &middot; {d.payout}{" "}
                       <span className="font-medium">
                         {formatMoney(payment.payout_amount, payment.currency)}
                       </span>
@@ -170,7 +218,9 @@ export default async function GarageInvoicesPage({
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[payment.status] ?? ""}`}
                   >
-                    {payment.status}
+                    {d.paymentStatus[
+                      payment.status as keyof typeof d.paymentStatus
+                    ] ?? payment.status}
                   </span>
                 </div>
               ))}
@@ -178,13 +228,52 @@ export default async function GarageInvoicesPage({
           )}
         </div>
 
+        {missingInvoiceAppointments.length > 0 && (
+          <div className="flex flex-col gap-4">
+            <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
+              {d.missingInvoices}
+            </h2>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {d.missingInvoicesDescription}
+            </p>
+            <div className="flex flex-col gap-3">
+              {missingInvoiceAppointments.map((appointment) => (
+                <div
+                  key={appointment.id}
+                  className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900 dark:bg-amber-950"
+                >
+                  <div>
+                    <h3 className="font-semibold text-black dark:text-zinc-50">
+                      {appointment.services?.name ?? d.serviceFallback}
+                    </h3>
+                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                      {appointment.client?.full_name ?? d.clientFallback} &middot;{" "}
+                      {new Date(appointment.start_time).toLocaleDateString(dateLocale)}
+                    </p>
+                  </div>
+                  <form action={retryInvoiceGeneration}>
+                    <input type="hidden" name="id" value={appointment.id} />
+                    <input type="hidden" name="lang" value={lang} />
+                    <button
+                      type="submit"
+                      className="rounded-full border border-amber-300 bg-white px-4 py-1.5 text-sm font-medium transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:hover:bg-amber-900"
+                    >
+                      {d.generateInvoice}
+                    </button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-4">
           <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-            Invoices
+            {d.invoices}
           </h2>
           {invoiceRows.length === 0 ? (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No invoices yet.
+              {d.noInvoicesYet}
             </p>
           ) : (
             <div className="flex flex-col gap-3">
@@ -198,13 +287,15 @@ export default async function GarageInvoicesPage({
                       {invoice.invoice_number}
                     </h3>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      {invoice.appointments?.services?.name ?? "Service"} for{" "}
-                      {invoice.appointments?.client?.full_name ?? "client"}
+                      {invoice.appointments?.services?.name ?? d.serviceFallback}{" "}
+                      {d.for}{" "}
+                      {invoice.appointments?.client?.full_name ??
+                        d.clientFallbackLowercase}
                     </p>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                       {formatMoney(invoice.amount, invoice.currency)}{" "}
                       &middot;{" "}
-                      {new Date(invoice.issued_at).toLocaleDateString()}
+                      {new Date(invoice.issued_at).toLocaleDateString(dateLocale)}
                     </p>
                   </div>
                   {signedUrls.has(invoice.id) && (
@@ -212,7 +303,7 @@ export default async function GarageInvoicesPage({
                       href={signedUrls.get(invoice.id)}
                       className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                     >
-                      Download
+                      {d.download}
                     </a>
                   )}
                 </div>

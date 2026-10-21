@@ -1,6 +1,7 @@
 import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { averageRating, formatRating } from "@/lib/ratings";
 
 type ReviewRow = {
@@ -12,8 +13,8 @@ type ReviewRow = {
   appointments: { services: { name: string } | null } | null;
 };
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
+function formatDate(iso: string, dateLocale: string) {
+  return new Date(iso).toLocaleDateString(dateLocale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -28,6 +29,9 @@ export default async function GarageReviewsPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageMember(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageReviews;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const supabase = await createClient();
 
   const { data: reviews } = await supabase
@@ -47,12 +51,12 @@ export default async function GarageReviewsPage({
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-          Reviews
+          {d.title}
         </h1>
 
         <div className="rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
           <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            Overall rating
+            {d.overallRating}
           </p>
           <div className="mt-2 flex items-center gap-3">
             <span className="text-2xl font-semibold text-black dark:text-zinc-50">
@@ -60,7 +64,7 @@ export default async function GarageReviewsPage({
               {"☆".repeat(5 - roundedAverage)}
             </span>
             <span className="text-sm text-zinc-600 dark:text-zinc-400">
-              {formatRating(ratings)}
+              {formatRating(ratings, d.noReviewsYet)}
             </span>
           </div>
         </div>
@@ -74,7 +78,7 @@ export default async function GarageReviewsPage({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-black dark:text-zinc-50">
-                    {review.profiles?.full_name ?? "Client"}
+                    {review.profiles?.full_name ?? d.clientFallback}
                   </span>
                   <span className="text-sm text-zinc-600 dark:text-zinc-400">
                     {"★".repeat(review.rating)}
@@ -82,17 +86,17 @@ export default async function GarageReviewsPage({
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {review.comment ?? "No comment left"}
+                  {review.comment ?? d.noCommentLeft}
                 </p>
                 <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-500">
-                  {review.appointments?.services?.name ?? "Service"} &middot;{" "}
-                  {formatDate(review.created_at)}
+                  {review.appointments?.services?.name ?? d.serviceFallback}{" "}
+                  &middot; {formatDate(review.created_at, dateLocale)}
                 </p>
               </div>
             ))
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No reviews yet.
+              {d.noReviewsYetBody}
             </p>
           )}
         </div>

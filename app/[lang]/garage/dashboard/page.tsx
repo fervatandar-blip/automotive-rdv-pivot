@@ -10,10 +10,13 @@ import {
   updateRepairStage,
 } from "@/app/actions/appointments";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
+import { getDictionary, type Dictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
 import { StyledSelect } from "@/components/styled-select";
 import { REPAIR_STAGES, REPAIR_STAGE_LABELS } from "@/lib/definitions";
+
+type D = Dictionary["garageDashboard"];
 
 function isUpcoming(appointment: { status: string; start_time: string }) {
   return (
@@ -22,8 +25,8 @@ function isUpcoming(appointment: { status: string; start_time: string }) {
   );
 }
 
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
+function formatDateTime(iso: string, dateLocale: string) {
+  return new Date(iso).toLocaleString(dateLocale, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -44,9 +47,13 @@ type AssignedAppointment = {
 function MechanicAppointmentCard({
   appointment,
   lang,
+  dateLocale,
+  d,
 }: {
   appointment: AssignedAppointment;
   lang: Locale;
+  dateLocale: string;
+  d: D;
 }) {
   const canConfirm = appointment.status === "pending";
   const canComplete =
@@ -59,20 +66,20 @@ function MechanicAppointmentCard({
     <div className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
       <div>
         <h3 className="font-semibold text-black dark:text-zinc-50">
-          {appointment.services?.name ?? "Service"}
+          {appointment.services?.name ?? d.serviceFallback}
         </h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          Client: {appointment.profiles?.full_name ?? "Client"}
+          {d.clientLabel} {appointment.profiles?.full_name ?? d.clientFallback}
         </p>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {formatDateTime(appointment.start_time)}
+          {formatDateTime(appointment.start_time, dateLocale)}
         </p>
         {appointment.status === "cancelled" && (
-          <p className="mt-1 text-sm text-red-600">Cancelled</p>
+          <p className="mt-1 text-sm text-red-600">{d.cancelled}</p>
         )}
         {appointment.status === "completed" && (
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Completed
+            {d.completed}
           </p>
         )}
         {appointment.status === "confirmed" && (
@@ -88,7 +95,7 @@ function MechanicAppointmentCard({
               className="text-xs"
             >
               <option value="" disabled>
-                Repair stage
+                {d.repairStagePlaceholder}
               </option>
               {REPAIR_STAGES.map((stage) => (
                 <option key={stage} value={stage}>
@@ -100,7 +107,7 @@ function MechanicAppointmentCard({
               type="submit"
               className="shrink-0 rounded-full border border-black/[.08] px-3 py-1 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
             >
-              Update
+              {d.update}
             </button>
           </form>
         )}
@@ -110,7 +117,7 @@ function MechanicAppointmentCard({
           href={`/${lang}/appointments/${appointment.id}/messages`}
           className="w-full rounded-full border border-black/[.08] px-4 py-1 text-center text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
         >
-          Message
+          {d.message}
         </Link>
         {canConfirm && (
           <form action={confirmAppointment}>
@@ -120,7 +127,7 @@ function MechanicAppointmentCard({
               type="submit"
               className="w-full rounded-full border border-black/[.08] px-4 py-1 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
             >
-              Confirm
+              {d.confirm}
             </button>
           </form>
         )}
@@ -132,7 +139,7 @@ function MechanicAppointmentCard({
               type="submit"
               className="w-full rounded-full border border-black/[.08] px-4 py-1 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
             >
-              Complete
+              {d.complete}
             </button>
           </form>
         )}
@@ -141,7 +148,7 @@ function MechanicAppointmentCard({
             href={`/${lang}/appointments/${appointment.id}/reschedule`}
             className="w-full rounded-full border border-black/[.08] px-4 py-1 text-center text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
           >
-            Reschedule
+            {d.reschedule}
           </Link>
         )}
         {canCancel && (
@@ -152,7 +159,7 @@ function MechanicAppointmentCard({
               type="submit"
               className="w-full rounded-full border border-black/[.08] px-4 py-1 text-xs font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
             >
-              Cancel
+              {d.cancel}
             </button>
           </form>
         )}
@@ -178,7 +185,7 @@ function OwnerStatTile({
   );
 }
 
-function LogoutButton({ lang }: { lang: Locale }) {
+function LogoutButton({ lang, d }: { lang: Locale; d: D }) {
   return (
     <form action={logout}>
       <input type="hidden" name="lang" value={lang} />
@@ -186,7 +193,7 @@ function LogoutButton({ lang }: { lang: Locale }) {
         type="submit"
         className="rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
       >
-        Log out
+        {d.logOut}
       </button>
     </form>
   );
@@ -200,6 +207,9 @@ export default async function GarageDashboardPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const profile = await getAuthedProfile(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageDashboard;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
 
   // Direct navigation guard -- getGarageMembership alone can't tell "wrong
   // role" apart from "right role, no garage association" (both return
@@ -214,26 +224,25 @@ export default async function GarageDashboardPage({
 
   if (!membership) {
     // A mecanicien with no garage association (e.g. removed from staff).
-    // Don't call requireGarageMember here — its fallback redirects to
+    // Don't call requireGarageMember here -- its fallback redirects to
     // /garage/dashboard, which would loop forever on this exact page.
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-zinc-50 px-4 py-16 dark:bg-black">
         <div className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-zinc-950">
           <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-            No garage yet
+            {d.noGarageTitle}
           </h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            You&apos;re not currently part of a garage team. Ask your
-            garage admin to add you as staff.
+            {d.noGarageDescription}
           </p>
           <Link
             href={`/${lang}/account`}
             className="text-sm font-medium underline"
           >
-            Account
+            {d.account}
           </Link>
           <LanguageSwitcher lang={lang} />
-          <LogoutButton lang={lang} />
+          <LogoutButton lang={lang} d={d} />
         </div>
       </div>
     );
@@ -267,7 +276,7 @@ export default async function GarageDashboardPage({
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
           <div className="flex flex-col gap-4">
             <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Your assigned appointments
+              {d.yourAssignedAppointments}
             </h2>
             {upcoming.length > 0 ? (
               upcoming.map((appointment) => (
@@ -275,11 +284,13 @@ export default async function GarageDashboardPage({
                   key={appointment.id}
                   appointment={appointment}
                   lang={lang}
+                  dateLocale={dateLocale}
+                  d={d}
                 />
               ))
             ) : (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                No upcoming appointments assigned to you.
+                {d.noUpcomingAssigned}
               </p>
             )}
           </div>
@@ -287,13 +298,15 @@ export default async function GarageDashboardPage({
           {other.length > 0 && (
             <div className="flex flex-col gap-4">
               <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                Past &amp; cancelled
+                {d.pastAndCancelled}
               </h2>
               {other.map((appointment) => (
                 <MechanicAppointmentCard
                   key={appointment.id}
                   appointment={appointment}
                   lang={lang}
+                  dateLocale={dateLocale}
+                  d={d}
                 />
               ))}
             </div>
@@ -352,13 +365,13 @@ export default async function GarageDashboardPage({
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <OwnerStatTile label="Upcoming" value={upcomingCount ?? 0} />
+          <OwnerStatTile label={d.statUpcoming} value={upcomingCount ?? 0} />
           <OwnerStatTile
-            label="Awaiting confirmation"
+            label={d.statAwaitingConfirmation}
             value={pendingCount ?? 0}
           />
           <OwnerStatTile
-            label="Completed this week"
+            label={d.statCompletedThisWeek}
             value={completedThisWeekCount ?? 0}
           />
         </div>
@@ -368,20 +381,20 @@ export default async function GarageDashboardPage({
             <div>
               <h3 className="font-semibold text-amber-900 dark:text-amber-300">
                 {garage.status === "rejected"
-                  ? "Your garage was not approved"
-                  : "Your garage is pending approval"}
+                  ? d.garageRejectedTitle
+                  : d.garagePendingTitle}
               </h3>
               <p className="mt-1 text-sm text-amber-800 dark:text-amber-400">
                 {garage.status === "pending"
-                  ? "You can still set up services and availability while you wait."
-                  : "Review your profile and resubmit for approval."}
+                  ? d.garagePendingDescription
+                  : d.garageRejectedDescription}
               </p>
             </div>
             <Link
               href={`/${lang}/garage/onboarding`}
               className="shrink-0 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
             >
-              Review profile
+              {d.reviewProfile}
             </Link>
           </div>
         )}
@@ -390,18 +403,17 @@ export default async function GarageDashboardPage({
           <div className="flex flex-col items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="font-semibold text-amber-900 dark:text-amber-300">
-                Connect Stripe to accept bookings
+                {d.connectStripeTitle}
               </h3>
               <p className="mt-1 text-sm text-amber-800 dark:text-amber-400">
-                Clients can&apos;t book paid appointments until payments are
-                set up.
+                {d.connectStripeDescription}
               </p>
             </div>
             <Link
               href={`/${lang}/garage/stripe-connect`}
               className="shrink-0 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
             >
-              Set up payments
+              {d.setUpPayments}
             </Link>
           </div>
         )}
@@ -409,13 +421,13 @@ export default async function GarageDashboardPage({
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Upcoming appointments
+              {d.upcomingAppointments}
             </h2>
             <Link
               href={`/${lang}/garage/calendar`}
               className="text-sm font-medium underline"
             >
-              View full calendar &rarr;
+              {d.viewFullCalendar} &rarr;
             </Link>
           </div>
           {ownerUpcoming.length > 0 ? (
@@ -424,11 +436,13 @@ export default async function GarageDashboardPage({
                 key={appointment.id}
                 appointment={appointment}
                 lang={lang}
+                dateLocale={dateLocale}
+                d={d}
               />
             ))
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No upcoming appointments.
+              {d.noUpcomingAppointments}
             </p>
           )}
         </div>

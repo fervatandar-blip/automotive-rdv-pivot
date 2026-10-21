@@ -15,6 +15,28 @@ export const SignupFormSchema = z.object({
   role: z.literal("client"),
 });
 
+// Deliberately has no `role` field at all -- unlike SignupFormSchema, which
+// at least validates an attacker-submitted role against a z.literal
+// allowlist, this schema structurally never reads a role from form data in
+// the first place. garageSignup() (app/actions/auth.ts) hardcodes
+// role: "admin_garage" as a literal in its own code, independent of
+// anything in the submitted FormData. supabase/migrations/
+// 0030_restrict_self_signup_roles.sql is the second, independent layer:
+// even a caller that bypasses this app entirely and hits Supabase Auth's
+// signup API directly can only ever self-grant 'client' or 'admin_garage'.
+export const GarageSignupFormSchema = z.object({
+  fullName: z
+    .string()
+    .min(2, { error: "Name must be at least 2 characters long." })
+    .trim(),
+  email: z.email({ error: "Please enter a valid email." }).trim(),
+  password: z
+    .string()
+    .min(8, { error: "Be at least 8 characters long." })
+    .regex(/[a-zA-Z]/, { error: "Contain at least one letter." })
+    .regex(/[0-9]/, { error: "Contain at least one number." }),
+});
+
 export const InviteMechanicFormSchema = z.object({
   fullName: z
     .string()
@@ -203,6 +225,9 @@ export const GarageOnboardingFormSchema = z
     city: z.string().trim().optional(),
     phone: z.string().trim().optional(),
     email: z.email({ error: "Please enter a valid email." }).optional(),
+    website: z
+      .url({ error: "Enter a full URL, starting with http:// or https://." })
+      .optional(),
     country: z.enum(COUNTRIES, { error: "Select a country." }),
     registrationNumber: z.string().trim().optional(),
     vatNumber: z.string().trim().optional(),
@@ -235,6 +260,7 @@ export type GarageOnboardingFormState =
         city?: string[];
         phone?: string[];
         email?: string[];
+        website?: string[];
         country?: string[];
         registrationNumber?: string[];
         pricingCategory?: string[];
@@ -368,6 +394,10 @@ export type GarageLeadFormState =
         garageSizeType?: string[];
         message?: string[];
       };
+      // General/top-level failure (e.g. rate limited) -- distinct from
+      // errors.message, which is the optional textarea field's own
+      // validation error.
+      formError?: string;
       success?: boolean;
     }
   | undefined;

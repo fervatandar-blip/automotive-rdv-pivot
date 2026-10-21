@@ -1,0 +1,110 @@
+import { describe, expect, it } from "vitest";
+import { computeAvailableSlots } from "./slots";
+
+// Fixed reference "now" well before any slot under test, so slots aren't
+// dropped as already-past unless a test deliberately exercises that path.
+const EARLY_NOW = new Date("2020-01-01T00:00:00");
+
+describe("computeAvailableSlots", () => {
+  it("generates one slot per duration-sized step across a window", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows: [{ start_time: "09:00:00", end_time: "10:00:00" }],
+      durationMinutes: 30,
+      bookedRanges: [],
+      now: EARLY_NOW,
+    });
+
+    expect(slots).toEqual(["09:00", "09:30"]);
+  });
+
+  it("drops a trailing slot that doesn't fully fit before the window ends", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows: [{ start_time: "09:00:00", end_time: "09:45:00" }],
+      durationMinutes: 30,
+      bookedRanges: [],
+      now: EARLY_NOW,
+    });
+
+    // 09:00-09:30 fits; 09:30-10:00 would run past the 09:45 window end.
+    expect(slots).toEqual(["09:00"]);
+  });
+
+  it("excludes a slot that overlaps an existing booking (booking-conflict avoidance)", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows: [{ start_time: "09:00:00", end_time: "11:00:00" }],
+      durationMinutes: 30,
+      bookedRanges: [
+        {
+          start: new Date("2026-06-01T09:30:00"),
+          end: new Date("2026-06-01T10:00:00"),
+        },
+      ],
+      now: EARLY_NOW,
+    });
+
+    expect(slots).not.toContain("09:30");
+    expect(slots).toEqual(["09:00", "10:00", "10:30"]);
+  });
+
+  it("excludes a slot that only partially overlaps a booking at either edge", () => {
+    // A booking from 09:15-09:45 partially overlaps both the 09:00 and
+    // 09:30 candidate slots -- both must be dropped, not just the one
+    // that starts inside the booking.
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows: [{ start_time: "09:00:00", end_time: "10:00:00" }],
+      durationMinutes: 30,
+      bookedRanges: [
+        {
+          start: new Date("2026-06-01T09:15:00"),
+          end: new Date("2026-06-01T09:45:00"),
+        },
+      ],
+      now: EARLY_NOW,
+    });
+
+    expect(slots).toEqual([]);
+  });
+
+  it("drops slots that start at or before the current time", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows: [{ start_time: "09:00:00", end_time: "10:00:00" }],
+      durationMinutes: 30,
+      bookedRanges: [],
+      now: new Date("2026-06-01T09:30:00"),
+    });
+
+    expect(slots).toEqual([]);
+  });
+
+  it("computes slots independently across multiple windows on the same date", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows: [
+        { start_time: "09:00:00", end_time: "09:30:00" },
+        { start_time: "14:00:00", end_time: "14:30:00" },
+      ],
+      durationMinutes: 30,
+      bookedRanges: [],
+      now: EARLY_NOW,
+    });
+
+    expect(slots).toEqual(["09:00", "14:00"]);
+  });
+
+  it("returns no slots for an empty window list (e.g. a closed override day)", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows: [],
+      durationMinutes: 30,
+      bookedRanges: [],
+      now: EARLY_NOW,
+    });
+
+    expect(slots).toEqual([]);
+  });
+});

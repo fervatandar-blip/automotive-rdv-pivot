@@ -1,6 +1,7 @@
 import { requireGarageOwner } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { OnboardingForm } from "./onboarding-form";
 
 export default async function GarageOnboardingPage({
@@ -14,6 +15,7 @@ export default async function GarageOnboardingPage({
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageOwner(lang);
   const { saved } = await searchParams;
+  const dictionary = await getDictionary(lang);
   const supabase = await createClient();
 
   const [{ data: brands }, { data: specialties }, { data: selectedBrands }, { data: selectedSpecialties }] =
@@ -33,6 +35,7 @@ export default async function GarageOnboardingPage({
   return (
     <OnboardingForm
       lang={lang}
+      dictionary={dictionary.garageOnboarding}
       garage={garage}
       brands={brands ?? []}
       specialties={specialties ?? []}

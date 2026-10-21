@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { requireSuperAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { averageRating } from "@/lib/ratings";
 import {
@@ -59,6 +60,9 @@ export default async function AdminStatsPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   await requireSuperAdmin(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.adminStats;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const supabase = await createClient();
 
   const [
@@ -117,13 +121,13 @@ export default async function AdminStatsPage({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-              Overview
+              {d.title}
             </h1>
             <Link
               href={`/${lang}/admin/garages`}
               className="text-sm font-medium underline"
             >
-              Garages list &rarr;
+              {d.garagesListLink} &rarr;
             </Link>
           </div>
           <div className="flex items-center gap-4">
@@ -133,54 +137,54 @@ export default async function AdminStatsPage({
                 type="submit"
                 className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
               >
-                Run retention sweep now
+                {d.runRetentionSweep}
               </button>
             </form>
             <LanguageSwitcher lang={lang} />
           </div>
         </div>
 
-        <StatSection title="Garages">
-          <StatTile label="Pending" value={garagesPending} />
-          <StatTile label="Approved" value={garagesApproved} />
-          <StatTile label="Rejected" value={garagesRejected} />
+        <StatSection title={d.garagesSection}>
+          <StatTile label={d.pending} value={garagesPending} />
+          <StatTile label={d.approved} value={garagesApproved} />
+          <StatTile label={d.rejected} value={garagesRejected} />
         </StatSection>
 
-        <StatSection title="People">
-          <StatTile label="Clients" value={clients} />
-          <StatTile label="Garage admins" value={garageAdmins} />
-          <StatTile label="Mécaniciens" value={mecaniciens} />
+        <StatSection title={d.peopleSection}>
+          <StatTile label={d.clients} value={clients} />
+          <StatTile label={d.garageAdmins} value={garageAdmins} />
+          <StatTile label={d.mecaniciens} value={mecaniciens} />
         </StatSection>
 
-        <StatSection title="Appointments">
-          <StatTile label="Pending" value={appointmentsPending} />
-          <StatTile label="Confirmed" value={appointmentsConfirmed} />
-          <StatTile label="Completed" value={appointmentsCompleted} />
-          <StatTile label="Cancelled" value={appointmentsCancelled} />
+        <StatSection title={d.appointmentsSection}>
+          <StatTile label={d.pending} value={appointmentsPending} />
+          <StatTile label={d.confirmed} value={appointmentsConfirmed} />
+          <StatTile label={d.completed} value={appointmentsCompleted} />
+          <StatTile label={d.cancelled} value={appointmentsCancelled} />
         </StatSection>
 
-        <StatSection title="Revenue & trust">
+        <StatSection title={d.revenueSection}>
           <StatTile
-            label="Invoiced revenue"
+            label={d.invoicedRevenue}
             value={new Intl.NumberFormat("fr-LU", {
               style: "currency",
               currency: "EUR",
             }).format(totalRevenue)}
           />
           <StatTile
-            label="Platform commission"
+            label={d.platformCommission}
             value={new Intl.NumberFormat("fr-LU", {
               style: "currency",
               currency: "EUR",
             }).format(totalCommission)}
           />
           <StatTile
-            label="Average rating"
+            label={d.averageRating}
             value={avgRating === null ? "—" : avgRating.toFixed(1)}
           />
-          <StatTile label="Total reviews" value={ratings.length} />
+          <StatTile label={d.totalReviews} value={ratings.length} />
           <StatTile
-            label="Documents awaiting review"
+            label={d.documentsAwaitingReview}
             value={pendingDocuments}
           />
         </StatSection>
@@ -188,7 +192,7 @@ export default async function AdminStatsPage({
         {pendingDeletions && pendingDeletions.length > 0 && (
           <div className="flex flex-col gap-3">
             <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Pending account deletions
+              {d.pendingDeletionsSection}
             </h2>
             <div className="flex flex-col gap-3">
               {pendingDeletions.map((request) => (
@@ -207,10 +211,10 @@ export default async function AdminStatsPage({
                       {request.email}
                     </p>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      Requested{" "}
+                      {d.requestedPrefix}{" "}
                       {new Date(
                         request.deletion_requested_at as string
-                      ).toLocaleDateString()}
+                      ).toLocaleDateString(dateLocale)}
                     </p>
                   </div>
                   <form action={processAccountDeletionNow}>
@@ -220,7 +224,7 @@ export default async function AdminStatsPage({
                       type="submit"
                       className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                     >
-                      Process now
+                      {d.processNow}
                     </button>
                   </form>
                 </div>

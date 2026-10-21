@@ -9,23 +9,34 @@ import { MessageFormSchema } from "@/lib/definitions";
 // revalidatePath: unlike every other mutation in this app, the UI updates
 // via the Realtime subscription in components/chat-thread.tsx, not a
 // server re-render.
-export async function sendMessage(appointmentId: string, body: string) {
+// Return value matters here: the caller (components/chat-thread.tsx) clears
+// its draft input only once this reports success, rather than optimistically
+// clearing before the insert is even attempted. Previously this always
+// implicitly resolved (never threw), so a silent failure -- an RLS
+// rejection, a validation failure, a DB error -- looked identical to
+// success from the client's side and the typed message was simply gone.
+export async function sendMessage(
+  appointmentId: string,
+  body: string
+): Promise<{ ok: boolean }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return;
+  if (!user) return { ok: false };
 
   const validatedFields = MessageFormSchema.safeParse({ appointmentId, body });
-  if (!validatedFields.success) return;
+  if (!validatedFields.success) return { ok: false };
 
   // RLS ("Appointment participants can send messages") enforces that the
   // sender is actually a participant on this appointment -- no separate
   // authorization check needed here.
-  await supabase.from("messages").insert({
+  const { error } = await supabase.from("messages").insert({
     appointment_id: validatedFields.data.appointmentId,
     sender_id: user.id,
     body: validatedFields.data.body,
   });
+
+  return { ok: !error };
 }

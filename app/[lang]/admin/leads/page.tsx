@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { COUNTRY_NAMES } from "@/lib/business-registration";
 import { GARAGE_SIZE_TYPE_LABELS } from "@/lib/definitions";
@@ -18,17 +19,6 @@ const STATUS_BADGE: Record<string, string> = {
   converted:
     "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-400",
   archived: "bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400",
-};
-
-const ERROR_MESSAGES: Record<string, string> = {
-  invalid: "That request wasn't valid. Please try again.",
-  "not-found": "That lead couldn't be found.",
-  exists: "That email already belongs to a platform account.",
-  "invite-failed": "Could not send the invite. Please try again.",
-  "garage-missing":
-    "The account was created but its garage record couldn't be found.",
-  "lead-update-failed":
-    "The garage was created, but the lead couldn't be marked converted.",
 };
 
 type LeadRow = {
@@ -56,6 +46,10 @@ export default async function AdminLeadsPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   await requireSuperAdmin(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.adminLeads;
+  const nav = dictionary.adminNav;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const { error, converted } = await searchParams;
   const supabase = await createClient();
 
@@ -75,26 +69,26 @@ export default async function AdminLeadsPage({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-              Leads
+              {d.title}
             </h1>
             <div className="mt-1 flex gap-4 text-sm font-medium underline">
-              <Link href={`/${lang}/admin/stats`}>Overview</Link>
-              <Link href={`/${lang}/admin/garages`}>Garages</Link>
-              <Link href={`/${lang}/admin/leads`}>Leads</Link>
+              <Link href={`/${lang}/admin/stats`}>{nav.overview}</Link>
+              <Link href={`/${lang}/admin/garages`}>{nav.garages}</Link>
+              <Link href={`/${lang}/admin/leads`}>{nav.leads}</Link>
             </div>
           </div>
           <LanguageSwitcher lang={lang} />
         </div>
 
-        {error && ERROR_MESSAGES[error] && (
+        {error && d.errors[error as keyof typeof d.errors] && (
           <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
-            {ERROR_MESSAGES[error]}
+            {d.errors[error as keyof typeof d.errors]}
           </p>
         )}
 
         {converted === "1" && (
           <p className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
-            Lead converted to a garage account.
+            {d.leadConvertedNotice}
           </p>
         )}
 
@@ -118,7 +112,8 @@ export default async function AdminLeadsPage({
                   <span
                     className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[lead.status] ?? ""}`}
                   >
-                    {lead.status}
+                    {d.statusLabels[lead.status as keyof typeof d.statusLabels] ??
+                      lead.status}
                   </span>
                 </div>
 
@@ -142,7 +137,8 @@ export default async function AdminLeadsPage({
                 )}
 
                 <p className="text-xs text-zinc-500 dark:text-zinc-500">
-                  Submitted {new Date(lead.created_at).toLocaleDateString()}
+                  {d.submittedPrefix}{" "}
+                  {new Date(lead.created_at).toLocaleDateString(dateLocale)}
                 </p>
 
                 {lead.status === "converted" && lead.converted_garage_id ? (
@@ -150,7 +146,7 @@ export default async function AdminLeadsPage({
                     href={`/${lang}/admin/garages/${lead.converted_garage_id}`}
                     className="self-start text-sm font-medium underline"
                   >
-                    View garage &rarr;
+                    {d.viewGarage} &rarr;
                   </Link>
                 ) : (
                   <div className="flex flex-wrap gap-2">
@@ -161,7 +157,7 @@ export default async function AdminLeadsPage({
                         type="submit"
                         className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                       >
-                        Mark contacted
+                        {d.markContacted}
                       </button>
                     </form>
                     <form action={convertLeadToAccount}>
@@ -171,7 +167,7 @@ export default async function AdminLeadsPage({
                         type="submit"
                         className="rounded-full bg-brand-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
                       >
-                        Convert to account
+                        {d.convertToAccount}
                       </button>
                     </form>
                     <form action={archiveLead}>
@@ -181,7 +177,7 @@ export default async function AdminLeadsPage({
                         type="submit"
                         className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                       >
-                        Archive
+                        {d.archive}
                       </button>
                     </form>
                   </div>
@@ -190,7 +186,7 @@ export default async function AdminLeadsPage({
             ))
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No leads yet.
+              {d.noLeadsYet}
             </p>
           )}
         </div>

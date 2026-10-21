@@ -16,7 +16,9 @@ import {
   Landmark,
   Building2,
   FileText,
+  Bell,
   User,
+  UserCog,
   PanelLeft,
   PanelLeftClose,
   LogOut,
@@ -56,7 +58,7 @@ function setCollapsed(value: boolean) {
   for (const listener of collapseListeners) listener();
 }
 
-function navGroups(lang: Locale) {
+function navGroups(lang: Locale, isOwner: boolean) {
   return [
     {
       label: "Operations",
@@ -88,6 +90,15 @@ function navGroups(lang: Locale) {
       items: [
         { href: `/${lang}/garage/onboarding`, label: "Garage Profile", icon: Building2 },
         { href: `/${lang}/garage/documents`, label: "Verification & KYC", icon: FileText },
+        // Owner-only: the staff page itself gates on requireGarageOwner, so
+        // showing this to a mecanicien would just be a dead-end link that
+        // redirects them away. Previously only reachable via Account ->
+        // Team access, not from the main portal nav at all for the role
+        // that actually needs it day-to-day.
+        ...(isOwner
+          ? [{ href: `/${lang}/garage/staff`, label: "Staff", icon: UserCog }]
+          : []),
+        { href: `/${lang}/garage/notifications`, label: "Notifications", icon: Bell },
         { href: `/${lang}/account`, label: "Account Settings", icon: User },
       ],
     },
@@ -165,9 +176,15 @@ function SidebarLocaleToggle({
   );
 }
 
-export function GarageSidebar({ lang }: { lang: Locale }) {
+export function GarageSidebar({
+  lang,
+  isOwner,
+}: {
+  lang: Locale;
+  isOwner: boolean;
+}) {
   const pathname = usePathname();
-  const groups = navGroups(lang);
+  const groups = navGroups(lang, isOwner);
 
   // Server always renders expanded; the real preference (if any) is only
   // known client-side, so it's resolved after mount to avoid a hydration

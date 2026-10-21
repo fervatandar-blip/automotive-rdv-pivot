@@ -57,6 +57,44 @@ Required for bookings to work at all:
   can be taken until they're set and a garage completes Connect onboarding at
   `/garage/stripe-connect`.
 
+## Testing
+
+```bash
+npm run test
+```
+
+Runs the Vitest suite (`vitest.config.ts`) — logic-level tests for booking-conflict slot
+computation (`lib/slots.test.ts`), rate-limit windowing (`lib/rate-limit.test.ts`), auth form
+validation (`lib/definitions.test.ts`), and appointment-transition RPC delegation
+(`app/actions/appointments.test.ts`). The last of these verifies the application layer keeps
+calling the correct `SECURITY DEFINER` RPC for each transition rather than a raw table update —
+it does **not** verify the RPCs' own SQL bodies or that Postgres RLS actually enforces them,
+which needs a live Postgres instance (no local Supabase/Docker stack is set up in this repo) and
+was instead checked directly against the deployed project's `pg_policies`/`pg_proc`. No
+component/UI-level tests exist yet.
+
+## Rate limiting
+
+Public-facing actions (`signup`, `garageSignup`, `login`, `requestPasswordReset`,
+`submitGarageLead`, `bookAppointment`) are rate-limited via `lib/rate-limit.ts`'s
+`checkRateLimit`.
+
+**Distributed by default when configured, in-memory otherwise.** Set `UPSTASH_REDIS_REST_URL`
+and `UPSTASH_REDIS_REST_TOKEN` (see `.env.example` — create a database at
+[upstash.com](https://upstash.com) or via the Vercel Upstash integration) and every serverless
+instance shares the same counters via an atomic `SET key 1 NX PX windowMs` + `INCR` in Redis —
+a real guarantee under sustained or distributed abuse, not just a deterrent.
+
+Without those two env vars, `checkRateLimit` falls back to an in-memory `Map` in the Node
+process's memory: counters reset on every cold start/redeploy and aren't shared across
+concurrent serverless instances, so the effective limit on Vercel is looser than the configured
+number suggests. This is also the automatic fallback if Redis itself errors at runtime (a
+transient Upstash outage) — `checkRateLimit` fails *open* to the in-memory limiter rather than
+rejecting every request platform-wide, logging the error via `console.error` either way.
+`lib/rate-limit.distributed.test.ts` covers the Redis path (including the fallback-on-error
+behavior) against a mocked `@upstash/redis` client; `lib/rate-limit.test.ts` covers the
+in-memory path directly.
+
 ## Database migrations
 
 Schema changes live in `supabase/migrations/`, numbered sequentially. They are **applied

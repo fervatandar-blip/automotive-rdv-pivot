@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { CalendarPlus, Car, Check, Wrench } from "lucide-react";
 import { getAuthedProfile } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
+import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import { logout } from "@/app/actions/auth";
 import { cancelAppointment } from "@/app/actions/appointments";
 import { submitReview } from "@/app/actions/reviews";
@@ -114,21 +116,23 @@ function formatDateHeader(iso: string) {
   });
 }
 
-const RATING_OPTIONS = [
-  { value: 5, label: "5 – Excellent" },
-  { value: 4, label: "4 – Good" },
-  { value: 3, label: "3 – Average" },
-  { value: 2, label: "2 – Poor" },
-  { value: 1, label: "1 – Very poor" },
-];
-
 function ReviewForm({
   appointmentId,
   lang,
+  dictionary,
 }: {
   appointmentId: string;
   lang: Locale;
+  dictionary: Dictionary;
 }) {
+  const ratingOptions = [
+    { value: 5, label: dictionary.clientDashboard.ratingOptions["5"] },
+    { value: 4, label: dictionary.clientDashboard.ratingOptions["4"] },
+    { value: 3, label: dictionary.clientDashboard.ratingOptions["3"] },
+    { value: 2, label: dictionary.clientDashboard.ratingOptions["2"] },
+    { value: 1, label: dictionary.clientDashboard.ratingOptions["1"] },
+  ];
+
   return (
     <form
       action={submitReview}
@@ -137,7 +141,7 @@ function ReviewForm({
       <input type="hidden" name="appointmentId" value={appointmentId} />
       <input type="hidden" name="lang" value={lang} />
       <p className="text-sm font-medium text-black dark:text-zinc-50">
-        Leave a review
+        {dictionary.clientDashboard.leaveAReview}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <select
@@ -145,7 +149,7 @@ function ReviewForm({
           defaultValue={5}
           className="rounded-md border border-black/[.08] px-2 py-1 text-sm dark:border-white/[.145] dark:bg-black"
         >
-          {RATING_OPTIONS.map((option) => (
+          {ratingOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -155,12 +159,12 @@ function ReviewForm({
           type="submit"
           className="rounded-full bg-brand-600 px-4 py-1 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
         >
-          Submit
+          {dictionary.clientDashboard.submit}
         </button>
       </div>
       <textarea
         name="comment"
-        placeholder="Optional comment"
+        placeholder={dictionary.clientDashboard.optionalComment}
         rows={2}
         className="rounded-md border border-black/[.08] px-3 py-2 text-sm dark:border-white/[.145] dark:bg-black"
       />
@@ -171,16 +175,20 @@ function ReviewForm({
 function AppointmentCard({
   appointment,
   lang,
+  dictionary,
   cancellable = false,
   invoiceUrl,
   reviewable = false,
 }: {
   appointment: Appointment;
   lang: Locale;
+  dictionary: Dictionary;
   cancellable?: boolean;
   invoiceUrl?: string;
   reviewable?: boolean;
 }) {
+  const d = dictionary.clientDashboard;
+
   return (
     <div className="flex flex-col rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
       <div className="flex items-center justify-between">
@@ -191,7 +199,7 @@ function AppointmentCard({
             </div>
             <div>
               <h3 className="font-semibold text-black dark:text-zinc-50">
-                {appointment.services?.name ?? "Service"}
+                {appointment.services?.name ?? d.serviceFallback}
               </h3>
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 {formatDateHeader(appointment.start_time)}
@@ -199,7 +207,7 @@ function AppointmentCard({
             </div>
           </div>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            with {appointment.garages?.name ?? "Garage"}
+            {d.withGarage} {appointment.garages?.name ?? d.garageFallback}
             {appointment.garages?.city ? ` · ${appointment.garages.city}` : ""}
           </p>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -222,15 +230,15 @@ function AppointmentCard({
           )}
           {appointment.status === "pending_payment" && (
             <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
-              Payment processing
+              {d.paymentProcessing}
             </p>
           )}
           {appointment.status === "cancelled" && (
-            <p className="mt-1 text-sm text-red-600">Cancelled</p>
+            <p className="mt-1 text-sm text-red-600">{d.cancelled}</p>
           )}
           {appointment.status === "completed" && (
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Completed
+              {d.completed}
             </p>
           )}
           {invoiceUrl && (
@@ -238,7 +246,7 @@ function AppointmentCard({
               href={invoiceUrl}
               className="mt-1 inline-block text-sm font-medium underline"
             >
-              Download invoice
+              {d.downloadInvoice}
             </a>
           )}
         </div>
@@ -247,7 +255,7 @@ function AppointmentCard({
             href={`/${lang}/appointments/${appointment.id}/messages`}
             className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:border-brand-600 hover:bg-brand-50 hover:text-brand-700 dark:border-white/[.145] dark:hover:border-brand-500 dark:hover:bg-brand-950 dark:hover:text-brand-400"
           >
-            Message
+            {d.message}
           </Link>
           {cancellable &&
             (appointment.status === "pending" ||
@@ -257,7 +265,7 @@ function AppointmentCard({
                   href={`/${lang}/appointments/${appointment.id}/reschedule`}
                   className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:border-brand-600 hover:bg-brand-50 hover:text-brand-700 dark:border-white/[.145] dark:hover:border-brand-500 dark:hover:bg-brand-950 dark:hover:text-brand-400"
                 >
-                  Reschedule
+                  {d.reschedule}
                 </Link>
                 <form action={cancelAppointment}>
                   <input type="hidden" name="id" value={appointment.id} />
@@ -266,7 +274,7 @@ function AppointmentCard({
                     type="submit"
                     className="w-full rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                   >
-                    Cancel
+                    {d.cancel}
                   </button>
                 </form>
               </>
@@ -274,13 +282,13 @@ function AppointmentCard({
         </div>
       </div>
       {reviewable && (
-        <ReviewForm appointmentId={appointment.id} lang={lang} />
+        <ReviewForm appointmentId={appointment.id} lang={lang} dictionary={dictionary} />
       )}
     </div>
   );
 }
 
-function LogoutButton({ lang }: { lang: Locale }) {
+function LogoutButton({ lang, dictionary }: { lang: Locale; dictionary: Dictionary }) {
   return (
     <form action={logout}>
       <input type="hidden" name="lang" value={lang} />
@@ -288,7 +296,7 @@ function LogoutButton({ lang }: { lang: Locale }) {
         type="submit"
         className="rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
       >
-        Log out
+        {dictionary.clientDashboard.logOut}
       </button>
     </form>
   );
@@ -299,10 +307,12 @@ export default async function DashboardPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ booked?: string }>;
+  searchParams: Promise<{ booked?: string; reviewError?: string }>;
 }) {
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.clientDashboard;
   const profile = await getAuthedProfile(lang);
 
   if (profile.role === "admin_garage" || profile.role === "mecanicien") {
@@ -314,30 +324,30 @@ export default async function DashboardPage({
       <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-zinc-50 px-4 py-16 dark:bg-black">
         <div className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-zinc-950">
           <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-            Welcome, {profile.full_name || profile.email}
+            {d.welcomePrefix} {profile.full_name || profile.email}
           </h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            Role: {profile.role}
+            {d.rolePrefix} {profile.role}
           </p>
           <div className="flex gap-4 text-sm font-medium underline">
-            <Link href={`/${lang}/admin/stats`}>Overview</Link>
-            <Link href={`/${lang}/admin/garages`}>Garages</Link>
-            <Link href={`/${lang}/admin/leads`}>Leads</Link>
+            <Link href={`/${lang}/admin/stats`}>{d.overview}</Link>
+            <Link href={`/${lang}/admin/garages`}>{d.garagesNav}</Link>
+            <Link href={`/${lang}/admin/leads`}>{d.leadsNav}</Link>
           </div>
           <Link
             href={`/${lang}/account`}
             className="text-sm font-medium underline"
           >
-            Account
+            {d.account}
           </Link>
           <LanguageSwitcher lang={lang} />
-          <LogoutButton lang={lang} />
+          <LogoutButton lang={lang} dictionary={dictionary} />
         </div>
       </div>
     );
   }
 
-  const { booked } = await searchParams;
+  const { booked, reviewError } = await searchParams;
   const supabase = await createClient();
 
   const { data: appointments } = await supabase
@@ -421,7 +431,7 @@ export default async function DashboardPage({
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-              Welcome, {profile.full_name || profile.email}
+              {d.welcomePrefix} {profile.full_name || profile.email}
             </h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {profile.email}
@@ -432,40 +442,46 @@ export default async function DashboardPage({
               href={`/${lang}/garages`}
               className="flex h-11 items-center justify-center rounded-full bg-brand-600 px-6 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
             >
-              Book an Appointment
+              {d.bookAppointment}
             </Link>
             <Link
               href={`/${lang}/vehicles`}
               className="text-sm font-medium underline"
             >
-              My vehicles
+              {d.myVehicles}
             </Link>
             <Link
               href={`/${lang}/account`}
               className="text-sm font-medium underline"
             >
-              Account
+              {d.account}
             </Link>
           </div>
         </div>
 
         {booked === "1" && (
           <p className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
-            Your appointment is booked.
+            {d.appointmentBooked}
+          </p>
+        )}
+
+        {reviewError && (
+          <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+            {reviewError === "duplicate" ? d.reviewErrorDuplicate : d.reviewErrorGeneric}
           </p>
         )}
 
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Vehicle Management
+              {d.vehicleManagement}
             </h2>
             {vehicleRows.length > 0 && (
               <Link
                 href={`/${lang}/vehicles`}
                 className="text-sm font-medium underline"
               >
-                Manage vehicles
+                {d.manageVehicles}
               </Link>
             )}
           </div>
@@ -479,12 +495,12 @@ export default async function DashboardPage({
                   <h3 className="font-semibold text-black dark:text-zinc-50">
                     {[vehicle.brands?.name, vehicle.model]
                       .filter(Boolean)
-                      .join(" ") || "Vehicle"}
+                      .join(" ") || d.vehicleFallback}
                   </h3>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
                     {[vehicle.year, vehicle.license_plate]
                       .filter(Boolean)
-                      .join(" · ") || "No details added"}
+                      .join(" · ") || d.noDetailsAdded}
                   </p>
                 </div>
               ))}
@@ -492,17 +508,17 @@ export default async function DashboardPage({
           ) : (
             <EmptyStateCard
               icon={Car}
-              title="No vehicles yet"
-              description="Add a vehicle to speed up booking and keep your service history in one place."
+              title={d.noVehiclesTitle}
+              description={d.noVehiclesDescription}
               ctaHref={`/${lang}/vehicles`}
-              ctaLabel="Add a vehicle"
+              ctaLabel={d.addVehicle}
             />
           )}
         </div>
 
         <div className="flex flex-col gap-4">
           <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            Upcoming
+            {d.upcoming}
           </h2>
           {upcoming.length > 0 ? (
             upcoming.map((appointment) => (
@@ -510,16 +526,17 @@ export default async function DashboardPage({
                 key={appointment.id}
                 appointment={appointment}
                 lang={lang}
+                dictionary={dictionary}
                 cancellable
               />
             ))
           ) : (
             <EmptyStateCard
               icon={CalendarPlus}
-              title="No upcoming appointments"
-              description="Find a garage and book your next service in a couple of taps."
+              title={d.noUpcomingTitle}
+              description={d.noUpcomingDescription}
               ctaHref={`/${lang}/garages`}
-              ctaLabel="Find a garage"
+              ctaLabel={d.findAGarage}
             />
           )}
         </div>
@@ -527,7 +544,7 @@ export default async function DashboardPage({
         {waitlistRows.length > 0 && (
           <div className="flex flex-col gap-4">
             <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Waitlist
+              {d.waitlist}
             </h2>
             {waitlistRows.map((entry) => (
               <div
@@ -536,10 +553,10 @@ export default async function DashboardPage({
               >
                 <div>
                   <h3 className="font-semibold text-black dark:text-zinc-50">
-                    {entry.services?.name ?? "Service"}
+                    {entry.services?.name ?? d.serviceFallback}
                   </h3>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    with {entry.garages?.name ?? "Garage"} on{" "}
+                    {d.waitlistWith} {entry.garages?.name ?? d.garageFallback} {d.waitlistOn}{" "}
                     {new Date(`${entry.date}T00:00:00`).toLocaleDateString(
                       undefined,
                       { weekday: "short", month: "short", day: "numeric" }
@@ -547,7 +564,7 @@ export default async function DashboardPage({
                   </p>
                   {entry.notified_at && (
                     <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
-                      A slot may have opened up &mdash; check availability.
+                      {d.waitlistSlotOpened}
                     </p>
                   )}
                 </div>
@@ -558,7 +575,7 @@ export default async function DashboardPage({
                     type="submit"
                     className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                   >
-                    Leave
+                    {d.leave}
                   </button>
                 </form>
               </div>
@@ -569,13 +586,14 @@ export default async function DashboardPage({
         {other.length > 0 && (
           <div className="flex flex-col gap-4">
             <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Past &amp; cancelled
+              {d.pastAndCancelled}
             </h2>
             {other.map((appointment) => (
               <AppointmentCard
                 key={appointment.id}
                 appointment={appointment}
                 lang={lang}
+                dictionary={dictionary}
                 invoiceUrl={invoiceUrls.get(appointment.id)}
                 reviewable={
                   appointment.status === "completed" &&

@@ -4,7 +4,22 @@ import { useParams } from "next/navigation";
 import { useActionState, useEffect, useRef } from "react";
 import { createAvailabilityOverride } from "@/app/actions/availability";
 
-export function AddOverrideForm() {
+type AddOverrideFormDictionary = {
+  title: string;
+  description: string;
+  dateLabel: string;
+  closedAllDay: string;
+  startLabel: string;
+  endLabel: string;
+  submit: string;
+  submitPending: string;
+};
+
+export function AddOverrideForm({
+  dictionary,
+}: {
+  dictionary: AddOverrideFormDictionary;
+}) {
   const [state, action, pending] = useActionState(
     createAvailabilityOverride,
     undefined
@@ -27,16 +42,15 @@ export function AddOverrideForm() {
       <input type="hidden" name="lang" value={lang} />
 
       <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-        Add a date override
+        {dictionary.title}
       </h2>
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Close a specific date (holiday, staff leave) or set one-off hours
-        that replace your normal weekly schedule for that date.
+        {dictionary.description}
       </p>
 
       <div className="flex flex-col gap-1">
         <label htmlFor="overrideDate" className="text-sm font-medium">
-          Date
+          {dictionary.dateLabel}
         </label>
         <input
           id="overrideDate"
@@ -51,7 +65,7 @@ export function AddOverrideForm() {
 
       <label className="flex items-center gap-1.5 text-sm">
         <input type="checkbox" name="isClosed" defaultChecked={false} />
-        Closed all day
+        {dictionary.closedAllDay}
       </label>
 
       {/*
@@ -64,7 +78,7 @@ export function AddOverrideForm() {
       <div className="grid grid-cols-2 gap-4 group-has-[input[name=isClosed]:checked]:hidden">
         <div className="flex flex-col gap-1">
           <label htmlFor="overrideStartTime" className="text-sm font-medium">
-            Start
+            {dictionary.startLabel}
           </label>
           <input
             id="overrideStartTime"
@@ -82,7 +96,7 @@ export function AddOverrideForm() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="overrideEndTime" className="text-sm font-medium">
-            End
+            {dictionary.endLabel}
           </label>
           <input
             id="overrideEndTime"
@@ -106,7 +120,7 @@ export function AddOverrideForm() {
         type="submit"
         className="self-start rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
       >
-        {pending ? "Adding..." : "Add override"}
+        {pending ? dictionary.submitPending : dictionary.submit}
       </button>
     </form>
   );

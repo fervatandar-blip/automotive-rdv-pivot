@@ -13,6 +13,7 @@ import {
 } from "@/lib/calendar";
 import { DEFAULT_STATUS_STYLE, STATUS_STYLES } from "@/lib/status";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
+import { getDictionary, type Dictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import {
   assignMechanic,
@@ -21,21 +22,7 @@ import {
   providerCancelAppointment,
 } from "@/app/actions/appointments";
 
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTH_LABELS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
+type D = Dictionary["garageCalendar"];
 
 type CalendarAppointment = {
   id: string;
@@ -48,8 +35,8 @@ type CalendarAppointment = {
 
 type Mechanic = { id: string; full_name: string };
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleTimeString(undefined, {
+function formatTime(iso: string, dateLocale: string) {
+  return new Date(iso).toLocaleTimeString(dateLocale, {
     hour: "numeric",
     minute: "2-digit",
   });
@@ -61,12 +48,16 @@ function AppointmentChip({
   mechanics,
   isOwner,
   compact = false,
+  d,
+  dateLocale,
 }: {
   appointment: CalendarAppointment;
   lang: Locale;
   mechanics: Mechanic[];
   isOwner: boolean;
   compact?: boolean;
+  d: D;
+  dateLocale: string;
 }) {
   const style = STATUS_STYLES[appointment.status] ?? DEFAULT_STATUS_STYLE;
   const canConfirm = appointment.status === "pending";
@@ -90,15 +81,15 @@ function AppointmentChip({
       />
       <div className="min-w-0">
         <p className={`font-medium ${style.text}`}>
-          {formatTime(appointment.start_time)}
+          {formatTime(appointment.start_time, dateLocale)}
           {!compact && ` · ${style.label}`}
         </p>
         <p className="truncate text-zinc-700 dark:text-zinc-300">
-          {appointment.services?.name ?? "Service"}
+          {appointment.services?.name ?? d.serviceFallback}
         </p>
         {!compact && (
           <p className="truncate text-zinc-500 dark:text-zinc-500">
-            {appointment.profiles?.full_name ?? "Client"}
+            {appointment.profiles?.full_name ?? d.clientFallback}
           </p>
         )}
         {compact && assignedMechanic && (
@@ -109,8 +100,8 @@ function AppointmentChip({
         {!compact && (
           <p className="truncate text-zinc-500 dark:text-zinc-500">
             {assignedMechanic
-              ? `Assigned: ${assignedMechanic.full_name}`
-              : "Unassigned"}
+              ? `${d.assignedPrefix} ${assignedMechanic.full_name}`
+              : d.unassigned}
           </p>
         )}
         {!compact && isOwner && mechanics.length > 0 && (
@@ -122,7 +113,7 @@ function AppointmentChip({
               defaultValue={appointment.assigned_mechanic_id ?? ""}
               className="min-w-0 flex-1 rounded border border-black/[.08] bg-white px-1 py-0.5 text-[11px] dark:border-white/[.145] dark:bg-black"
             >
-              <option value="">Unassigned</option>
+              <option value="">{d.unassigned}</option>
               {mechanics.map((mechanic) => (
                 <option key={mechanic.id} value={mechanic.id}>
                   {mechanic.full_name}
@@ -133,7 +124,7 @@ function AppointmentChip({
               type="submit"
               className="shrink-0 rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
             >
-              Set
+              {d.set}
             </button>
           </form>
         )}
@@ -143,7 +134,7 @@ function AppointmentChip({
               href={`/${lang}/appointments/${appointment.id}/messages`}
               className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
             >
-              Message
+              {d.message}
             </Link>
             {canConfirm && (
               <form action={confirmAppointment}>
@@ -153,7 +144,7 @@ function AppointmentChip({
                   type="submit"
                   className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
                 >
-                  Confirm
+                  {d.confirm}
                 </button>
               </form>
             )}
@@ -165,7 +156,7 @@ function AppointmentChip({
                   type="submit"
                   className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
                 >
-                  Complete
+                  {d.complete}
                 </button>
               </form>
             )}
@@ -174,7 +165,7 @@ function AppointmentChip({
                 href={`/${lang}/appointments/${appointment.id}/reschedule`}
                 className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
               >
-                Reschedule
+                {d.reschedule}
               </Link>
             )}
             {canCancel && (
@@ -185,7 +176,7 @@ function AppointmentChip({
                   type="submit"
                   className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
                 >
-                  Cancel
+                  {d.cancel}
                 </button>
               </form>
             )}
@@ -257,6 +248,9 @@ export default async function GarageCalendarPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage, isOwner } = await requireGarageMember(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageCalendar;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const { view: viewParam, date: dateParam } = await searchParams;
   const view = viewParam === "month" ? "month" : "week";
   const anchor = parseDateKey(dateParam ?? todayKey());
@@ -305,8 +299,8 @@ export default async function GarageCalendarPage({
 
   const heading =
     view === "week"
-      ? `${MONTH_LABELS[rangeDays[0].getMonth()]} ${rangeDays[0].getDate()} – ${MONTH_LABELS[rangeDays[6].getMonth()]} ${rangeDays[6].getDate()}, ${rangeDays[6].getFullYear()}`
-      : `${MONTH_LABELS[anchor.getMonth()]} ${anchor.getFullYear()}`;
+      ? `${d.months[rangeDays[0].getMonth()]} ${rangeDays[0].getDate()} – ${d.months[rangeDays[6].getMonth()]} ${rangeDays[6].getDate()}, ${rangeDays[6].getFullYear()}`
+      : `${d.months[anchor.getMonth()]} ${anchor.getFullYear()}`;
 
   return (
     <div className="flex flex-1 flex-col gap-6 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
@@ -317,7 +311,7 @@ export default async function GarageCalendarPage({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; Back to dashboard
+              &larr; {d.backToDashboard}
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
               {heading}
@@ -332,13 +326,13 @@ export default async function GarageCalendarPage({
               href={`/${lang}/garage/calendar?view=week&date=${anchorKey}`}
               active={view === "week"}
             >
-              Week
+              {d.week}
             </ToggleLink>
             <ToggleLink
               href={`/${lang}/garage/calendar?view=month&date=${anchorKey}`}
               active={view === "month"}
             >
-              Month
+              {d.month}
             </ToggleLink>
           </div>
 
@@ -351,7 +345,7 @@ export default async function GarageCalendarPage({
             <NavLink
               href={`/${lang}/garage/calendar?view=${view}&date=${todaysKey}`}
             >
-              Today
+              {d.today}
             </NavLink>
             <NavLink
               href={`/${lang}/garage/calendar?view=${view}&date=${toDateKey(nextAnchor)}`}
@@ -380,7 +374,7 @@ export default async function GarageCalendarPage({
                   }`}
                 >
                   <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                    {WEEKDAY_LABELS[day.getDay()]}{" "}
+                    {d.weekdays[day.getDay()]}{" "}
                     <span className="text-black dark:text-zinc-50">
                       {day.getDate()}
                     </span>
@@ -394,6 +388,8 @@ export default async function GarageCalendarPage({
                           lang={lang}
                           mechanics={mechanics}
                           isOwner={isOwner}
+                          d={d}
+                          dateLocale={dateLocale}
                         />
                       ))
                     ) : (
@@ -408,9 +404,9 @@ export default async function GarageCalendarPage({
           </div>
         ) : (
           <div className="grid grid-cols-7 gap-2">
-            {WEEKDAY_LABELS.map((label) => (
+            {d.weekdays.map((label: string, index: number) => (
               <div
-                key={label}
+                key={index}
                 className="px-1 text-xs font-medium text-zinc-600 dark:text-zinc-400"
               >
                 {label}
@@ -455,6 +451,8 @@ export default async function GarageCalendarPage({
                         mechanics={mechanics}
                         isOwner={isOwner}
                         compact
+                        d={d}
+                        dateLocale={dateLocale}
                       />
                     ))}
                     {overflow > 0 && (
@@ -462,7 +460,7 @@ export default async function GarageCalendarPage({
                         href={`/${lang}/garage/calendar?view=week&date=${key}`}
                         className="text-[11px] font-medium text-zinc-600 underline dark:text-zinc-400"
                       >
-                        +{overflow} more
+                        +{overflow} {d.more}
                       </Link>
                     )}
                   </div>

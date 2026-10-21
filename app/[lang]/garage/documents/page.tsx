@@ -2,25 +2,15 @@ import Link from "next/link";
 import { requireGarageOwner } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { DOCUMENT_CATEGORIES } from "@/lib/documents";
 import { uploadDocument } from "@/app/actions/documents";
 
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  pending: {
-    label: "Pending review",
-    className:
-      "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-400",
-  },
-  approved: {
-    label: "Approved",
-    className:
-      "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-400",
-  },
-  rejected: {
-    label: "Rejected",
-    className: "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-400",
-  },
+const STATUS_BADGE_CLASS: Record<string, string> = {
+  pending: "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-400",
+  approved: "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-400",
+  rejected: "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-400",
 };
 
 type DocRow = {
@@ -40,6 +30,8 @@ export default async function GarageDocumentsPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageOwner(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageDocuments;
   const supabase = await createClient();
 
   const { data: documents } = await supabase
@@ -69,13 +61,13 @@ export default async function GarageDocumentsPage({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; Back to dashboard
+              &larr; {d.backToDashboard}
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
-              {garage.name} &mdash; verification documents
+              {garage.name} &mdash; {d.verificationDocumentsSuffix}
             </h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Verification level:{" "}
+              {d.verificationLevel}{" "}
               <span className="font-medium">{garage.verification_level}</span>
             </p>
           </div>
@@ -98,7 +90,10 @@ export default async function GarageDocumentsPage({
             <div className="flex flex-col gap-2">
               {category.documentTypes.map((type) => {
                 const doc = byType.get(type.key);
-                const badge = doc ? STATUS_BADGE[doc.status] : null;
+                const badgeClass = doc ? STATUS_BADGE_CLASS[doc.status] : null;
+                const badgeLabel = doc
+                  ? d.status[doc.status as keyof typeof d.status]
+                  : null;
 
                 return (
                   <div
@@ -110,11 +105,11 @@ export default async function GarageDocumentsPage({
                         {type.label}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
-                        {badge && (
+                        {badgeClass && badgeLabel && (
                           <span
-                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${badgeClass}`}
                           >
-                            {badge.label}
+                            {badgeLabel}
                           </span>
                         )}
                         {doc && signedUrls.has(type.key) && (
@@ -155,7 +150,7 @@ export default async function GarageDocumentsPage({
                         type="submit"
                         className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                       >
-                        {doc ? "Replace" : "Upload"}
+                        {doc ? d.replace : d.upload}
                       </button>
                     </form>
                   </div>

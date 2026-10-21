@@ -9,6 +9,7 @@ import { locales, parseLocale } from "@/lib/i18n/config";
 import { getOrigin } from "@/lib/origin";
 import { getStripe, PLATFORM_COMMISSION_PERCENT } from "@/lib/stripe";
 import { getAvailableSlotsForDate } from "@/lib/availability";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { BookingFormSchema, RescheduleFormSchema } from "@/lib/definitions";
 import {
   notifyAppointmentStatusChange,
@@ -73,7 +74,26 @@ async function notifyStatusChange(
     otherPartyName: appointment.client?.full_name ?? "the client",
     serviceName: appointment.services?.name ?? "the service",
     startTime: appointment.start_time,
+    recipientGarageId: appointment.garage_id,
   });
+}
+
+// Reads the joined parties for an appointment after a write has already
+// happened through one of the SECURITY DEFINER transition functions below.
+// Relies on the unchanged "Participants can view their appointments" SELECT
+// policy -- only the client or a member of the appointment's garage gets a
+// row back.
+async function fetchAppointmentParties(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  appointmentId: string
+) {
+  const { data } = await supabase
+    .from("appointments")
+    .select(PARTIES_SELECT)
+    .eq("id", appointmentId)
+    .maybeSingle();
+
+  return data as unknown as AppointmentWithParties | null;
 }
 
 export async function bookAppointment(formData: FormData) {
@@ -96,6 +116,14 @@ export async function bookAppointment(formData: FormData) {
     validatedFields.data;
   const bookingErrorUrl = (reason: string) =>
     `/${lang}/garages/${garageId}?service=${serviceId}&date=${date}&error=${reason}`;
+
+  // Keyed by the authenticated user (booking already requires auth via
+  // getAuthedUser above), not IP -- ties the limit to the account actually
+  // attempting bookings rather than penalizing everyone sharing a
+  // network/NAT.
+  if (!(await checkRateLimit(`booking:${user.id}`, 10, 60 * 60 * 1000))) {
+    redirect(bookingErrorUrl("rate-limited"));
+  }
 
   if (formData.get("termsAccepted") !== "on") {
     redirect(bookingErrorUrl("terms"));
@@ -189,14 +217,20 @@ export async function bookAppointment(formData: FormData) {
       throw new Error("Stripe did not return a checkout session URL");
     }
 
-    await supabase
-      .from("appointments")
-      .update({ stripe_checkout_session_id: session.id })
-      .eq("id", appointment.id);
+    // Goes through a SECURITY DEFINER function (not a direct table update)
+    // since appointments has no general UPDATE policy for the authenticated
+    // role -- see 0027_appointment_write_integrity.sql.
+    await supabase.rpc("set_appointment_checkout_session", {
+      target_appointment_id: appointment.id,
+      session_id: session.id,
+    });
 
     sessionUrl = session.url;
   } catch (err) {
     console.error("[payments] checkout session creation failed:", err);
+    // Now backed by a real DELETE policy (0027) -- a client may delete their
+    // own still-unpaid appointment, so this no longer silently leaves the
+    // slot permanently held.
     await supabase.from("appointments").delete().eq("id", appointment.id);
     redirect(bookingErrorUrl("payment-error"));
   }
@@ -298,23 +332,24 @@ export async function cancelAppointment(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("appointments")
-    .update({ status: "cancelled" })
-    .eq("id", id)
-    .eq("client_id", user.id)
-    .in("status", ["pending", "confirmed"])
-    .select(PARTIES_SELECT)
-    .maybeSingle();
 
-  if (data) {
-    const appointment = data as unknown as AppointmentWithParties;
-    await notifyStatusChange(appointment, "cancelled", "client");
-    await refundIfPaid(id);
-    await notifyWaitlistOnCancellation(
-      appointment.garage_id,
-      toDateKey(new Date(appointment.start_time))
-    );
+  // Auth + status-transition check happens inside cancel_appointment_as_client
+  // (SECURITY DEFINER) -- appointments has no general UPDATE policy for the
+  // authenticated role, see 0027_appointment_write_integrity.sql.
+  const { data: cancelled } = await supabase.rpc("cancel_appointment_as_client", {
+    target_appointment_id: id,
+  });
+
+  if (cancelled) {
+    const appointment = await fetchAppointmentParties(supabase, id);
+    if (appointment && appointment.client_id === user.id) {
+      await notifyStatusChange(appointment, "cancelled", "client");
+      await refundIfPaid(id);
+      await notifyWaitlistOnCancellation(
+        appointment.garage_id,
+        toDateKey(new Date(appointment.start_time))
+      );
+    }
   }
 
   revalidateLocalizedPath("/dashboard");
@@ -323,7 +358,7 @@ export async function cancelAppointment(formData: FormData) {
 
 export async function confirmAppointment(formData: FormData) {
   const lang = parseLocale(formData.get("lang"));
-  const { garage } = await requireGarageMember(lang);
+  await requireGarageMember(lang);
   const id = formData.get("id");
 
   if (typeof id !== "string" || !id) {
@@ -331,21 +366,16 @@ export async function confirmAppointment(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("appointments")
-    .update({ status: "confirmed" })
-    .eq("id", id)
-    .eq("garage_id", garage.id)
-    .eq("status", "pending")
-    .select(PARTIES_SELECT)
-    .maybeSingle();
 
-  if (data) {
-    await notifyStatusChange(
-      data as unknown as AppointmentWithParties,
-      "confirmed",
-      "garage"
-    );
+  const { data: confirmed } = await supabase.rpc("confirm_appointment", {
+    target_appointment_id: id,
+  });
+
+  if (confirmed) {
+    const appointment = await fetchAppointmentParties(supabase, id);
+    if (appointment) {
+      await notifyStatusChange(appointment, "confirmed", "garage");
+    }
   }
 
   revalidateLocalizedPath("/garage/calendar");
@@ -354,7 +384,7 @@ export async function confirmAppointment(formData: FormData) {
 
 export async function updateRepairStage(formData: FormData) {
   const lang = parseLocale(formData.get("lang"));
-  const { garage } = await requireGarageMember(lang);
+  await requireGarageMember(lang);
   const id = formData.get("id");
   const stage = formData.get("stage");
 
@@ -370,18 +400,15 @@ export async function updateRepairStage(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("appointments")
-    .update({ repair_stage: stage })
-    .eq("id", id)
-    .eq("garage_id", garage.id)
-    .eq("status", "confirmed")
-    .select(PARTIES_SELECT)
-    .maybeSingle();
 
-  if (data) {
-    const appointment = data as unknown as AppointmentWithParties;
-    if (appointment.client) {
+  const { data: updated } = await supabase.rpc("update_appointment_repair_stage", {
+    target_appointment_id: id,
+    new_stage: stage,
+  });
+
+  if (updated) {
+    const appointment = await fetchAppointmentParties(supabase, id);
+    if (appointment?.client) {
       await notifyRepairStageChange({
         stage,
         recipientProfileId: appointment.client_id,
@@ -433,6 +460,18 @@ async function generateInvoice(
 
     if (!client || !garageInfo || !service) return;
 
+    // increment_invoice_number must run before rendering (the number is
+    // printed inside the PDF itself, so it has to be known first) --
+    // meaning a failure in any step below it still permanently burns that
+    // number, with no invoice ever issued under it. Most EU VAT regimes
+    // (Luxembourg included) expect sequential invoice numbering, so a gap
+    // here isn't just cosmetic. This is a narrow, genuinely rare failure
+    // window (Storage/DB calls, not the payment itself), and closing it
+    // completely would need a two-phase claim/commit scheme this function
+    // doesn't have -- what it can and does have is recovery: see
+    // retryInvoiceGeneration below and the "missing invoice" list on
+    // app/[lang]/garage/invoices/page.tsx, so a failure here is visible
+    // and fixable instead of silent and permanent.
     const { data: invoiceNumberValue } = await supabase.rpc(
       "increment_invoice_number",
       { target_garage_id: garageId }
@@ -468,11 +507,17 @@ async function generateInvoice(
     const filePath = `${garageId}/${appointmentId}.pdf`;
     const { error: uploadError } = await supabase.storage
       .from("invoices")
-      .upload(filePath, pdfBuffer, { contentType: "application/pdf" });
+      .upload(filePath, pdfBuffer, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
 
-    if (uploadError) return;
+    if (uploadError) {
+      console.error("[invoice] storage upload failed:", uploadError);
+      return;
+    }
 
-    await supabase.from("invoices").insert({
+    const { error: insertError } = await supabase.from("invoices").insert({
       appointment_id: appointmentId,
       garage_id: garageId,
       client_id: appointment.client_id,
@@ -482,11 +527,64 @@ async function generateInvoice(
       file_path: filePath,
       issued_at: issuedAt,
     });
+
+    if (insertError) {
+      // Previously unchecked -- the PDF is already uploaded to Storage at
+      // this point, but with no `invoices` row pointing at it, so it's
+      // orphaned and the appointment looks invoice-less just like any
+      // other failure in this function. retryInvoiceGeneration's own
+      // upload call uses upsert, so a retry safely overwrites this file.
+      console.error("[invoice] invoices row insert failed:", insertError);
+    }
   } catch (err) {
     // Invoice generation is best-effort: a PDF/storage failure shouldn't
-    // undo the appointment status change that already succeeded.
+    // undo the appointment status change that already succeeded. Recovery
+    // is retryInvoiceGeneration, not automatic retry here.
     console.error("[invoice] failed to generate:", err);
   }
+}
+
+// The recovery path for generateInvoice's failure modes above: lets a
+// garage member manually re-run generation for a completed appointment
+// that never got one. Guards on both status and "no existing invoice" so
+// this can't be used to burn a second invoice number for an appointment
+// that already has one.
+export async function retryInvoiceGeneration(formData: FormData) {
+  const lang = parseLocale(formData.get("lang"));
+  const { garage } = await requireGarageMember(lang);
+  const id = formData.get("id");
+
+  if (typeof id !== "string" || !id) {
+    return;
+  }
+
+  const supabase = await createClient();
+
+  const { data: appointment } = await supabase
+    .from("appointments")
+    .select("id")
+    .eq("id", id)
+    .eq("garage_id", garage.id)
+    .eq("status", "completed")
+    .maybeSingle();
+
+  if (!appointment) {
+    return;
+  }
+
+  const { data: existingInvoice } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("appointment_id", id)
+    .maybeSingle();
+
+  if (existingInvoice) {
+    return;
+  }
+
+  await generateInvoice(supabase, id, garage.id);
+
+  revalidateLocalizedPath("/garage/invoices");
 }
 
 export async function completeAppointment(formData: FormData) {
@@ -499,22 +597,17 @@ export async function completeAppointment(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("appointments")
-    .update({ status: "completed" })
-    .eq("id", id)
-    .eq("garage_id", garage.id)
-    .in("status", ["pending", "confirmed"])
-    .select(PARTIES_SELECT)
-    .maybeSingle();
 
-  if (data) {
-    await notifyStatusChange(
-      data as unknown as AppointmentWithParties,
-      "completed",
-      "garage"
-    );
-    await generateInvoice(supabase, id, garage.id);
+  const { data: completed } = await supabase.rpc("complete_appointment", {
+    target_appointment_id: id,
+  });
+
+  if (completed) {
+    const appointment = await fetchAppointmentParties(supabase, id);
+    if (appointment) {
+      await notifyStatusChange(appointment, "completed", "garage");
+      await generateInvoice(supabase, id, garage.id);
+    }
   }
 
   revalidateLocalizedPath("/garage/calendar");
@@ -523,7 +616,7 @@ export async function completeAppointment(formData: FormData) {
 
 export async function providerCancelAppointment(formData: FormData) {
   const lang = parseLocale(formData.get("lang"));
-  const { garage } = await requireGarageMember(lang);
+  await requireGarageMember(lang);
   const id = formData.get("id");
 
   if (typeof id !== "string" || !id) {
@@ -531,23 +624,21 @@ export async function providerCancelAppointment(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("appointments")
-    .update({ status: "cancelled" })
-    .eq("id", id)
-    .eq("garage_id", garage.id)
-    .in("status", ["pending", "confirmed"])
-    .select(PARTIES_SELECT)
-    .maybeSingle();
 
-  if (data) {
-    const appointment = data as unknown as AppointmentWithParties;
-    await notifyStatusChange(appointment, "cancelled", "garage");
-    await refundIfPaid(id);
-    await notifyWaitlistOnCancellation(
-      appointment.garage_id,
-      toDateKey(new Date(appointment.start_time))
-    );
+  const { data: cancelled } = await supabase.rpc("cancel_appointment_as_garage", {
+    target_appointment_id: id,
+  });
+
+  if (cancelled) {
+    const appointment = await fetchAppointmentParties(supabase, id);
+    if (appointment) {
+      await notifyStatusChange(appointment, "cancelled", "garage");
+      await refundIfPaid(id);
+      await notifyWaitlistOnCancellation(
+        appointment.garage_id,
+        toDateKey(new Date(appointment.start_time))
+      );
+    }
   }
 
   revalidateLocalizedPath("/garage/calendar");
@@ -574,7 +665,7 @@ export async function rescheduleAppointment(formData: FormData) {
     `/${lang}/appointments/${appointmentId}/reschedule?date=${date}&error=${reason}`;
 
   // Selecting via the session-scoped client relies on the existing
-  // "Participants can update their appointments" RLS policy (client_id =
+  // "Participants can view their appointments" RLS policy (client_id =
   // auth.uid() OR is_garage_member(garage_id)) -- anyone else gets no row
   // back, with no separate authorization check needed here.
   const { data: appointment } = await supabase
@@ -619,19 +710,26 @@ export async function rescheduleAppointment(formData: FormData) {
     startDate.getTime() + service.duration_minutes * 60000
   );
 
-  const { error } = await supabase
-    .from("appointments")
-    .update({
-      start_time: startDate.toISOString(),
-      end_time: endDate.toISOString(),
-    })
-    .eq("id", appointmentId);
+  // Goes through a SECURITY DEFINER function (not a direct table update)
+  // since appointments has no general UPDATE policy for the authenticated
+  // role -- see 0027_appointment_write_integrity.sql. The function does not
+  // catch exclusion_violation, so a last-moment race with another booking
+  // still surfaces here as error.code === "23P01", exactly as it did when
+  // this was a direct table update against the same constraint.
+  const { data: rescheduled, error } = await supabase.rpc("reschedule_appointment", {
+    target_appointment_id: appointmentId,
+    new_start: startDate.toISOString(),
+    new_end: endDate.toISOString(),
+  });
 
   if (error) {
-    // 23P01 = exclusion_violation -- a last-moment race with another booking.
     redirect(
       rescheduleErrorUrl(error.code === "23P01" ? "slot-taken" : "error")
     );
+  }
+
+  if (!rescheduled) {
+    redirect(rescheduleErrorUrl("error"));
   }
 
   const client = appointment.client as unknown as {
@@ -672,7 +770,7 @@ export async function rescheduleAppointment(formData: FormData) {
 
 export async function assignMechanic(formData: FormData) {
   const lang = parseLocale(formData.get("lang"));
-  const { garage } = await requireGarageOwner(lang);
+  await requireGarageOwner(lang);
   const id = formData.get("id");
   const mechanicId = formData.get("mechanicId");
 
@@ -681,14 +779,18 @@ export async function assignMechanic(formData: FormData) {
   }
 
   const supabase = await createClient();
-  await supabase
-    .from("appointments")
-    .update({
-      assigned_mechanic_id:
-        typeof mechanicId === "string" && mechanicId ? mechanicId : null,
-    })
-    .eq("id", id)
-    .eq("garage_id", garage.id);
+
+  // Goes through a SECURITY DEFINER function (not a direct table update)
+  // since appointments has no general UPDATE policy for the authenticated
+  // role -- see 0027_appointment_write_integrity.sql. requireGarageOwner
+  // above already restricts which garage's mechanics this form can offer;
+  // the function's own is_garage_member(garage_id) check is the DB-level
+  // floor underneath that.
+  await supabase.rpc("assign_appointment_mechanic", {
+    target_appointment_id: id,
+    target_mechanic_id:
+      typeof mechanicId === "string" && mechanicId ? mechanicId : null,
+  });
 
   revalidateLocalizedPath("/garage/calendar");
   revalidateLocalizedPath("/dashboard");

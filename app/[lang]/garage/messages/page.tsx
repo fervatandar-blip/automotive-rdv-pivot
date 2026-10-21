@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 
 type AppointmentRow = {
   id: string;
@@ -16,8 +17,8 @@ type MessageRow = {
   created_at: string;
 };
 
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
+function formatDateTime(iso: string, dateLocale: string) {
+  return new Date(iso).toLocaleString(dateLocale, {
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -34,6 +35,9 @@ export default async function GarageMessagesPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageMember(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageMessages;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const supabase = await createClient();
 
   const { data: appointments } = await supabase
@@ -80,7 +84,7 @@ export default async function GarageMessagesPage({
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-          Messages
+          {d.title}
         </h1>
 
         <div className="flex flex-col gap-3">
@@ -93,25 +97,26 @@ export default async function GarageMessagesPage({
               >
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-black dark:text-zinc-50">
-                    {appointment.client?.full_name ?? "Client"}
+                    {appointment.client?.full_name ?? d.clientFallback}
                   </span>
                   <span className="text-xs text-zinc-500 dark:text-zinc-500">
                     {formatDateTime(
-                      lastMessage?.created_at ?? appointment.start_time
+                      lastMessage?.created_at ?? appointment.start_time,
+                      dateLocale
                     )}
                   </span>
                 </div>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {appointment.services?.name ?? "Service"}
+                  {appointment.services?.name ?? d.serviceFallback}
                 </p>
                 <p className="mt-1 truncate text-sm text-zinc-600 dark:text-zinc-400">
-                  {lastMessage?.body ?? "No messages yet"}
+                  {lastMessage?.body ?? d.noMessagesYet}
                 </p>
               </Link>
             ))
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No conversations yet.
+              {d.noConversationsYet}
             </p>
           )}
         </div>

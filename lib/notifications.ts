@@ -1,5 +1,28 @@
 import { sendEmail } from "@/lib/email";
 import { sendPushToProfile } from "@/lib/push";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+type GarageNotificationColumn = "notify_new_booking" | "notify_cancellation";
+
+// Service-role read regardless of caller context (a session-bound server
+// action or the unauthenticated Stripe webhook) -- garages RLS shouldn't
+// gate whether its own notification preference can be checked. This is a
+// content-level filter applied uniformly across every active channel
+// (email, push), not a per-channel switch. Fails open (true) on a
+// missing/unreadable row so a lookup glitch can't silently swallow every
+// notification.
+async function isGarageNotificationEnabled(
+  garageId: string,
+  column: GarageNotificationColumn
+): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("garages")
+    .select(column)
+    .eq("id", garageId)
+    .maybeSingle();
+  return data ? Boolean((data as Record<string, boolean>)[column]) : true;
+}
 
 const STATUS_COPY: Record<string, { subject: string; verb: string }> = {
   confirmed: { subject: "Your appointment is confirmed", verb: "confirmed" },
@@ -15,6 +38,7 @@ export async function notifyAppointmentStatusChange({
   otherPartyName,
   serviceName,
   startTime,
+  recipientGarageId,
 }: {
   status: "confirmed" | "cancelled" | "completed";
   recipientProfileId: string;
@@ -23,6 +47,11 @@ export async function notifyAppointmentStatusChange({
   otherPartyName: string;
   serviceName: string;
   startTime: string;
+  // Set only when the recipient IS the garage -- confirmed/completed never
+  // notify a garage today (both always originate from a garage action, so
+  // they only ever notify the client), only a client-initiated cancellation
+  // does.
+  recipientGarageId?: string;
 }) {
   const copy = STATUS_COPY[status];
   if (!copy) return;
@@ -35,7 +64,12 @@ export async function notifyAppointmentStatusChange({
     minute: "2-digit",
   });
 
-  if (recipientEmail) {
+  const notificationAllowed =
+    !recipientGarageId ||
+    status !== "cancelled" ||
+    (await isGarageNotificationEnabled(recipientGarageId, "notify_cancellation"));
+
+  if (recipientEmail && notificationAllowed) {
     await sendEmail({
       to: recipientEmail,
       subject: copy.subject,
@@ -43,11 +77,13 @@ export async function notifyAppointmentStatusChange({
     });
   }
 
-  await sendPushToProfile({
-    profileId: recipientProfileId,
-    title: copy.subject,
-    body: `${serviceName} with ${otherPartyName} — ${copy.verb}.`,
-  });
+  if (notificationAllowed) {
+    await sendPushToProfile({
+      profileId: recipientProfileId,
+      title: copy.subject,
+      body: `${serviceName} with ${otherPartyName} — ${copy.verb}.`,
+    });
+  }
 }
 
 const REPAIR_STAGE_COPY: Record<string, { subject: string; label: string }> = {
@@ -108,6 +144,7 @@ export async function notifyBookingReceived({
   otherPartyName,
   serviceName,
   startTime,
+  recipientGarageId,
 }: {
   recipient: "client" | "garage";
   recipientProfileId: string;
@@ -116,6 +153,8 @@ export async function notifyBookingReceived({
   otherPartyName: string;
   serviceName: string;
   startTime: string;
+  // Required in practice when recipient === "garage".
+  recipientGarageId?: string;
 }) {
   const when = new Date(startTime).toLocaleString(undefined, {
     weekday: "long",
@@ -141,18 +180,24 @@ export async function notifyBookingReceived({
     return;
   }
 
-  if (recipientEmail) {
+  const notificationAllowed =
+    !recipientGarageId ||
+    (await isGarageNotificationEnabled(recipientGarageId, "notify_new_booking"));
+
+  if (recipientEmail && notificationAllowed) {
     await sendEmail({
       to: recipientEmail,
       subject: "New booking request",
       html: `<p>Hi ${recipientName},</p><p>You have a new <strong>${serviceName}</strong> booking request from ${otherPartyName} on ${when}. Confirm it from your dashboard.</p>`,
     });
   }
-  await sendPushToProfile({
-    profileId: recipientProfileId,
-    title: "New booking request",
-    body: `${serviceName} from ${otherPartyName} on ${when}.`,
-  });
+  if (notificationAllowed) {
+    await sendPushToProfile({
+      profileId: recipientProfileId,
+      title: "New booking request",
+      body: `${serviceName} from ${otherPartyName} on ${when}.`,
+    });
+  }
 }
 
 export async function notifyAppointmentRescheduled({

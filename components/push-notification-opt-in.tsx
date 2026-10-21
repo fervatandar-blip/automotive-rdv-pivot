@@ -29,7 +29,13 @@ function getServerSnapshot(): PermissionState {
   return "unsupported";
 }
 
-export function PushNotificationOptIn() {
+export function PushNotificationOptIn({
+  enableLabel = "Enable push notifications",
+  enablingLabel = "Enabling...",
+}: {
+  enableLabel?: string;
+  enablingLabel?: string;
+} = {}) {
   const permission = useSyncExternalStore(
     subscribe,
     getSnapshot,
@@ -79,7 +85,7 @@ export function PushNotificationOptIn() {
       disabled={saving}
       className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] disabled:opacity-50 dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
     >
-      {saving ? "Enabling..." : "Enable push notifications"}
+      {saving ? enablingLabel : enableLabel}
     </button>
   );
 }

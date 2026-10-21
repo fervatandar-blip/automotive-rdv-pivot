@@ -64,6 +64,7 @@ export async function completeOnboarding(
     city: formData.get("city") || undefined,
     phone: formData.get("phone") || undefined,
     email: formData.get("email") || undefined,
+    website: formData.get("website") || undefined,
     country: formData.get("country"),
     registrationNumber: formData.get("registrationNumber") || undefined,
     vatNumber: formData.get("vatNumber") || undefined,
@@ -89,6 +90,7 @@ export async function completeOnboarding(
     city,
     phone,
     email,
+    website,
     country,
     registrationNumber,
     vatNumber,
@@ -120,6 +122,7 @@ export async function completeOnboarding(
       city: city ?? null,
       phone: phone ?? null,
       email: email ?? null,
+      website: website ?? null,
       country,
       registration_number: registrationNumber ?? null,
       vat_number: vatNumber ?? null,
@@ -168,4 +171,22 @@ export async function completeOnboarding(
   redirect(
     wasFirstRun ? `/${lang}/garage/documents` : `/${lang}/garage/onboarding?saved=1`
   );
+}
+
+export async function updateNotificationPreferences(formData: FormData) {
+  const lang = parseLocale(formData.get("lang"));
+  const { garage } = await requireGarageOwner(lang);
+
+  const supabase = await createClient();
+  await supabase
+    .from("garages")
+    .update({
+      notify_new_booking: formData.get("notifyNewBooking") === "on",
+      notify_cancellation: formData.get("notifyCancellation") === "on",
+      notify_message: formData.get("notifyMessage") === "on",
+    })
+    .eq("id", garage.id);
+
+  revalidateLocalizedPath("/garage/notifications");
+  redirect(`/${lang}/garage/notifications?saved=1`);
 }

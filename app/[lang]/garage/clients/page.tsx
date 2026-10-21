@@ -1,6 +1,7 @@
 import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 
 type AppointmentClientRow = {
   client_id: string;
@@ -15,6 +16,8 @@ export default async function GarageClientsPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageMember(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageClients;
   const supabase = await createClient();
 
   const { data: appointments } = await supabase
@@ -52,7 +55,7 @@ export default async function GarageClientsPage({
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-          Clients
+          {d.title}
         </h1>
 
         <div className="flex flex-col gap-3">
@@ -73,14 +76,14 @@ export default async function GarageClientsPage({
                 <span className="shrink-0 rounded-full bg-black/[.04] px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-white/[.06] dark:text-zinc-300">
                   {client.appointmentCount}{" "}
                   {client.appointmentCount === 1
-                    ? "appointment"
-                    : "appointments"}
+                    ? d.appointment
+                    : d.appointments}
                 </span>
               </div>
             ))
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No clients yet.
+              {d.noClientsYet}
             </p>
           )}
         </div>

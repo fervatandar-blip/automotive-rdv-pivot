@@ -4,17 +4,22 @@ import { useParams } from "next/navigation";
 import { useActionState, useEffect, useRef } from "react";
 import { createAvailability } from "@/app/actions/availability";
 
-const DAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
+type AddAvailabilityFormDictionary = {
+  title: string;
+  dayLabel: string;
+  startLabel: string;
+  endLabel: string;
+  submit: string;
+  submitPending: string;
+};
 
-export function AddAvailabilityForm() {
+export function AddAvailabilityForm({
+  dictionary,
+  days,
+}: {
+  dictionary: AddAvailabilityFormDictionary;
+  days: string[];
+}) {
   const [state, action, pending] = useActionState(
     createAvailability,
     undefined
@@ -37,13 +42,13 @@ export function AddAvailabilityForm() {
       <input type="hidden" name="lang" value={lang} />
 
       <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-        Add availability
+        {dictionary.title}
       </h2>
 
       <div className="grid grid-cols-3 gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="dayOfWeek" className="text-sm font-medium">
-            Day
+            {dictionary.dayLabel}
           </label>
           <select
             id="dayOfWeek"
@@ -51,7 +56,7 @@ export function AddAvailabilityForm() {
             defaultValue="1"
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           >
-            {DAYS.map((day, index) => (
+            {days.map((day, index) => (
               <option key={day} value={index}>
                 {day}
               </option>
@@ -64,7 +69,7 @@ export function AddAvailabilityForm() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="startTime" className="text-sm font-medium">
-            Start
+            {dictionary.startLabel}
           </label>
           <input
             id="startTime"
@@ -80,7 +85,7 @@ export function AddAvailabilityForm() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="endTime" className="text-sm font-medium">
-            End
+            {dictionary.endLabel}
           </label>
           <input
             id="endTime"
@@ -104,7 +109,7 @@ export function AddAvailabilityForm() {
         type="submit"
         className="self-start rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
       >
-        {pending ? "Adding..." : "Add slot"}
+        {pending ? dictionary.submitPending : dictionary.submit}
       </button>
     </form>
   );

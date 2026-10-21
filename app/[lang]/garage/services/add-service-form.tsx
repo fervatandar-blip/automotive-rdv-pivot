@@ -4,7 +4,25 @@ import { useParams } from "next/navigation";
 import { useActionState, useEffect, useRef } from "react";
 import { createService } from "@/app/actions/services";
 
-export function AddServiceForm() {
+type AddServiceFormDictionary = {
+  title: string;
+  nameLabel: string;
+  namePlaceholder: string;
+  descriptionLabel: string;
+  descriptionPlaceholder: string;
+  durationLabel: string;
+  durationPlaceholder: string;
+  priceLabel: string;
+  pricePlaceholder: string;
+  submit: string;
+  submitPending: string;
+};
+
+export function AddServiceForm({
+  dictionary,
+}: {
+  dictionary: AddServiceFormDictionary;
+}) {
   const [state, action, pending] = useActionState(createService, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const { lang } = useParams<{ lang: string }>();
@@ -24,17 +42,17 @@ export function AddServiceForm() {
       <input type="hidden" name="lang" value={lang} />
 
       <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-        Add a service
+        {dictionary.title}
       </h2>
 
       <div className="flex flex-col gap-1">
         <label htmlFor="name" className="text-sm font-medium">
-          Name
+          {dictionary.nameLabel}
         </label>
         <input
           id="name"
           name="name"
-          placeholder="Haircut"
+          placeholder={dictionary.namePlaceholder}
           className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
         />
         {state?.errors?.name && (
@@ -44,13 +62,13 @@ export function AddServiceForm() {
 
       <div className="flex flex-col gap-1">
         <label htmlFor="description" className="text-sm font-medium">
-          Description
+          {dictionary.descriptionLabel}
         </label>
         <textarea
           id="description"
           name="description"
           rows={2}
-          placeholder="What's included in this service"
+          placeholder={dictionary.descriptionPlaceholder}
           className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
         />
         {state?.errors?.description && (
@@ -63,14 +81,14 @@ export function AddServiceForm() {
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="durationMinutes" className="text-sm font-medium">
-            Duration (minutes)
+            {dictionary.durationLabel}
           </label>
           <input
             id="durationMinutes"
             name="durationMinutes"
             type="number"
             min="1"
-            placeholder="30"
+            placeholder={dictionary.durationPlaceholder}
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.durationMinutes && (
@@ -82,7 +100,7 @@ export function AddServiceForm() {
 
         <div className="flex flex-col gap-1">
           <label htmlFor="price" className="text-sm font-medium">
-            Price
+            {dictionary.priceLabel}
           </label>
           <input
             id="price"
@@ -90,7 +108,7 @@ export function AddServiceForm() {
             type="number"
             min="0"
             step="0.01"
-            placeholder="45.00"
+            placeholder={dictionary.pricePlaceholder}
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.price && (
@@ -108,7 +126,7 @@ export function AddServiceForm() {
         type="submit"
         className="self-start rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
       >
-        {pending ? "Adding..." : "Add service"}
+        {pending ? dictionary.submitPending : dictionary.submit}
       </button>
     </form>
   );

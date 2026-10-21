@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { AddServiceForm } from "./add-service-form";
 import { ServiceRow, type Service } from "./service-row";
@@ -14,6 +15,8 @@ export default async function GarageServicesPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageMember(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageServices;
   const supabase = await createClient();
 
   const { data: services } = await supabase
@@ -27,29 +30,29 @@ export default async function GarageServicesPage({
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-            {garage.name} &mdash; services
+            {garage.name} &mdash; {d.servicesSuffix}
           </h1>
           <div className="flex items-center gap-4 text-sm font-medium">
             <div className="flex gap-4 underline">
-              <Link href={`/${lang}/garage/calendar`}>Calendar</Link>
+              <Link href={`/${lang}/garage/calendar`}>{d.calendar}</Link>
               <Link href={`/${lang}/garage/availability`}>
-                Manage availability
+                {d.manageAvailability}
               </Link>
             </div>
             <LanguageSwitcher lang={lang} />
           </div>
         </div>
 
-        <AddServiceForm />
+        <AddServiceForm dictionary={d.addForm} />
 
         <div className="flex flex-col gap-4">
           {services && services.length > 0 ? (
             (services as Service[]).map((service) => (
-              <ServiceRow key={service.id} service={service} />
+              <ServiceRow key={service.id} service={service} dictionary={d.row} />
             ))
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              You haven&apos;t added any services yet.
+              {d.noServicesYet}
             </p>
           )}
         </div>

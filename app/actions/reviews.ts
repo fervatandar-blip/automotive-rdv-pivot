@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
@@ -23,7 +24,7 @@ export async function submitReview(formData: FormData) {
   });
 
   if (!validatedFields.success) {
-    return;
+    redirect(`/${lang}/dashboard?reviewError=1`);
   }
 
   const { appointmentId, rating, comment } = validatedFields.data;
@@ -36,16 +37,26 @@ export async function submitReview(formData: FormData) {
     .single();
 
   if (!appointment) {
-    return;
+    redirect(`/${lang}/dashboard?reviewError=1`);
   }
 
-  await supabase.from("reviews").insert({
+  // Previously discarded: a duplicate review attempt (reviews.appointment_id
+  // is unique -- one review per appointment) or an RLS rejection both
+  // silently no-opped, leaving the client with no idea their review wasn't
+  // saved.
+  const { error } = await supabase.from("reviews").insert({
     appointment_id: appointmentId,
     garage_id: appointment.garage_id,
     client_id: user.id,
     rating,
     comment: comment ?? null,
   });
+
+  if (error) {
+    redirect(
+      `/${lang}/dashboard?reviewError=${error.code === "23505" ? "duplicate" : "1"}`
+    );
+  }
 
   revalidateLocalizedPath("/dashboard");
   revalidateLocalizedPath(`/garages/${appointment.garage_id}`);

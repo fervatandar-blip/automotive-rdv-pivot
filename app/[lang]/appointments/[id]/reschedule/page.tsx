@@ -4,10 +4,9 @@ import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { getAvailableSlotsForDate } from "@/lib/availability";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { rescheduleAppointment } from "@/app/actions/appointments";
-
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function toDateKey(date: Date) {
   const year = date.getFullYear();
@@ -28,14 +27,6 @@ function nextDays(count: number) {
   return days;
 }
 
-const ERROR_MESSAGES: Record<string, string> = {
-  invalid: "That request wasn't valid. Please try again.",
-  "not-reschedulable": "This appointment can no longer be rescheduled.",
-  service: "That service is no longer available.",
-  "slot-taken": "That time was just booked. Pick another.",
-  error: "Something went wrong. Please try again.",
-};
-
 export default async function RescheduleAppointmentPage({
   params,
   searchParams,
@@ -46,11 +37,14 @@ export default async function RescheduleAppointmentPage({
   const { lang: rawLang, id: appointmentId } = await params;
   const lang = resolveLocale(rawLang);
   await getAuthedUser(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.reschedule;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const { date: dateParam, error } = await searchParams;
 
   const supabase = await createClient();
 
-  // RLS ("Participants can update their appointments") already restricts
+  // RLS ("Participants can view their appointments") already restricts
   // this to the client who booked it or a member of the garage it belongs
   // to -- anyone else gets no row back, same pattern as rescheduleAppointment.
   const { data: appointment } = await supabase
@@ -109,18 +103,18 @@ export default async function RescheduleAppointmentPage({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; Back to dashboard
+              &larr; {d.backToDashboard}
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
-              Reschedule appointment
+              {d.title}
             </h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {service.name} with {garage.name}
+              {service.name} {d.with} {garage.name}
               {garage.city ? `, ${garage.city}` : ""}
             </p>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Currently{" "}
-              {new Date(appointment.start_time).toLocaleString(undefined, {
+              {d.currently}{" "}
+              {new Date(appointment.start_time).toLocaleString(dateLocale, {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
@@ -132,20 +126,20 @@ export default async function RescheduleAppointmentPage({
           <LanguageSwitcher lang={lang} />
         </div>
 
-        {error && ERROR_MESSAGES[error] && (
+        {error && d.errors[error as keyof typeof d.errors] && (
           <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
-            {ERROR_MESSAGES[error]}
+            {d.errors[error as keyof typeof d.errors]}
           </p>
         )}
 
         {!isReschedulable ? (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
-            This appointment can no longer be rescheduled.
+            {d.noLongerReschedulable}
           </p>
         ) : (
           <div className="flex flex-col gap-3">
             <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Choose a new date
+              {d.chooseNewDate}
             </h2>
             <div className="flex gap-2 overflow-x-auto pb-2">
               {days.map((day) => {
@@ -161,7 +155,7 @@ export default async function RescheduleAppointmentPage({
                         : "border-black/[.08] bg-white hover:bg-black/[.02] dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.03]"
                     }`}
                   >
-                    <span>{WEEKDAY_LABELS[day.getDay()]}</span>
+                    <span>{d.weekdays[day.getDay()]}</span>
                     <span className="font-medium">{day.getDate()}</span>
                   </Link>
                 );
@@ -169,7 +163,7 @@ export default async function RescheduleAppointmentPage({
             </div>
 
             <h2 className="mt-2 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              Available times
+              {d.availableTimes}
             </h2>
             {slots.length > 0 ? (
               <div className="flex flex-wrap gap-2">
@@ -194,9 +188,7 @@ export default async function RescheduleAppointmentPage({
               </div>
             ) : (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                {isClosedOverride
-                  ? "This garage is closed on this date."
-                  : "No open times on this day."}
+                {isClosedOverride ? d.closedOnDate : d.noOpenTimes}
               </p>
             )}
           </div>

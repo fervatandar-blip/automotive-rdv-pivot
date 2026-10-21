@@ -4,6 +4,11 @@ import { useParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { deleteService, updateService } from "@/app/actions/services";
 
+const currencyFormatter = new Intl.NumberFormat("fr-LU", {
+  style: "currency",
+  currency: "EUR",
+});
+
 export type Service = {
   id: string;
   name: string;
@@ -12,7 +17,25 @@ export type Service = {
   price: number;
 };
 
-export function ServiceRow({ service }: { service: Service }) {
+type ServiceRowDictionary = {
+  edit: string;
+  delete: string;
+  nameLabel: string;
+  descriptionLabel: string;
+  durationLabel: string;
+  priceLabel: string;
+  save: string;
+  savePending: string;
+  cancel: string;
+};
+
+export function ServiceRow({
+  service,
+  dictionary,
+}: {
+  service: Service;
+  dictionary: ServiceRowDictionary;
+}) {
   const [editing, setEditing] = useState(false);
   const [state, action, pending] = useActionState(updateService, undefined);
   const wasPending = useRef(false);
@@ -38,8 +61,8 @@ export function ServiceRow({ service }: { service: Service }) {
             </p>
           )}
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            {service.duration_minutes} min &middot; $
-            {Number(service.price).toFixed(2)}
+            {service.duration_minutes} min &middot;{" "}
+            {currencyFormatter.format(Number(service.price))}
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -47,7 +70,7 @@ export function ServiceRow({ service }: { service: Service }) {
             onClick={() => setEditing(true)}
             className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
           >
-            Edit
+            {dictionary.edit}
           </button>
           <form action={deleteService}>
             <input type="hidden" name="id" value={service.id} />
@@ -56,7 +79,7 @@ export function ServiceRow({ service }: { service: Service }) {
               type="submit"
               className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
             >
-              Delete
+              {dictionary.delete}
             </button>
           </form>
         </div>
@@ -73,7 +96,7 @@ export function ServiceRow({ service }: { service: Service }) {
       <input type="hidden" name="lang" value={lang} />
 
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium">Name</label>
+        <label className="text-sm font-medium">{dictionary.nameLabel}</label>
         <input
           name="name"
           defaultValue={service.name}
@@ -85,7 +108,9 @@ export function ServiceRow({ service }: { service: Service }) {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium">Description</label>
+        <label className="text-sm font-medium">
+          {dictionary.descriptionLabel}
+        </label>
         <textarea
           name="description"
           rows={2}
@@ -101,7 +126,9 @@ export function ServiceRow({ service }: { service: Service }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium">Duration (minutes)</label>
+          <label className="text-sm font-medium">
+            {dictionary.durationLabel}
+          </label>
           <input
             name="durationMinutes"
             type="number"
@@ -117,7 +144,7 @@ export function ServiceRow({ service }: { service: Service }) {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium">Price</label>
+          <label className="text-sm font-medium">{dictionary.priceLabel}</label>
           <input
             name="price"
             type="number"
@@ -142,14 +169,14 @@ export function ServiceRow({ service }: { service: Service }) {
           type="submit"
           className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
         >
-          {pending ? "Saving..." : "Save"}
+          {pending ? dictionary.savePending : dictionary.save}
         </button>
         <button
           type="button"
           onClick={() => setEditing(false)}
           className="rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
         >
-          Cancel
+          {dictionary.cancel}
         </button>
       </div>
     </form>

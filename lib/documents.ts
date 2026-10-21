@@ -102,3 +102,16 @@ export function categoryForDocumentType(documentType: string): DocumentCategory 
   }
   return null;
 }
+
+// Every document type above is either a scanned/photographed legal document
+// or a photo (see DOCUMENT_CATEGORIES) -- PDF and common image formats cover
+// all of them. Nothing else was ever a legitimate upload here; the upload
+// action previously accepted any file type at all.
+export const ALLOWED_DOCUMENT_MIME_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);

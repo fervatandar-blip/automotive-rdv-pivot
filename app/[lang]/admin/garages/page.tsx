@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 
 const STATUS_BADGE: Record<string, string> = {
@@ -20,6 +21,9 @@ export default async function AdminGaragesPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   await requireSuperAdmin(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.adminGarages;
+  const nav = dictionary.adminNav;
   const supabase = await createClient();
 
   const { data: garages } = await supabase
@@ -34,12 +38,12 @@ export default async function AdminGaragesPage({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-              Garages
+              {d.title}
             </h1>
             <div className="mt-1 flex gap-4 text-sm font-medium underline">
-              <Link href={`/${lang}/admin/stats`}>Overview</Link>
-              <Link href={`/${lang}/admin/garages`}>Garages</Link>
-              <Link href={`/${lang}/admin/leads`}>Leads</Link>
+              <Link href={`/${lang}/admin/stats`}>{nav.overview}</Link>
+              <Link href={`/${lang}/admin/garages`}>{nav.garages}</Link>
+              <Link href={`/${lang}/admin/leads`}>{nav.leads}</Link>
             </div>
           </div>
           <LanguageSwitcher lang={lang} />
@@ -58,20 +62,21 @@ export default async function AdminGaragesPage({
                     {garage.name}
                   </p>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {garage.city ?? "No city set"} &middot;{" "}
+                    {garage.city ?? d.noCitySet} &middot;{" "}
                     {garage.verification_level}
                   </p>
                 </div>
                 <span
                   className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[garage.status] ?? ""}`}
                 >
-                  {garage.status}
+                  {d.statusLabels[garage.status as keyof typeof d.statusLabels] ??
+                    garage.status}
                 </span>
               </Link>
             ))
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No garages yet.
+              {d.noGaragesYet}
             </p>
           )}
         </div>

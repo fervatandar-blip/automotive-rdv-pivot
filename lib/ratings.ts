@@ -3,8 +3,11 @@ export function averageRating(ratings: number[]): number | null {
   return ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length;
 }
 
-export function formatRating(ratings: number[]): string {
+export function formatRating(
+  ratings: number[],
+  noReviewsLabel = "No reviews yet"
+): string {
   const average = averageRating(ratings);
-  if (average === null) return "No reviews yet";
+  if (average === null) return noReviewsLabel;
   return `★ ${average.toFixed(1)} (${ratings.length})`;
 }

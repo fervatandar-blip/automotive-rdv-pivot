@@ -34,13 +34,25 @@ export async function POST(request: NextRequest) {
     const appointmentId = session.metadata?.appointmentId;
 
     if (appointmentId && session.payment_intent) {
+      // The status filter lives on the UPDATE itself, not a preceding
+      // SELECT: Postgres serializes concurrent UPDATEs matching the same
+      // row, so only one concurrent delivery of this event (Stripe does
+      // redeliver on timeout, and duplicates are otherwise possible) can
+      // ever flip pending_payment -> pending and get a row back here. A
+      // second delivery's UPDATE matches zero rows -- status is already
+      // "pending" -- and the whole block is skipped, so this can't double
+      // up the payments insert or send duplicate booking-confirmation
+      // notifications. A separate SELECT-then-UPDATE pair would not have
+      // this guarantee: both deliveries could pass the SELECT before
+      // either UPDATE commits.
       const { data: appointment } = await admin
         .from("appointments")
+        .update({ status: "pending" })
+        .eq("id", appointmentId)
+        .eq("status", "pending_payment")
         .select(
           "garage_id, client_id, start_time, services(name), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email, owner_id)"
         )
-        .eq("id", appointmentId)
-        .eq("status", "pending_payment")
         .maybeSingle();
 
       if (appointment) {
@@ -50,12 +62,7 @@ export async function POST(request: NextRequest) {
         const amount = paymentIntent.amount / 100;
         const commissionAmount = (paymentIntent.application_fee_amount ?? 0) / 100;
 
-        await admin
-          .from("appointments")
-          .update({ status: "pending" })
-          .eq("id", appointmentId);
-
-        await admin.from("payments").insert({
+        const { error: paymentInsertError } = await admin.from("payments").insert({
           appointment_id: appointmentId,
           garage_id: appointment.garage_id,
           client_id: appointment.client_id,
@@ -67,6 +74,23 @@ export async function POST(request: NextRequest) {
           stripe_payment_intent_id: paymentIntent.id,
           status: "succeeded",
         });
+
+        if (paymentInsertError) {
+          // The atomic update above already makes this path effectively
+          // unreachable on a duplicate delivery, so a failure here is a
+          // genuine error (not the expected shape of a race) -- surfacing
+          // it rather than silently discarding it, since it was silently
+          // discarded before. Notifications still proceed regardless: the
+          // Stripe charge already succeeded and the appointment is already
+          // "pending", so the booking is real from the client's side even
+          // if our internal payments ledger row is momentarily missing --
+          // that's a reconciliation problem, not a reason to tell a
+          // successfully-charged client their booking didn't happen.
+          console.error(
+            "[stripe webhook] payments insert failed:",
+            paymentInsertError
+          );
+        }
 
         const client = appointment.client as unknown as {
           full_name: string;
@@ -102,6 +126,7 @@ export async function POST(request: NextRequest) {
             otherPartyName: client?.full_name ?? "the client",
             serviceName: service?.name ?? "the service",
             startTime: appointment.start_time,
+            recipientGarageId: appointment.garage_id,
           });
         }
       }

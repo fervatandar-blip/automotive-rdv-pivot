@@ -11,6 +11,14 @@ type Message = {
   created_at: string;
 };
 
+type ChatThreadDictionary = {
+  you: string;
+  noMessagesYet: string;
+  sendFailed: string;
+  placeholder: string;
+  send: string;
+};
+
 export function ChatThread({
   appointmentId,
   currentUserId,
@@ -18,6 +26,8 @@ export function ChatThread({
   clientName,
   garageName,
   initialMessages,
+  dictionary,
+  timeLocale,
 }: {
   appointmentId: string;
   currentUserId: string;
@@ -25,10 +35,13 @@ export function ChatThread({
   clientName: string;
   garageName: string;
   initialMessages: Message[];
+  dictionary: ChatThreadDictionary;
+  timeLocale: string;
 }) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,7 +87,7 @@ export function ChatThread({
   }, [messages]);
 
   function labelFor(senderId: string) {
-    if (senderId === currentUserId) return "You";
+    if (senderId === currentUserId) return dictionary.you;
     if (senderId === clientId) return clientName;
     return garageName;
   }
@@ -85,9 +98,16 @@ export function ChatThread({
     if (!body) return;
 
     setSending(true);
-    setDraft("");
+    setSendFailed(false);
     try {
-      await sendMessage(appointmentId, body);
+      const result = await sendMessage(appointmentId, body);
+      if (result.ok) {
+        setDraft("");
+      } else {
+        setSendFailed(true);
+      }
+    } catch {
+      setSendFailed(true);
     } finally {
       setSending(false);
     }
@@ -106,7 +126,7 @@ export function ChatThread({
               >
                 <span className="text-xs text-zinc-500 dark:text-zinc-500">
                   {labelFor(message.sender_id)} &middot;{" "}
-                  {new Date(message.created_at).toLocaleTimeString(undefined, {
+                  {new Date(message.created_at).toLocaleTimeString(timeLocale, {
                     hour: "numeric",
                     minute: "2-digit",
                   })}
@@ -125,17 +145,26 @@ export function ChatThread({
           })
         ) : (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            No messages yet. Say hello.
+            {dictionary.noMessagesYet}
           </p>
         )}
         <div ref={bottomRef} />
       </div>
 
+      {sendFailed && (
+        <p className="text-xs text-red-600 dark:text-red-400">
+          {dictionary.sendFailed}
+        </p>
+      )}
+
       <form onSubmit={handleSubmit} className="flex gap-2">
         <input
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder="Write a message..."
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setSendFailed(false);
+          }}
+          placeholder={dictionary.placeholder}
           maxLength={2000}
           className="flex-1 rounded-md border border-black/[.08] px-3 py-2 text-sm dark:border-white/[.145] dark:bg-black"
         />
@@ -144,7 +173,7 @@ export function ChatThread({
           disabled={sending || draft.trim().length === 0}
           className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
         >
-          Send
+          {dictionary.send}
         </button>
       </form>
     </div>

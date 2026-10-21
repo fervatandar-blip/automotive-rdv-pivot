@@ -8,6 +8,7 @@ import { GarageMapPicker } from "@/components/garage-map-picker";
 import { StyledSelect } from "@/components/styled-select";
 import { CheckboxChip } from "@/components/checkbox-chip";
 import type { Locale } from "@/lib/i18n/config";
+import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import {
   COUNTRIES,
   COUNTRY_NAMES,
@@ -15,28 +16,14 @@ import {
   type Country,
 } from "@/lib/business-registration";
 
-const DAYS = [
-  "Sunday",
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-];
-
+// Canonical values stored in garages.languages_spoken and submitted as the
+// "languages" checkbox value -- never localize these; only the displayed
+// label (via dictionary.languageLabels) changes per locale.
 const LANGUAGES = ["French", "English", "German", "Luxembourgish", "Portuguese"];
 
-const STEP_LABELS = [
-  "Details",
-  "Location",
-  "Hours",
-  "Services",
-  "Brands & Specialties",
-  "Review",
-];
+type D = Dictionary["garageOnboarding"];
 
-const LAST_STEP = STEP_LABELS.length - 1;
+const LAST_STEP = 5;
 
 // Steps 1-4 (0-indexed) have no required fields per GarageOnboardingFormSchema
 // -- only name/description/email/country/registrationNumber (step 0) and
@@ -110,6 +97,7 @@ type Garage = {
   city: string | null;
   phone: string | null;
   email: string | null;
+  website: string | null;
   country: string;
   registration_number: string | null;
   vat_number: string | null;
@@ -134,6 +122,7 @@ type Summary = {
   city: string;
   phone: string;
   email: string;
+  website: string;
   hasLocation: boolean;
   openDaysCount: number;
   evCapable: boolean;
@@ -148,6 +137,7 @@ type Summary = {
 
 export function OnboardingForm({
   lang,
+  dictionary: d,
   garage,
   brands,
   specialties,
@@ -156,6 +146,7 @@ export function OnboardingForm({
   justSaved,
 }: {
   lang: Locale;
+  dictionary: D;
   garage: Garage;
   brands: { id: string; name: string }[];
   specialties: { id: string; name: string }[];
@@ -213,9 +204,10 @@ export function OnboardingForm({
       city: (data.get("city") as string) || "",
       phone: (data.get("phone") as string) || "",
       email: (data.get("email") as string) || "",
+      website: (data.get("website") as string) || "",
       hasLocation: Boolean(data.get("latitude")) && Boolean(data.get("longitude")),
-      openDaysCount: DAYS.filter(
-        (_, index) => data.get(`hours_${index}_closed`) !== "on"
+      openDaysCount: d.days.filter(
+        (_: string, index: number) => data.get(`hours_${index}_closed`) !== "on"
       ).length,
       evCapable: data.get("evCapable") === "on",
       mobileService: data.get("mobileService") === "on",
@@ -226,7 +218,7 @@ export function OnboardingForm({
       brandCount: data.getAll("brandIds").length,
       specialtyCount: data.getAll("specialtyIds").length,
     });
-  }, [step]);
+  }, [step, d.days]);
 
   function validateDetailsStep() {
     const form = formRef.current;
@@ -237,11 +229,11 @@ export function OnboardingForm({
       (form.elements.namedItem("email") as HTMLInputElement | null)?.value.trim() ?? "";
 
     if (name.length < 2) {
-      setStepError("Name must be at least 2 characters long.");
+      setStepError(d.nameTooShortError);
       return false;
     }
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setStepError("Please enter a valid email.");
+      setStepError(d.invalidEmailError);
       return false;
     }
     setStepError(null);
@@ -259,7 +251,7 @@ export function OnboardingForm({
     setStep((current) => Math.max(current - 1, 0));
   }
 
-  const stepItems = STEP_LABELS.map((label, index) => ({
+  const stepItems = d.steps.map((label: string, index: number) => ({
     label,
     status: (index < step ? "complete" : index === step ? "current" : "upcoming") as StepStatus,
   }));
@@ -283,23 +275,22 @@ export function OnboardingForm({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; Back to dashboard
+              &larr; {d.backToDashboard}
             </Link>
           )}
           <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
-            {isFirstRun ? "Set up your garage" : "Garage profile"}
+            {isFirstRun ? d.setupTitle : d.profileTitle}
           </h1>
           {isFirstRun && (
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Tell clients about your garage. You can finish uploading
-              verification documents right after.
+              {d.setupDescription}
             </p>
           )}
         </div>
 
         {justSaved && (
           <p className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
-            Saved.
+            {d.saved}
           </p>
         )}
         {state?.message && (
@@ -317,15 +308,15 @@ export function OnboardingForm({
             </div>
             <div>
               <p className="text-sm font-medium text-black dark:text-zinc-50">
-                No logo uploaded yet
+                {d.noLogoUploaded}
               </p>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Upload your garage logo from{" "}
+                {d.uploadLogoPrefix}{" "}
                 <Link
                   href={`/${lang}/garage/documents`}
                   className="font-medium underline"
                 >
-                  Documents
+                  {d.documentsLink}
                 </Link>
                 .
               </p>
@@ -334,12 +325,12 @@ export function OnboardingForm({
 
           <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
             <h2 className="font-semibold text-black dark:text-zinc-50">
-              Garage details
+              {d.garageDetails}
             </h2>
 
             <div className="flex flex-col gap-1">
               <label htmlFor="name" className="text-sm font-medium">
-                Name
+                {d.nameLabel}
               </label>
               <input
                 id="name"
@@ -354,7 +345,7 @@ export function OnboardingForm({
 
             <div className="flex flex-col gap-1">
               <label htmlFor="description" className="text-sm font-medium">
-                Description
+                {d.descriptionLabel}
               </label>
               <textarea
                 id="description"
@@ -373,7 +364,7 @@ export function OnboardingForm({
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label htmlFor="address" className="text-sm font-medium">
-                  Address
+                  {d.addressLabel}
                 </label>
                 <input
                   id="address"
@@ -384,7 +375,7 @@ export function OnboardingForm({
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="city" className="text-sm font-medium">
-                  City
+                  {d.cityLabel}
                 </label>
                 <input
                   id="city"
@@ -398,7 +389,7 @@ export function OnboardingForm({
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label htmlFor="phone" className="text-sm font-medium">
-                  Phone
+                  {d.phoneLabel}
                 </label>
                 <input
                   id="phone"
@@ -409,7 +400,7 @@ export function OnboardingForm({
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="email" className="text-sm font-medium">
-                  Business email
+                  {d.businessEmailLabel}
                 </label>
                 <input
                   id="email"
@@ -424,10 +415,30 @@ export function OnboardingForm({
               </div>
             </div>
 
+            <div className="flex flex-col gap-1">
+              <label htmlFor="website" className="text-sm font-medium">
+                {d.websiteLabel}
+              </label>
+              <input
+                id="website"
+                name="website"
+                type="url"
+                placeholder="https://yourgarage.lu"
+                defaultValue={garage.website ?? ""}
+                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+              />
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                {d.websiteHint}
+              </p>
+              {state?.errors?.website && (
+                <p className="text-sm text-red-600">{state.errors.website[0]}</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label htmlFor="country" className="text-sm font-medium">
-                  Country
+                  {d.countryLabel}
                 </label>
                 <StyledSelect
                   id="country"
@@ -469,7 +480,7 @@ export function OnboardingForm({
 
             <div className="flex flex-col gap-1">
               <label htmlFor="vatNumber" className="text-sm font-medium">
-                VAT number
+                {d.vatNumberLabel}
               </label>
               <input
                 id="vatNumber"
@@ -479,7 +490,7 @@ export function OnboardingForm({
                 className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
               />
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Shown on invoices generated for your clients.
+                {d.vatNumberHint}
               </p>
             </div>
           </section>
@@ -488,7 +499,7 @@ export function OnboardingForm({
         <div hidden={step !== 1}>
           <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
             <h2 className="font-semibold text-black dark:text-zinc-50">
-              Location
+              {d.locationTitle}
             </h2>
             <GarageMapPicker
               initialLatitude={garage.latitude}
@@ -500,10 +511,10 @@ export function OnboardingForm({
         <div hidden={step !== 2}>
           <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
             <h2 className="font-semibold text-black dark:text-zinc-50">
-              Opening hours
+              {d.openingHoursTitle}
             </h2>
             <div className="flex flex-col gap-2">
-              {DAYS.map((day, index) => {
+              {d.days.map((day: string, index: number) => {
                 const existing = garage.opening_hours?.[index];
                 const closed = existing ? existing.closed : index === 0 || index === 6;
                 const open = (!existing?.closed && existing?.open) || "09:00";
@@ -514,7 +525,7 @@ export function OnboardingForm({
                     <span className="w-24 shrink-0">{day}</span>
                     <CheckboxChip
                       name={`hours_${index}_closed`}
-                      label="Closed"
+                      label={d.closed}
                       defaultChecked={closed}
                     />
                     <input
@@ -540,23 +551,23 @@ export function OnboardingForm({
         <div hidden={step !== 3}>
           <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
             <h2 className="font-semibold text-black dark:text-zinc-50">
-              Services & capabilities
+              {d.servicesCapabilitiesTitle}
             </h2>
 
             <div className="flex flex-wrap gap-4 text-sm">
               <CheckboxChip
                 name="evCapable"
-                label="EV / high-voltage capable"
+                label={d.evCapableLabel}
                 defaultChecked={garage.ev_capable}
               />
               <CheckboxChip
                 name="mobileService"
-                label="Mobile service available"
+                label={d.mobileServiceLabel}
                 defaultChecked={garage.mobile_service}
               />
               <CheckboxChip
                 name="emergencyService"
-                label="Emergency assistance available"
+                label={d.emergencyServiceLabel}
                 defaultChecked={garage.emergency_service}
               />
             </div>
@@ -564,22 +575,22 @@ export function OnboardingForm({
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1">
                 <label htmlFor="pricingCategory" className="text-sm font-medium">
-                  Pricing category
+                  {d.pricingCategoryLabel}
                 </label>
                 <StyledSelect
                   id="pricingCategory"
                   name="pricingCategory"
                   defaultValue={garage.pricing_category ?? ""}
                 >
-                  <option value="">Not set</option>
-                  <option value="budget">Budget</option>
-                  <option value="standard">Standard</option>
-                  <option value="premium">Premium</option>
+                  <option value="">{d.pricingNotSet}</option>
+                  <option value="budget">{d.pricingBudget}</option>
+                  <option value="standard">{d.pricingStandard}</option>
+                  <option value="premium">{d.pricingPremium}</option>
                 </StyledSelect>
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor="technicianCount" className="text-sm font-medium">
-                  Number of technicians
+                  {d.technicianCountLabel}
                 </label>
                 <input
                   id="technicianCount"
@@ -598,14 +609,14 @@ export function OnboardingForm({
             </div>
 
             <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">Languages spoken</span>
+              <span className="text-sm font-medium">{d.languagesSpokenLabel}</span>
               <div className="flex flex-wrap gap-4 text-sm">
                 {LANGUAGES.map((language) => (
                   <CheckboxChip
                     key={language}
                     name="languages"
                     value={language}
-                    label={language}
+                    label={d.languageLabels[language as keyof typeof d.languageLabels]}
                     defaultChecked={languages.includes(language)}
                   />
                 ))}
@@ -617,7 +628,7 @@ export function OnboardingForm({
         <div hidden={step !== 4} className="flex flex-col gap-8">
           <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
             <h2 className="font-semibold text-black dark:text-zinc-50">
-              Brands supported
+              {d.brandsSupportedTitle}
             </h2>
             <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
               {brands.map((brand) => (
@@ -634,7 +645,7 @@ export function OnboardingForm({
 
           <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
             <h2 className="font-semibold text-black dark:text-zinc-50">
-              Specialties
+              {d.specialtiesTitle}
             </h2>
             <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
               {specialties.map((specialty) => (
@@ -654,66 +665,72 @@ export function OnboardingForm({
           {summary && (
             <div className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
               <h2 className="font-semibold text-black dark:text-zinc-50">
-                Review your details
+                {d.reviewTitle}
               </h2>
               <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">Name</dt>
+                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewName}</dt>
                   <dd className="font-medium text-black dark:text-zinc-50">
                     {summary.name || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">Address</dt>
+                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewAddress}</dt>
                   <dd className="font-medium text-black dark:text-zinc-50">
                     {[summary.address, summary.city].filter(Boolean).join(", ") || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">Phone</dt>
+                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewPhone}</dt>
                   <dd className="font-medium text-black dark:text-zinc-50">
                     {summary.phone || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">Business email</dt>
+                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewBusinessEmail}</dt>
                   <dd className="font-medium text-black dark:text-zinc-50">
                     {summary.email || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">Map pin</dt>
+                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewWebsite}</dt>
                   <dd className="font-medium text-black dark:text-zinc-50">
-                    {summary.hasLocation ? "Set" : "Not set"}
+                    {summary.website || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">Opening hours</dt>
+                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewMapPin}</dt>
                   <dd className="font-medium text-black dark:text-zinc-50">
-                    {summary.openDaysCount} of 7 days open
+                    {summary.hasLocation ? d.mapPinSet : d.mapPinNotSet}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">Capabilities</dt>
+                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewOpeningHours}</dt>
+                  <dd className="font-medium text-black dark:text-zinc-50">
+                    {summary.openDaysCount} {d.daysOpenSuffix}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewCapabilities}</dt>
                   <dd className="font-medium text-black dark:text-zinc-50">
                     {[
-                      summary.evCapable && "EV capable",
-                      summary.mobileService && "Mobile service",
-                      summary.emergencyService && "Emergency assistance",
+                      summary.evCapable && d.evCapableShort,
+                      summary.mobileService && d.mobileServiceShort,
+                      summary.emergencyService && d.emergencyServiceShort,
                     ]
                       .filter(Boolean)
-                      .join(", ") || "None"}
+                      .join(", ") || d.noneCapabilities}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-zinc-500 dark:text-zinc-400">
-                    Pricing / technicians
+                    {d.reviewPricingTechnicians}
                   </dt>
                   <dd className="font-medium text-black dark:text-zinc-50">
                     {[
-                      summary.pricingCategory || "Not set",
+                      summary.pricingCategory || d.pricingNotSet,
                       summary.technicianCount
-                        ? `${summary.technicianCount} technician(s)`
+                        ? `${summary.technicianCount} ${d.technicianSuffix}`
                         : null,
                     ]
                       .filter(Boolean)
@@ -721,19 +738,27 @@ export function OnboardingForm({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">Languages spoken</dt>
+                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewLanguages}</dt>
                   <dd className="font-medium text-black dark:text-zinc-50">
                     {summary.languages.length > 0
-                      ? summary.languages.join(", ")
-                      : "None selected"}
+                      ? summary.languages
+                          .map(
+                            (language) =>
+                              d.languageLabels[
+                                language as keyof typeof d.languageLabels
+                              ] ?? language
+                          )
+                          .join(", ")
+                      : d.noneLanguages}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-zinc-500 dark:text-zinc-400">
-                    Brands & specialties
+                    {d.reviewBrandsSpecialties}
                   </dt>
                   <dd className="font-medium text-black dark:text-zinc-50">
-                    {summary.brandCount} brand(s), {summary.specialtyCount} specialty/ies
+                    {summary.brandCount} {d.brandCountSuffix} {summary.specialtyCount}{" "}
+                    {d.specialtyCountSuffix}
                   </dd>
                 </div>
               </dl>
@@ -742,7 +767,7 @@ export function OnboardingForm({
 
           <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
             <h2 className="font-semibold text-black dark:text-zinc-50">
-              Platform verification terms
+              {d.platformTermsTitle}
             </h2>
             <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
               <input
@@ -752,12 +777,7 @@ export function OnboardingForm({
                 required
                 className="mt-1"
               />
-              <span>
-                I agree to upload invoices/services, accept RDV&apos;s verified
-                service protocols, consent to the customer verification system,
-                and agree to the anti-fraud and transparency rules that keep
-                RDV trustworthy for clients and garages alike.
-              </span>
+              <span>{d.platformTermsBody}</span>
             </label>
           </section>
         </div>
@@ -773,7 +793,7 @@ export function OnboardingForm({
               onClick={goBack}
               className="rounded-full border border-black/[.08] px-6 py-2.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
             >
-              Back
+              {d.back}
             </button>
           )}
           {/* Two permanently-separate button nodes, toggled via `hidden`,
@@ -788,7 +808,7 @@ export function OnboardingForm({
             hidden={step === LAST_STEP}
             className="rounded-full bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
           >
-            Next
+            {d.next}
           </button>
           <button
             hidden={step !== LAST_STEP}
@@ -797,10 +817,10 @@ export function OnboardingForm({
             className="rounded-full bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
           >
             {pending
-              ? "Saving..."
+              ? d.savingPending
               : isFirstRun
-                ? "Complete setup & continue to documents"
-                : "Save changes"}
+                ? d.completeSetup
+                : d.saveChanges}
           </button>
         </div>
       </form>

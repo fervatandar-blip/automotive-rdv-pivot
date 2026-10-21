@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireGarageOwner, requireSuperAdmin } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
-import { ALL_DOCUMENT_TYPES, categoryForDocumentType } from "@/lib/documents";
+import {
+  ALL_DOCUMENT_TYPES,
+  ALLOWED_DOCUMENT_MIME_TYPES,
+  categoryForDocumentType,
+} from "@/lib/documents";
 
 const BUCKET = "garage-documents";
 
@@ -27,6 +31,9 @@ export async function uploadDocument(formData: FormData) {
   if (!(file instanceof File) || file.size === 0) {
     return;
   }
+  if (!ALLOWED_DOCUMENT_MIME_TYPES.has(file.type)) {
+    return;
+  }
 
   const category = categoryForDocumentType(documentType);
   if (!category) return;
@@ -34,30 +41,40 @@ export async function uploadDocument(formData: FormData) {
   const supabase = await createClient();
   const path = `${garage.id}/${category}/${documentType}`;
 
-  // Clear any prior upload for this slot before writing the new one, so
-  // storage and the DB row stay in lockstep and status resets to pending.
-  await supabase.storage.from(BUCKET).remove([path]);
-  await supabase
-    .from("garage_documents")
-    .delete()
-    .eq("garage_id", garage.id)
-    .eq("document_type", documentType);
-
+  // Upload before touching the DB row -- and with upsert so this can
+  // overwrite the same storage path directly, rather than needing a
+  // delete-then-upload. Previously this deleted the existing file and row
+  // first: a failed upload (network blip, bad file) then permanently lost
+  // an already-approved document with nothing to replace it. Now a failed
+  // upload leaves the prior file and row completely untouched.
   const { error: uploadError } = await supabase.storage
     .from(BUCKET)
-    .upload(path, file, { contentType: file.type || "application/octet-stream" });
+    .upload(path, file, {
+      contentType: file.type || "application/octet-stream",
+      upsert: true,
+    });
 
   if (uploadError) {
     return;
   }
 
-  await supabase.from("garage_documents").insert({
-    garage_id: garage.id,
-    category,
-    document_type: documentType,
-    file_path: path,
-    file_name: file.name,
-  });
+  // Replaces any prior row for this (garage_id, document_type) -- the
+  // unique constraint from 0005_garage_documents.sql -- and explicitly
+  // resets review state, since a new upload always needs re-review.
+  await supabase.from("garage_documents").upsert(
+    {
+      garage_id: garage.id,
+      category,
+      document_type: documentType,
+      file_path: path,
+      file_name: file.name,
+      status: "pending",
+      reviewed_by: null,
+      reviewed_at: null,
+      notes: null,
+    },
+    { onConflict: "garage_id,document_type" }
+  );
 
   revalidateLocalizedPath("/garage/documents");
 }

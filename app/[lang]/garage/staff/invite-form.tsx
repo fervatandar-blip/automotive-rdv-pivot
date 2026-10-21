@@ -4,7 +4,21 @@ import { useActionState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { inviteMechanic } from "@/app/actions/staff";
 
-export function InviteMechanicForm() {
+type InviteFormDictionary = {
+  title: string;
+  nameLabel: string;
+  namePlaceholder: string;
+  emailLabel: string;
+  emailPlaceholder: string;
+  submit: string;
+  submitPending: string;
+};
+
+export function InviteMechanicForm({
+  dictionary,
+}: {
+  dictionary: InviteFormDictionary;
+}) {
   const [state, action, pending] = useActionState(inviteMechanic, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const { lang } = useParams<{ lang: string }>();
@@ -24,18 +38,18 @@ export function InviteMechanicForm() {
       <input type="hidden" name="lang" value={lang} />
 
       <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-        Invite a mécanicien
+        {dictionary.title}
       </h2>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1">
           <label htmlFor="fullName" className="text-sm font-medium">
-            Name
+            {dictionary.nameLabel}
           </label>
           <input
             id="fullName"
             name="fullName"
-            placeholder="Jean Dupont"
+            placeholder={dictionary.namePlaceholder}
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.fullName && (
@@ -44,13 +58,13 @@ export function InviteMechanicForm() {
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="email" className="text-sm font-medium">
-            Email
+            {dictionary.emailLabel}
           </label>
           <input
             id="email"
             name="email"
             type="email"
-            placeholder="jean@example.com"
+            placeholder={dictionary.emailPlaceholder}
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.email && (
@@ -68,7 +82,7 @@ export function InviteMechanicForm() {
         type="submit"
         className="self-start rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
       >
-        {pending ? "Sending invite..." : "Send invite"}
+        {pending ? dictionary.submitPending : dictionary.submit}
       </button>
     </form>
   );

@@ -38,11 +38,16 @@ export async function inviteMechanic(
 
   // If this email already belongs to a platform user, attach them as staff
   // instead of trying (and failing) to create a duplicate auth account.
-  const { data: existingProfile } = await supabase
-    .from("profiles")
-    .select("id, role")
-    .eq("email", email)
-    .maybeSingle();
+  // Goes through a narrow SECURITY DEFINER accessor (id + role only, exact
+  // email match) rather than a direct `profiles` select -- see
+  // 0026_profile_privacy_and_security_definer_hardening.sql, which
+  // restricts `profiles` reads to self/admin/related-garage-member and
+  // would otherwise block this lookup entirely (there's no relationship
+  // between this garage and a not-yet-invited email).
+  const { data: matches } = await supabase.rpc("find_invitable_profile_by_email", {
+    target_email: email,
+  });
+  const existingProfile = matches?.[0] ?? null;
 
   if (existingProfile) {
     if (existingProfile.role !== "mecanicien") {
@@ -78,6 +83,27 @@ export async function inviteMechanic(
 
   if (error || !data.user) {
     return { message: error?.message ?? "Could not send the invite." };
+  }
+
+  // handle_new_user() (supabase/migrations/0030_restrict_self_signup_roles.sql)
+  // no longer grants 'mecanicien' from invite metadata -- that trigger now
+  // unconditionally restricts the self-signup-derived role to
+  // client/admin_garage, since it can't distinguish this admin-invite call
+  // from a public signUp() call using the same metadata shape. The freshly
+  // created profile lands as 'client'; elevate it explicitly here instead,
+  // via the same service-role client already used for the invite above.
+  // This is safe specifically because this code path is only reachable by
+  // an authenticated garage owner (requireGarageOwner, above).
+  const { error: roleError } = await admin
+    .from("profiles")
+    .update({ role: "mecanicien" })
+    .eq("id", data.user.id);
+
+  if (roleError) {
+    return {
+      message:
+        "Invite sent, but granting mécanicien access failed. Contact support.",
+    };
   }
 
   const { error: staffError } = await supabase

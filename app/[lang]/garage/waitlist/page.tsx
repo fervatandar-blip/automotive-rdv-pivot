@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { removeWaitlistEntry } from "@/app/actions/waitlist";
 
@@ -22,6 +23,9 @@ export default async function GarageWaitlistPage({
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageMember(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageWaitlist;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const supabase = await createClient();
 
   const { data: entries } = await supabase
@@ -44,14 +48,13 @@ export default async function GarageWaitlistPage({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; Back to dashboard
+              &larr; {d.backToDashboard}
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
-              {garage.name} &mdash; waitlist
+              {garage.name} &mdash; {d.waitlistSuffix}
             </h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              Clients waiting for a slot to open up on a fully booked or
-              closed date.
+              {d.description}
             </p>
           </div>
           <LanguageSwitcher lang={lang} />
@@ -59,7 +62,7 @@ export default async function GarageWaitlistPage({
 
         {rows.length === 0 ? (
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            No one is on the waitlist right now.
+            {d.noOneWaiting}
           </p>
         ) : (
           <div className="flex flex-col gap-3">
@@ -70,20 +73,21 @@ export default async function GarageWaitlistPage({
               >
                 <div>
                   <h3 className="font-semibold text-black dark:text-zinc-50">
-                    {entry.services?.name ?? "Service"} &mdash;{" "}
+                    {entry.services?.name ?? d.serviceFallback} &mdash;{" "}
                     {new Date(`${entry.date}T00:00:00`).toLocaleDateString(
-                      undefined,
+                      dateLocale,
                       { weekday: "short", month: "short", day: "numeric" }
                     )}
                   </h3>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    {entry.client?.full_name ?? "Client"} &middot;{" "}
+                    {entry.client?.full_name ?? d.clientFallback} &middot;{" "}
                     {entry.client?.email ?? ""}
                   </p>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    Joined {new Date(entry.created_at).toLocaleDateString()}
+                    {d.joined}{" "}
+                    {new Date(entry.created_at).toLocaleDateString(dateLocale)}
                     {entry.notified_at &&
-                      ` · Notified ${new Date(entry.notified_at).toLocaleDateString()}`}
+                      ` · ${d.notified} ${new Date(entry.notified_at).toLocaleDateString(dateLocale)}`}
                   </p>
                 </div>
                 <form action={removeWaitlistEntry}>
@@ -93,7 +97,7 @@ export default async function GarageWaitlistPage({
                     type="submit"
                     className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                   >
-                    Remove
+                    {d.remove}
                   </button>
                 </form>
               </div>

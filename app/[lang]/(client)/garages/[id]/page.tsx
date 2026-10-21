@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
-import { getAuthedUser } from "@/lib/dal";
+import { getOptionalAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { getAvailableSlotsForDate } from "@/lib/availability";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { GarageMapDisplay } from "@/components/garage-map-display";
 import { bookAppointment } from "@/app/actions/appointments";
 import { joinWaitlist } from "@/app/actions/waitlist";
@@ -58,8 +59,6 @@ function BookingStepIndicator({ steps }: { steps: { label: string; status: StepS
   );
 }
 
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
 const currencyFormatter = new Intl.NumberFormat("fr-LU", {
   style: "currency",
   currency: "EUR",
@@ -107,17 +106,6 @@ function buildCalendarGrid(year: number, monthIndex: number) {
   return cells;
 }
 
-const ERROR_MESSAGES: Record<string, string> = {
-  invalid: "That booking request wasn't valid. Please try again.",
-  service: "That service is no longer available.",
-  "slot-taken": "That time was just booked by someone else. Pick another.",
-  error: "Something went wrong booking that slot. Please try again.",
-  "not-payable": "This garage hasn't finished payment setup yet.",
-  "payment-cancelled": "Checkout was cancelled. You haven't been charged.",
-  "payment-error": "Something went wrong starting checkout. Please try again.",
-  terms: "You must agree to the booking terms to continue.",
-};
-
 export default async function GarageDetailPage({
   params,
   searchParams,
@@ -133,7 +121,14 @@ export default async function GarageDetailPage({
 }) {
   const { lang: rawLang, id: garageId } = await params;
   const lang = resolveLocale(rawLang);
-  const user = await getAuthedUser(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.garageDetail;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
+  // Public discovery/detail page -- no auth required to browse or reach the
+  // booking form. `user` is only used below to personalize (own vehicles,
+  // existing waitlist entry) when signed in; actually submitting a booking
+  // is gated inside bookAppointment (app/actions/appointments.ts).
+  const user = await getOptionalAuthedUser();
   const {
     service: serviceParam,
     date: dateParam,
@@ -146,7 +141,7 @@ export default async function GarageDetailPage({
 
   const { data: garage } = await supabase
     .from("garages")
-    .select("id, name, address, city, latitude, longitude, stripe_charges_enabled")
+    .select("id, name, address, city, website, latitude, longitude, stripe_charges_enabled")
     .eq("id", garageId)
     .eq("status", "approved")
     .is("deleted_at", null)
@@ -187,7 +182,7 @@ export default async function GarageDetailPage({
   const currentMonth = { year: today.getFullYear(), monthIndex: today.getMonth() };
   const { year, monthIndex } = parseMonthKey(monthParam, currentMonth);
   const displayedMonthKey = monthKey(year, monthIndex);
-  const monthLabel = new Date(year, monthIndex, 1).toLocaleDateString(undefined, {
+  const monthLabel = new Date(year, monthIndex, 1).toLocaleDateString(dateLocale, {
     month: "long",
     year: "numeric",
   });
@@ -216,7 +211,7 @@ export default async function GarageDetailPage({
     slots = result.slots;
     isClosedOverride = result.isClosed;
 
-    if (slots.length === 0) {
+    if (slots.length === 0 && user) {
       const { data: waitlistEntry } = await supabase
         .from("waitlist")
         .select("id")
@@ -229,11 +224,13 @@ export default async function GarageDetailPage({
     }
   }
 
-  const { data: vehicles } = await supabase
-    .from("vehicles")
-    .select("id, model, year, brands(name)")
-    .eq("client_id", user.id)
-    .order("created_at", { ascending: false });
+  const { data: vehicles } = user
+    ? await supabase
+        .from("vehicles")
+        .select("id, model, year, brands(name)")
+        .eq("client_id", user.id)
+        .order("created_at", { ascending: false })
+    : { data: null };
 
   const vehicleRows = (vehicles ?? []) as unknown as {
     id: string;
@@ -245,13 +242,13 @@ export default async function GarageDetailPage({
   const vehicleLabel = (vehicle: (typeof vehicleRows)[number]) =>
     [vehicle.brands?.name, vehicle.model, vehicle.year]
       .filter(Boolean)
-      .join(" ") || "Vehicle";
+      .join(" ") || d.vehicleFallback;
 
   const bookingSteps: { label: string; status: StepStatus }[] = [
-    { label: "Vehicle", status: vehicleRows.length > 0 ? "complete" : "upcoming" },
-    { label: "Service", status: serviceParam ? "complete" : "current" },
+    { label: d.stepVehicle, status: vehicleRows.length > 0 ? "complete" : "upcoming" },
+    { label: d.stepService, status: serviceParam ? "complete" : "current" },
     {
-      label: "Date & Time",
+      label: d.stepDateTime,
       status: dateParam ? "complete" : serviceParam ? "current" : "upcoming",
     },
   ];
@@ -264,7 +261,7 @@ export default async function GarageDetailPage({
             href={`/${lang}/garages`}
             className="text-sm font-medium underline"
           >
-            &larr; Back to garages
+            &larr; {d.backToGarages}
           </Link>
           <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
             {garage.name}
@@ -274,8 +271,21 @@ export default async function GarageDetailPage({
               {[garage.address, garage.city].filter(Boolean).join(", ")}
             </p>
           )}
+          {garage.website && (
+            <a
+              href={garage.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-1 inline-block text-sm font-medium underline"
+            >
+              {garage.website.replace(/^https?:\/\//, "")}
+            </a>
+          )}
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            {formatRating(reviewRows.map((review) => review.rating))}
+            {formatRating(
+              reviewRows.map((review) => review.rating),
+              d.noReviewsYet
+            )}
           </p>
         </div>
 
@@ -286,16 +296,15 @@ export default async function GarageDetailPage({
           />
         )}
 
-        {error && ERROR_MESSAGES[error] && (
+        {error && d.errors[error as keyof typeof d.errors] && (
           <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
-            {ERROR_MESSAGES[error]}
+            {d.errors[error as keyof typeof d.errors]}
           </p>
         )}
 
         {waitlisted === "1" && (
           <p className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
-            You&apos;re on the waitlist. We&apos;ll email you if a slot opens
-            up.
+            {d.waitlistedNotice}
           </p>
         )}
 
@@ -303,7 +312,7 @@ export default async function GarageDetailPage({
 
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            Choose a service
+            {d.chooseService}
           </h2>
           <div className="flex flex-col gap-2">
             {services && services.length > 0 ? (
@@ -322,7 +331,7 @@ export default async function GarageDetailPage({
                       {service.name}
                     </span>
                     <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {service.duration_minutes} min &middot;{" "}
+                      {service.duration_minutes} {d.min} &middot;{" "}
                       {currencyFormatter.format(Number(service.price))}
                     </span>
                   </div>
@@ -335,7 +344,7 @@ export default async function GarageDetailPage({
               ))
             ) : (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                This garage hasn&apos;t added any services yet.
+                {d.noServicesYet}
               </p>
             )}
           </div>
@@ -343,8 +352,7 @@ export default async function GarageDetailPage({
 
         {selectedService && !garage.stripe_charges_enabled && (
           <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
-            This garage hasn&apos;t finished payment setup yet, so booking is
-            temporarily unavailable.
+            {d.paymentSetupNotice}
           </p>
         )}
 
@@ -353,13 +361,13 @@ export default async function GarageDetailPage({
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                  Choose a date
+                  {d.chooseDate}
                 </h2>
                 <div className="flex items-center gap-1">
                   {canGoPrevMonth ? (
                     <Link
                       href={`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}&month=${prevMonthKey}`}
-                      aria-label="Previous month"
+                      aria-label={d.previousMonth}
                       className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-black/[.04] dark:text-zinc-400 dark:hover:bg-white/[.06]"
                     >
                       <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
@@ -375,7 +383,7 @@ export default async function GarageDetailPage({
                   {canGoNextMonth ? (
                     <Link
                       href={`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}&month=${nextMonthKeyValue}`}
-                      aria-label="Next month"
+                      aria-label={d.nextMonth}
                       className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-black/[.04] dark:text-zinc-400 dark:hover:bg-white/[.06]"
                     >
                       <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
@@ -389,8 +397,8 @@ export default async function GarageDetailPage({
               </div>
 
               <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                {WEEKDAY_LABELS.map((label) => (
-                  <span key={label}>{label}</span>
+                {d.weekdays.map((label: string, index: number) => (
+                  <span key={index}>{label}</span>
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-1">
@@ -429,7 +437,7 @@ export default async function GarageDetailPage({
 
             <div className="flex flex-col gap-3">
               <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                Available times
+                {d.availableTimes}
               </h2>
               {slots.length > 0 ? (
                 <form action={bookAppointment} className="flex flex-col gap-3">
@@ -444,7 +452,7 @@ export default async function GarageDetailPage({
                   {vehicleRows.length > 0 ? (
                     <div className="flex flex-col gap-1">
                       <label htmlFor="vehicleId" className="text-sm font-medium">
-                        Vehicle
+                        {d.vehicleLabel}
                       </label>
                       <select
                         id="vehicleId"
@@ -452,7 +460,7 @@ export default async function GarageDetailPage({
                         defaultValue={vehicleRows[0].id}
                         className="w-full max-w-xs rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
                       >
-                        <option value="">No vehicle specified</option>
+                        <option value="">{d.noVehicleSpecified}</option>
                         {vehicleRows.map((vehicle) => (
                           <option key={vehicle.id} value={vehicle.id}>
                             {vehicleLabel(vehicle)}
@@ -465,13 +473,13 @@ export default async function GarageDetailPage({
                       href={`/${lang}/vehicles`}
                       className="self-start text-sm font-medium underline"
                     >
-                      Add a vehicle for faster booking next time
+                      {d.addVehicleFaster}
                     </Link>
                   )}
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Booking {selectedService.name}
+                    {d.booking} {selectedService.name}
                     {vehicleRows.length > 0
-                      ? ` for ${vehicleLabel(vehicleRows[0])}`
+                      ? ` ${d.forVehicle} ${vehicleLabel(vehicleRows[0])}`
                       : ""}
                   </p>
                   <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
@@ -482,9 +490,9 @@ export default async function GarageDetailPage({
                       className="mt-1"
                     />
                     <span>
-                      I agree to the{" "}
+                      {d.agreeToThe}{" "}
                       <Link href={`/${lang}/privacy`} className="underline">
-                        booking terms and cancellation policy
+                        {d.bookingTermsLink}
                       </Link>
                       .
                     </span>
@@ -506,13 +514,11 @@ export default async function GarageDetailPage({
               ) : (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {isClosedOverride
-                      ? "This garage is closed on this date."
-                      : "No open times on this day."}
+                    {isClosedOverride ? d.closedOnDate : d.noOpenTimes}
                   </p>
                   {alreadyOnWaitlist ? (
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                      You&apos;re on the waitlist for this date.
+                      {d.alreadyOnWaitlistForDate}
                     </p>
                   ) : (
                     <form action={joinWaitlist}>
@@ -528,7 +534,7 @@ export default async function GarageDetailPage({
                         type="submit"
                         className="self-start rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
                       >
-                        Join waitlist for this date
+                        {d.joinWaitlistForDate}
                       </button>
                     </form>
                   )}
@@ -540,7 +546,7 @@ export default async function GarageDetailPage({
 
         <div className="flex flex-col gap-3">
           <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            Reviews
+            {d.reviews}
           </h2>
           {reviewRows.length > 0 ? (
             reviewRows.map((review) => (
@@ -550,7 +556,7 @@ export default async function GarageDetailPage({
               >
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-black dark:text-zinc-50">
-                    {review.profiles?.full_name ?? "Client"}
+                    {review.profiles?.full_name ?? d.clientFallback}
                   </span>
                   <span className="text-sm text-zinc-600 dark:text-zinc-400">
                     {"★".repeat(review.rating)}
@@ -563,13 +569,13 @@ export default async function GarageDetailPage({
                   </p>
                 )}
                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-                  {new Date(review.created_at).toLocaleDateString()}
+                  {new Date(review.created_at).toLocaleDateString(dateLocale)}
                 </p>
               </div>
             ))
           ) : (
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              No reviews yet.
+              {d.noReviewsYet}
             </p>
           )}
         </div>

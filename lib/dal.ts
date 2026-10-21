@@ -42,6 +42,40 @@ export const getAuthedProfile = cache(async (locale: Locale) => {
 });
 
 /**
+ * Non-redirecting variant of getAuthedUser, for pages a signed-out visitor
+ * is allowed to see (public garage discovery/detail) but where signed-in
+ * requests still want personalization. Returns null instead of redirecting.
+ */
+export const getOptionalAuthedUser = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});
+
+/**
+ * Non-redirecting variant of getAuthedProfile -- same use case. Returns null
+ * for a signed-out visitor, or a signed-in one whose account is deleted,
+ * rather than redirecting to /login.
+ */
+export const getOptionalAuthedProfile = cache(async () => {
+  const user = await getOptionalAuthedUser();
+  if (!user) return null;
+
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, role, full_name, email, deletion_requested_at, deleted_at")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile || profile.deleted_at) return null;
+
+  return profile;
+});
+
+/**
  * Resolves the garage a client_garage/mecanicien profile belongs to (owner
  * or staff), or null if they have no garage association (e.g. a mecanicien
  * who was removed from staff). Never redirects — callers that need a garage

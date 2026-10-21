@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ChatThread } from "@/components/chat-thread";
 
@@ -14,10 +15,13 @@ export default async function AppointmentMessagesPage({
   const { lang: rawLang, id: appointmentId } = await params;
   const lang = resolveLocale(rawLang);
   const user = await getAuthedUser(lang);
+  const dictionary = await getDictionary(lang);
+  const d = dictionary.appointmentMessages;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
 
   const supabase = await createClient();
 
-  // RLS ("Participants can update their appointments") already restricts
+  // RLS ("Participants can view their appointments") already restricts
   // this to the client who booked it or a member of the garage it belongs
   // to -- anyone else gets no row back, same pattern as the reschedule page.
   const { data: appointment } = await supabase
@@ -55,16 +59,16 @@ export default async function AppointmentMessagesPage({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; Back to dashboard
+              &larr; {d.backToDashboard}
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
-              {service?.name ?? "Appointment"}
+              {service?.name ?? d.appointmentFallback}
             </h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {client.full_name} &middot; {garage.name}
             </p>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {new Date(appointment.start_time).toLocaleString(undefined, {
+              {new Date(appointment.start_time).toLocaleString(dateLocale, {
                 weekday: "long",
                 month: "long",
                 day: "numeric",
@@ -83,6 +87,8 @@ export default async function AppointmentMessagesPage({
           clientName={client.full_name}
           garageName={garage.name}
           initialMessages={messages ?? []}
+          dictionary={d.chatThread}
+          timeLocale={dateLocale}
         />
       </div>
     </div>

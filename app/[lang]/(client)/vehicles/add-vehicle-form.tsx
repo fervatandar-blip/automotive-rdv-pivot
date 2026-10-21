@@ -5,10 +5,26 @@ import { useActionState, useEffect, useRef } from "react";
 import { addVehicle } from "@/app/actions/vehicles";
 import { StyledSelect } from "@/components/styled-select";
 
+type VehicleFormDictionary = {
+  addVehicle: string;
+  brand: string;
+  notSpecified: string;
+  model: string;
+  modelPlaceholder: string;
+  year: string;
+  yearPlaceholder: string;
+  licensePlate: string;
+  licensePlatePlaceholder: string;
+  submit: string;
+  submitPending: string;
+};
+
 export function AddVehicleForm({
   brands,
+  dictionary,
 }: {
   brands: { id: string; name: string }[];
+  dictionary: VehicleFormDictionary;
 }) {
   const [state, action, pending] = useActionState(addVehicle, undefined);
   const formRef = useRef<HTMLFormElement>(null);
@@ -29,16 +45,16 @@ export function AddVehicleForm({
       <input type="hidden" name="lang" value={lang} />
 
       <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-        Add a vehicle
+        {dictionary.addVehicle}
       </h2>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="brandId" className="text-sm font-medium">
-            Brand
+            {dictionary.brand}
           </label>
           <StyledSelect id="brandId" name="brandId" defaultValue="">
-            <option value="">Not specified</option>
+            <option value="">{dictionary.notSpecified}</option>
             {brands.map((brand) => (
               <option key={brand.id} value={brand.id}>
                 {brand.name}
@@ -52,12 +68,12 @@ export function AddVehicleForm({
 
         <div className="flex flex-col gap-1">
           <label htmlFor="model" className="text-sm font-medium">
-            Model
+            {dictionary.model}
           </label>
           <input
             id="model"
             name="model"
-            placeholder="Corolla"
+            placeholder={dictionary.modelPlaceholder}
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.model && (
@@ -67,13 +83,13 @@ export function AddVehicleForm({
 
         <div className="flex flex-col gap-1">
           <label htmlFor="year" className="text-sm font-medium">
-            Year
+            {dictionary.year}
           </label>
           <input
             id="year"
             name="year"
             type="number"
-            placeholder="2020"
+            placeholder={dictionary.yearPlaceholder}
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.year && (
@@ -83,12 +99,12 @@ export function AddVehicleForm({
 
         <div className="flex flex-col gap-1">
           <label htmlFor="licensePlate" className="text-sm font-medium">
-            License plate
+            {dictionary.licensePlate}
           </label>
           <input
             id="licensePlate"
             name="licensePlate"
-            placeholder="LU 1234"
+            placeholder={dictionary.licensePlatePlaceholder}
             className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.licensePlate && (
@@ -108,7 +124,7 @@ export function AddVehicleForm({
         type="submit"
         className="self-start rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
       >
-        {pending ? "Adding..." : "Add vehicle"}
+        {pending ? dictionary.submitPending : dictionary.submit}
       </button>
     </form>
   );
