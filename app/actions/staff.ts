@@ -35,6 +35,7 @@ export async function inviteMechanic(
 
   const { fullName, email } = validatedFields.data;
   const supabase = await createClient();
+  const admin = createAdminClient();
 
   // If this email already belongs to a platform user, attach them as staff
   // instead of trying (and failing) to create a duplicate auth account.
@@ -43,10 +44,20 @@ export async function inviteMechanic(
   // 0026_profile_privacy_and_security_definer_hardening.sql, which
   // restricts `profiles` reads to self/admin/related-garage-member and
   // would otherwise block this lookup entirely (there's no relationship
-  // between this garage and a not-yet-invited email).
-  const { data: matches } = await supabase.rpc("find_invitable_profile_by_email", {
-    target_email: email,
-  });
+  // between this garage and a not-yet-invited email). Called via the
+  // service-role client: 0032_revoke_public_rpc_execute.sql revokes it from
+  // every API-facing role, since anyone holding the anon key could
+  // otherwise enumerate accounts by email. Safe here because
+  // requireGarageOwner (above) already gated the caller.
+  const { data: matches, error: lookupError } = await admin.rpc(
+    "find_invitable_profile_by_email",
+    { target_email: email }
+  );
+
+  if (lookupError) {
+    return { message: "Could not check for an existing account. Try again." };
+  }
+
   const existingProfile = matches?.[0] ?? null;
 
   if (existingProfile) {
@@ -75,7 +86,6 @@ export async function inviteMechanic(
 
   const origin = await getOrigin();
   const nextPath = encodeURIComponent(`/${defaultLocale}/set-password`);
-  const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
     data: { full_name: fullName, role: "mecanicien" },
     redirectTo: `${origin}/auth/callback?next=${nextPath}`,
