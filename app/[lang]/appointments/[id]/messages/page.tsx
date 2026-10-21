@@ -6,6 +6,7 @@ import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ChatThread } from "@/components/chat-thread";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 export default async function AppointmentMessagesPage({
   params,
@@ -69,6 +70,7 @@ export default async function AppointmentMessagesPage({
             </p>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {new Date(appointment.start_time).toLocaleString(dateLocale, {
+                timeZone: APP_TIME_ZONE,
                 weekday: "long",
                 month: "long",
                 day: "numeric",

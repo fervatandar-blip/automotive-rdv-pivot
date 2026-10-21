@@ -7,24 +7,18 @@ import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { rescheduleAppointment } from "@/app/actions/appointments";
+import {
+  APP_TIME_ZONE,
+  addDaysToDateKey,
+  dayOfWeekForDateKey,
+  todayKeyInAppZone,
+} from "@/lib/timezone";
 
-function toDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function nextDays(count: number) {
-  const days: Date[] = [];
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  for (let i = 0; i < count; i++) {
-    const day = new Date(start);
-    day.setDate(start.getDate() + i);
-    days.push(day);
-  }
-  return days;
+// Date keys starting from the garage's local today (not the server's, which
+// is UTC on Vercel).
+function nextDayKeys(count: number) {
+  const today = todayKeyInAppZone();
+  return Array.from({ length: count }, (_, i) => addDaysToDateKey(today, i));
 }
 
 export default async function RescheduleAppointmentPage({
@@ -77,8 +71,8 @@ export default async function RescheduleAppointmentPage({
   const isReschedulable =
     appointment.status === "pending" || appointment.status === "confirmed";
 
-  const days = nextDays(14);
-  const selectedDate = dateParam ?? toDateKey(days[0]);
+  const days = nextDayKeys(14);
+  const selectedDate = dateParam ?? days[0];
 
   let slots: string[] = [];
   let isClosedOverride = false;
@@ -115,6 +109,7 @@ export default async function RescheduleAppointmentPage({
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {d.currently}{" "}
               {new Date(appointment.start_time).toLocaleString(dateLocale, {
+                timeZone: APP_TIME_ZONE,
                 weekday: "long",
                 month: "long",
                 day: "numeric",
@@ -142,8 +137,7 @@ export default async function RescheduleAppointmentPage({
               {d.chooseNewDate}
             </h2>
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {days.map((day) => {
-                const key = toDateKey(day);
+              {days.map((key) => {
                 const isSelected = key === selectedDate;
                 return (
                   <Link
@@ -155,8 +149,8 @@ export default async function RescheduleAppointmentPage({
                         : "border-black/[.08] bg-white hover:bg-black/[.02] dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.03]"
                     }`}
                   >
-                    <span>{d.weekdays[day.getDay()]}</span>
-                    <span className="font-medium">{day.getDate()}</span>
+                    <span>{d.weekdays[dayOfWeekForDateKey(key)]}</span>
+                    <span className="font-medium">{Number(key.slice(8, 10))}</span>
                   </Link>
                 );
               })}

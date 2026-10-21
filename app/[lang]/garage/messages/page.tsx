@@ -3,6 +3,7 @@ import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 type AppointmentRow = {
   id: string;
@@ -19,6 +20,7 @@ type MessageRow = {
 
 function formatDateTime(iso: string, dateLocale: string) {
   return new Date(iso).toLocaleString(dateLocale, {
+    timeZone: APP_TIME_ZONE,
     weekday: "short",
     month: "short",
     day: "numeric",

@@ -1,5 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { computeAvailableSlots } from "@/lib/slots";
+import {
+  addDaysToDateKey,
+  dayOfWeekForDateKey,
+  zonedStartOfDay,
+} from "@/lib/timezone";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -23,7 +28,7 @@ export async function getAvailableSlotsForDate({
   durationMinutes: number;
   excludeAppointmentId?: string;
 }): Promise<{ slots: string[]; isClosed: boolean }> {
-  const dayOfWeek = new Date(`${date}T00:00:00`).getDay();
+  const dayOfWeek = dayOfWeekForDateKey(date);
 
   const { data: overrides } = await supabase
     .from("availability_overrides")
@@ -47,9 +52,11 @@ export async function getAvailableSlotsForDate({
     windows = recurringWindows ?? [];
   }
 
-  const dayStart = new Date(`${date}T00:00:00`);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setDate(dayStart.getDate() + 1);
+  // The garage's local day, not the server's: on a UTC server a UTC-midnight
+  // window would miss bookings between 00:00 and 01:00/02:00 local time and
+  // pull in the previous evening's instead.
+  const dayStart = zonedStartOfDay(date);
+  const dayEnd = zonedStartOfDay(addDaysToDateKey(date, 1));
 
   // A security-definer RPC, not a direct table select: appointments' RLS
   // only lets the appointment's own client or a garage member see a row, so

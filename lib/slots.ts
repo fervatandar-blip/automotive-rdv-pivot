@@ -1,3 +1,5 @@
+import { zonedDateTimeToUtc } from "@/lib/timezone";
+
 export type AvailabilityWindow = {
   start_time: string; // "HH:MM:SS"
   end_time: string; // "HH:MM:SS"
@@ -24,6 +26,9 @@ function minutesToTime(totalMinutes: number) {
 /**
  * Steps through each availability window in durationMinutes increments,
  * dropping slots that overlap an existing booking or have already passed.
+ * `date` and the window times are wall-clock values in APP_TIME_ZONE (see
+ * lib/timezone.ts); the comparison against bookings and `now` happens on
+ * real instants, so the result doesn't depend on the server's own zone.
  */
 export function computeAvailableSlots({
   date,
@@ -50,8 +55,8 @@ export function computeAvailableSlots({
       slotStart += durationMinutes
     ) {
       const slotEnd = slotStart + durationMinutes;
-      const slotStartDate = new Date(`${date}T${minutesToTime(slotStart)}:00`);
-      const slotEndDate = new Date(`${date}T${minutesToTime(slotEnd)}:00`);
+      const slotStartDate = zonedDateTimeToUtc(date, minutesToTime(slotStart));
+      const slotEndDate = zonedDateTimeToUtc(date, minutesToTime(slotEnd));
 
       if (slotStartDate <= now) continue;
 

@@ -5,6 +5,7 @@ import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { removeWaitlistEntry } from "@/app/actions/waitlist";
+import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
 
 type WaitlistRow = {
   id: string;
@@ -74,9 +75,9 @@ export default async function GarageWaitlistPage({
                 <div>
                   <h3 className="font-semibold text-black dark:text-zinc-50">
                     {entry.services?.name ?? d.serviceFallback} &mdash;{" "}
-                    {new Date(`${entry.date}T00:00:00`).toLocaleDateString(
+                    {dateKeyToDisplayDate(entry.date).toLocaleDateString(
                       dateLocale,
-                      { weekday: "short", month: "short", day: "numeric" }
+                      { timeZone: APP_TIME_ZONE, weekday: "short", month: "short", day: "numeric" }
                     )}
                   </h3>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
@@ -85,9 +86,9 @@ export default async function GarageWaitlistPage({
                   </p>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                     {d.joined}{" "}
-                    {new Date(entry.created_at).toLocaleDateString(dateLocale)}
+                    {new Date(entry.created_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                     {entry.notified_at &&
-                      ` · ${d.notified} ${new Date(entry.notified_at).toLocaleDateString(dateLocale)}`}
+                      ` · ${d.notified} ${new Date(entry.notified_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}`}
                   </p>
                 </div>
                 <form action={removeWaitlistEntry}>

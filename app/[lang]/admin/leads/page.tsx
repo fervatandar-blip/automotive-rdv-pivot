@@ -11,6 +11,7 @@ import {
   archiveLead,
   convertLeadToAccount,
 } from "@/app/actions/leads";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 const STATUS_BADGE: Record<string, string> = {
   new: "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-400",
@@ -138,7 +139,7 @@ export default async function AdminLeadsPage({
 
                 <p className="text-xs text-zinc-500 dark:text-zinc-500">
                   {d.submittedPrefix}{" "}
-                  {new Date(lead.created_at).toLocaleDateString(dateLocale)}
+                  {new Date(lead.created_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                 </p>
 
                 {lead.status === "converted" && lead.converted_garage_id ? (

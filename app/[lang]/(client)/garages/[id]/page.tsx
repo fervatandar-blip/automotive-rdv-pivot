@@ -10,6 +10,7 @@ import { GarageMapDisplay } from "@/components/garage-map-display";
 import { bookAppointment } from "@/app/actions/appointments";
 import { joinWaitlist } from "@/app/actions/waitlist";
 import { formatRating } from "@/lib/ratings";
+import { APP_TIME_ZONE, dateKeyToDisplayDate, todayKeyInAppZone } from "@/lib/timezone";
 
 type StepStatus = "complete" | "current" | "upcoming";
 
@@ -174,15 +175,18 @@ export default async function GarageDetailPage({
   const selectedService =
     services?.find((service) => service.id === serviceParam) ?? services?.[0];
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayKey = toDateKey(today);
+  // "Today" is the garage's local date, not the server's (UTC on Vercel),
+  // or between 00:00 and 01:00/02:00 local time the picker would still offer
+  // yesterday. The calendar grid itself is pure date-key arithmetic.
+  const todayKey = todayKeyInAppZone();
   const selectedDate = dateParam ?? todayKey;
 
-  const currentMonth = { year: today.getFullYear(), monthIndex: today.getMonth() };
+  const [todayYear, todayMonth] = todayKey.split("-").map(Number);
+  const currentMonth = { year: todayYear, monthIndex: todayMonth - 1 };
   const { year, monthIndex } = parseMonthKey(monthParam, currentMonth);
   const displayedMonthKey = monthKey(year, monthIndex);
-  const monthLabel = new Date(year, monthIndex, 1).toLocaleDateString(dateLocale, {
+  const monthLabel = dateKeyToDisplayDate(`${monthKey(year, monthIndex)}-01`).toLocaleDateString(dateLocale, {
+    timeZone: APP_TIME_ZONE,
     month: "long",
     year: "numeric",
   });
@@ -569,7 +573,7 @@ export default async function GarageDetailPage({
                   </p>
                 )}
                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
-                  {new Date(review.created_at).toLocaleDateString(dateLocale)}
+                  {new Date(review.created_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                 </p>
               </div>
             ))

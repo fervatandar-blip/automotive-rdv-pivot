@@ -21,6 +21,7 @@ import {
   confirmAppointment,
   providerCancelAppointment,
 } from "@/app/actions/appointments";
+import { APP_TIME_ZONE, dateKeyInAppZone, zonedStartOfDay } from "@/lib/timezone";
 
 type D = Dictionary["garageCalendar"];
 
@@ -37,6 +38,7 @@ type Mechanic = { id: string; full_name: string };
 
 function formatTime(iso: string, dateLocale: string) {
   return new Date(iso).toLocaleTimeString(dateLocale, {
+    timeZone: APP_TIME_ZONE,
     hour: "numeric",
     minute: "2-digit",
   });
@@ -259,8 +261,13 @@ export default async function GarageCalendarPage({
     view === "week"
       ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i))
       : monthGridDays(anchor);
-  const rangeStart = rangeDays[0];
-  const rangeEnd = addDays(rangeDays[rangeDays.length - 1], 1);
+  // rangeDays are calendar-grid dates; the query bounds must be the garage's
+  // local midnights, not the server's (UTC on Vercel), or appointments in the
+  // first hour or two of a local day land outside the range.
+  const rangeStart = zonedStartOfDay(toDateKey(rangeDays[0]));
+  const rangeEnd = zonedStartOfDay(
+    toDateKey(addDays(rangeDays[rangeDays.length - 1], 1))
+  );
 
   const supabase = await createClient();
 
@@ -285,7 +292,7 @@ export default async function GarageCalendarPage({
   const rows = (appointments ?? []) as unknown as CalendarAppointment[];
   const byDay = new Map<string, CalendarAppointment[]>();
   for (const appointment of rows) {
-    const key = toDateKey(new Date(appointment.start_time));
+    const key = dateKeyInAppZone(new Date(appointment.start_time));
     if (!byDay.has(key)) byDay.set(key, []);
     byDay.get(key)?.push(appointment);
   }

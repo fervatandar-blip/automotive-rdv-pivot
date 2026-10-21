@@ -1,6 +1,7 @@
 import { sendEmail } from "@/lib/email";
 import { sendPushToProfile } from "@/lib/push";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
 
 type GarageNotificationColumn = "notify_new_booking" | "notify_cancellation";
 
@@ -57,6 +58,7 @@ export async function notifyAppointmentStatusChange({
   if (!copy) return;
 
   const when = new Date(startTime).toLocaleString(undefined, {
+    timeZone: APP_TIME_ZONE,
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -157,6 +159,7 @@ export async function notifyBookingReceived({
   recipientGarageId?: string;
 }) {
   const when = new Date(startTime).toLocaleString(undefined, {
+    timeZone: APP_TIME_ZONE,
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -216,6 +219,7 @@ export async function notifyAppointmentRescheduled({
   startTime: string;
 }) {
   const when = new Date(startTime).toLocaleString(undefined, {
+    timeZone: APP_TIME_ZONE,
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -253,7 +257,8 @@ export async function notifyWaitlistSlotOpened({
   serviceName: string;
   date: string;
 }) {
-  const when = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
+  const when = dateKeyToDisplayDate(date).toLocaleDateString(undefined, {
+    timeZone: APP_TIME_ZONE,
     weekday: "long",
     month: "long",
     day: "numeric",

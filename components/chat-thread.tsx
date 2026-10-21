@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { sendMessage } from "@/app/actions/messages";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 type Message = {
   id: string;
@@ -127,6 +128,7 @@ export function ChatThread({
                 <span className="text-xs text-zinc-500 dark:text-zinc-500">
                   {labelFor(message.sender_id)} &middot;{" "}
                   {new Date(message.created_at).toLocaleTimeString(timeLocale, {
+                    timeZone: APP_TIME_ZONE,
                     hour: "numeric",
                     minute: "2-digit",
                   })}

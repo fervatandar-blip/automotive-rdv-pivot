@@ -9,6 +9,7 @@ import {
   cancelAccountDeletion,
 } from "@/app/actions/account";
 import { ACCOUNT_DELETION_GRACE_PERIOD_DAYS } from "@/lib/account-deletion";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 export default async function AccountPage({
   params,
@@ -110,6 +111,7 @@ export default async function AccountPage({
               <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
                 {d.scheduledForDeletionPrefix}{" "}
                 {eligibleAt.toLocaleDateString(dateLocale, {
+                  timeZone: APP_TIME_ZONE,
                   year: "numeric",
                   month: "long",
                   day: "numeric",

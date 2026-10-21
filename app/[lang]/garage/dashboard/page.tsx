@@ -15,6 +15,13 @@ import { LanguageSwitcher } from "@/components/language-switcher";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
 import { StyledSelect } from "@/components/styled-select";
 import { REPAIR_STAGES, REPAIR_STAGE_LABELS } from "@/lib/definitions";
+import {
+  APP_TIME_ZONE,
+  addDaysToDateKey,
+  dayOfWeekForDateKey,
+  todayKeyInAppZone,
+  zonedStartOfDay,
+} from "@/lib/timezone";
 
 type D = Dictionary["garageDashboard"];
 
@@ -27,6 +34,7 @@ function isUpcoming(appointment: { status: string; start_time: string }) {
 
 function formatDateTime(iso: string, dateLocale: string) {
   return new Date(iso).toLocaleString(dateLocale, {
+    timeZone: APP_TIME_ZONE,
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -319,10 +327,10 @@ export default async function GarageDashboardPage({
   const ownerSupabase = await createClient();
   const nowIso = new Date().toISOString();
 
-  const startOfWeek = new Date();
-  const diffToMonday = (startOfWeek.getDay() + 6) % 7;
-  startOfWeek.setDate(startOfWeek.getDate() - diffToMonday);
-  startOfWeek.setHours(0, 0, 0, 0);
+  // Monday 00:00 in the garage's zone, not the server's (UTC on Vercel).
+  const todayKey = todayKeyInAppZone();
+  const diffToMonday = (dayOfWeekForDateKey(todayKey) + 6) % 7;
+  const startOfWeek = zonedStartOfDay(addDaysToDateKey(todayKey, -diffToMonday));
 
   const [
     { count: upcomingCount },

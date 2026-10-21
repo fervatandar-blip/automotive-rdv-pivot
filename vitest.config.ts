@@ -10,6 +10,9 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Match Vercel's runtime zone so code that silently depends on the
+    // process zone (instead of lib/timezone.ts) fails here, not in prod.
+    env: { TZ: "UTC" },
     include: ["**/*.test.ts"],
     exclude: ["node_modules/**", ".next/**"],
   },

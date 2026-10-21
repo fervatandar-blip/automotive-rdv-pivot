@@ -13,6 +13,7 @@ import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { EmptyStateCard } from "@/components/empty-state-card";
 import { REPAIR_STAGES, REPAIR_STAGE_LABELS } from "@/lib/definitions";
+import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
 
 type Appointment = {
   id: string;
@@ -100,6 +101,7 @@ function isUpcoming(appointment: { status: string; start_time: string }) {
 
 function formatDateTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
+    timeZone: APP_TIME_ZONE,
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -110,6 +112,7 @@ function formatDateTime(iso: string) {
 
 function formatDateHeader(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
+    timeZone: APP_TIME_ZONE,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -557,9 +560,9 @@ export default async function DashboardPage({
                   </h3>
                   <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                     {d.waitlistWith} {entry.garages?.name ?? d.garageFallback} {d.waitlistOn}{" "}
-                    {new Date(`${entry.date}T00:00:00`).toLocaleDateString(
+                    {dateKeyToDisplayDate(entry.date).toLocaleDateString(
                       undefined,
-                      { weekday: "short", month: "short", day: "numeric" }
+                      { timeZone: APP_TIME_ZONE, weekday: "short", month: "short", day: "numeric" }
                     )}
                   </p>
                   {entry.notified_at && (

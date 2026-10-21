@@ -9,6 +9,7 @@ import { locales, parseLocale } from "@/lib/i18n/config";
 import { getOrigin } from "@/lib/origin";
 import { getStripe, PLATFORM_COMMISSION_PERCENT } from "@/lib/stripe";
 import { getAvailableSlotsForDate } from "@/lib/availability";
+import { dateKeyInAppZone, todayKeyInAppZone, zonedDateTimeToUtc } from "@/lib/timezone";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { BookingFormSchema, RescheduleFormSchema } from "@/lib/definitions";
 import {
@@ -37,13 +38,6 @@ function revalidateLocalizedPath(path: string) {
   for (const locale of locales) {
     revalidatePath(`/${locale}${path}`);
   }
-}
-
-function toDateKey(date: Date) {
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  return `${year}-${month}-${day}`;
 }
 
 async function notifyStatusChange(
@@ -152,7 +146,22 @@ export async function bookAppointment(formData: FormData) {
     redirect(`/${lang}/garages/${garageId}?error=not-payable`);
   }
 
-  const startDate = new Date(`${date}T${startTime}:00`);
+  // The slot must be one the garage actually offers for that date -- the
+  // same check rescheduleAppointment does. Without it, a hand-crafted POST
+  // could book any time (outside opening hours, on a closed day, or in the
+  // past) as long as it didn't overlap an existing booking.
+  const { slots } = await getAvailableSlotsForDate({
+    supabase,
+    garageId,
+    date,
+    durationMinutes: service.duration_minutes,
+  });
+
+  if (!slots.includes(startTime)) {
+    redirect(bookingErrorUrl("slot-taken"));
+  }
+
+  const startDate = zonedDateTimeToUtc(date, startTime);
   const endDate = new Date(
     startDate.getTime() + service.duration_minutes * 60000
   );
@@ -347,7 +356,7 @@ export async function cancelAppointment(formData: FormData) {
       await refundIfPaid(id);
       await notifyWaitlistOnCancellation(
         appointment.garage_id,
-        toDateKey(new Date(appointment.start_time))
+        dateKeyInAppZone(new Date(appointment.start_time))
       );
     }
   }
@@ -478,7 +487,9 @@ async function generateInvoice(
     );
     if (typeof invoiceNumberValue !== "number") return;
 
-    const invoiceNumber = `${new Date().getFullYear()}-${String(
+    // Year in the garage's zone: on a UTC server the first hour or two of
+    // 1 January local time would otherwise still be stamped with last year.
+    const invoiceNumber = `${todayKeyInAppZone().slice(0, 4)}-${String(
       invoiceNumberValue
     ).padStart(4, "0")}`;
     const issuedAt = new Date().toISOString();
@@ -636,7 +647,7 @@ export async function providerCancelAppointment(formData: FormData) {
       await refundIfPaid(id);
       await notifyWaitlistOnCancellation(
         appointment.garage_id,
-        toDateKey(new Date(appointment.start_time))
+        dateKeyInAppZone(new Date(appointment.start_time))
       );
     }
   }
@@ -705,7 +716,7 @@ export async function rescheduleAppointment(formData: FormData) {
     redirect(rescheduleErrorUrl("slot-taken"));
   }
 
-  const startDate = new Date(`${date}T${startTime}:00`);
+  const startDate = zonedDateTimeToUtc(date, startTime);
   const endDate = new Date(
     startDate.getTime() + service.duration_minutes * 60000
   );

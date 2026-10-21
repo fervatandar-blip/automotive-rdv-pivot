@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { retryInvoiceGeneration } from "@/app/actions/appointments";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 type InvoiceRow = {
   id: string;
@@ -200,7 +201,7 @@ export default async function GarageInvoicesPage({
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                       {payment.appointments?.client?.full_name ?? d.clientFallback}{" "}
                       &middot;{" "}
-                      {new Date(payment.created_at).toLocaleDateString(dateLocale)}
+                      {new Date(payment.created_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                     </p>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                       {d.charged} {formatMoney(payment.amount, payment.currency)}{" "}
@@ -248,7 +249,7 @@ export default async function GarageInvoicesPage({
                     </h3>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                       {appointment.client?.full_name ?? d.clientFallback} &middot;{" "}
-                      {new Date(appointment.start_time).toLocaleDateString(dateLocale)}
+                      {new Date(appointment.start_time).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                     </p>
                   </div>
                   <form action={retryInvoiceGeneration}>
@@ -295,7 +296,7 @@ export default async function GarageInvoicesPage({
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                       {formatMoney(invoice.amount, invoice.currency)}{" "}
                       &middot;{" "}
-                      {new Date(invoice.issued_at).toLocaleDateString(dateLocale)}
+                      {new Date(invoice.issued_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                     </p>
                   </div>
                   {signedUrls.has(invoice.id) && (

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 const styles = StyleSheet.create({
   page: {
@@ -94,13 +95,14 @@ function formatMoney(amount: number, currency: string) {
 
 function InvoiceDocument({ invoice }: { invoice: InvoiceData }) {
   const issued = new Date(invoice.issuedAt).toLocaleDateString("fr-LU", {
+    timeZone: APP_TIME_ZONE,
     year: "numeric",
     month: "long",
     day: "numeric",
   });
   const serviceDate = new Date(invoice.appointmentDate).toLocaleDateString(
     "fr-LU",
-    { year: "numeric", month: "long", day: "numeric" }
+    { timeZone: APP_TIME_ZONE, year: "numeric", month: "long", day: "numeric" }
   );
 
   return (

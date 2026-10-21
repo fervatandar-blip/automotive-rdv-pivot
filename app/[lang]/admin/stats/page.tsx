@@ -10,6 +10,7 @@ import {
   processAccountDeletionNow,
   runRetentionSweepNow,
 } from "@/app/actions/account";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 async function headCount(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -214,7 +215,7 @@ export default async function AdminStatsPage({
                       {d.requestedPrefix}{" "}
                       {new Date(
                         request.deletion_requested_at as string
-                      ).toLocaleDateString(dateLocale)}
+                      ).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                     </p>
                   </div>
                   <form action={processAccountDeletionNow}>

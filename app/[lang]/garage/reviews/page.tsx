@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { averageRating, formatRating } from "@/lib/ratings";
+import { APP_TIME_ZONE } from "@/lib/timezone";
 
 type ReviewRow = {
   id: string;
@@ -15,6 +16,7 @@ type ReviewRow = {
 
 function formatDate(iso: string, dateLocale: string) {
   return new Date(iso).toLocaleDateString(dateLocale, {
+    timeZone: APP_TIME_ZONE,
     year: "numeric",
     month: "short",
     day: "numeric",

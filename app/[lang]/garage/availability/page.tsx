@@ -10,21 +10,15 @@ import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { AddAvailabilityForm } from "./add-availability-form";
 import { AddOverrideForm } from "./add-override-form";
+import { APP_TIME_ZONE, dateKeyToDisplayDate, todayKeyInAppZone } from "@/lib/timezone";
 
 function formatTime(time: string) {
   return time.slice(0, 5);
 }
 
-function todayDateKey() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = (now.getMonth() + 1).toString().padStart(2, "0");
-  const day = now.getDate().toString().padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function formatOverrideDate(date: string, dateLocale: string) {
-  return new Date(`${date}T00:00:00`).toLocaleDateString(dateLocale, {
+  return dateKeyToDisplayDate(date).toLocaleDateString(dateLocale, {
+    timeZone: APP_TIME_ZONE,
     weekday: "short",
     month: "short",
     day: "numeric",
@@ -60,7 +54,7 @@ export default async function GarageAvailabilityPage({
     .from("availability_overrides")
     .select("id, date, is_closed, start_time, end_time")
     .eq("garage_id", garage.id)
-    .gte("date", todayDateKey())
+    .gte("date", todayKeyInAppZone())
     .order("date", { ascending: true });
 
   return (
