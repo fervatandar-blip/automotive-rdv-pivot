@@ -6,6 +6,21 @@ const resend = process.env.RESEND_API_KEY
 
 const FROM_EMAIL = process.env.EMAIL_FROM ?? "RDV <onboarding@resend.dev>";
 
+/**
+ * Escapes user-controlled text (garage names, client names, service names)
+ * before interpolating it into an email's HTML body -- otherwise a garage
+ * could name itself `<a href=...>` and have that rendered in other people's
+ * inboxes.
+ */
+export function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 export async function sendEmail({
   to,
   subject,

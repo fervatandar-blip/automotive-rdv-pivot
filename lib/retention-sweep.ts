@@ -7,6 +7,7 @@ import {
 import { purgeGarageDocuments } from "@/lib/document-retention";
 
 const REJECTED_GARAGE_DOCUMENT_RETENTION_DAYS = 90;
+const STAFF_INVITE_RETENTION_DAYS = 30;
 
 export async function runRetentionSweep() {
   const admin = createAdminClient();
@@ -71,9 +72,22 @@ export async function runRetentionSweep() {
     .lt("date", today)
     .select("id");
 
+  // 4. Staff invitations: they hold the email of someone who may never
+  // have signed up or agreed to anything. Keep a closed or expired invite
+  // for a short audit window, then delete it.
+  const inviteCutoff = new Date(
+    Date.now() - STAFF_INVITE_RETENTION_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
+  const { data: staleInvites } = await admin
+    .from("garage_invites")
+    .delete()
+    .or(`expires_at.lt.${inviteCutoff},responded_at.lt.${inviteCutoff}`)
+    .select("id");
+
   return {
     accountDeletionsProcessed: dueDeletions?.length ?? 0,
     staleDocumentGarages,
     expiredWaitlistEntries: expiredWaitlist?.length ?? 0,
+    staleStaffInvites: staleInvites?.length ?? 0,
   };
 }

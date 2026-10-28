@@ -31,6 +31,14 @@ export async function processAccountDeletion(profileId: string) {
   await admin.from("waitlist").delete().eq("client_id", profileId);
   await admin.from("garage_staff").delete().eq("profile_id", profileId);
 
+  // Invitations addressed to this person are keyed by their (auth) email,
+  // not their profile id -- see 0033_garage_staff_invites.sql.
+  const { data: authUser } = await admin.auth.admin.getUserById(profileId);
+  const authEmail = authUser?.user?.email?.toLowerCase();
+  if (authEmail) {
+    await admin.from("garage_invites").delete().eq("email", authEmail);
+  }
+
   if (profile.role === "admin_garage") {
     const { data: garages } = await admin
       .from("garages")

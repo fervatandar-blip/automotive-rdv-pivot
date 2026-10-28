@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getAuthedProfile, getGarageMembership } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/actions/auth";
+import { acceptMechanicInvite, declineMechanicInvite } from "@/app/actions/staff";
 import {
   completeAppointment,
   confirmAppointment,
@@ -207,12 +208,31 @@ function LogoutButton({ lang, d }: { lang: Locale; d: D }) {
   );
 }
 
+// Outcomes of accept/decline (app/actions/staff.ts) shown on the no-garage
+// empty state. "accepted" never lands here -- it shows the garage instead.
+const INVITE_RESULT_KEYS = {
+  declined: "inviteDeclined",
+  not_found: "inviteNotFound",
+  not_mechanic: "inviteNotMechanic",
+  already_staff: "inviteAlreadyStaff",
+  error: "inviteError",
+} as const;
+
+type PendingInvite = {
+  id: string;
+  garage_name: string;
+  expires_at: string;
+};
+
 export default async function GarageDashboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ invite?: string }>;
 }) {
   const { lang: rawLang } = await params;
+  const { invite: inviteResult } = await searchParams;
   const lang = resolveLocale(rawLang);
   const profile = await getAuthedProfile(lang);
   const dictionary = await getDictionary(lang);
@@ -231,18 +251,87 @@ export default async function GarageDashboardPage({
   const membership = await getGarageMembership(lang);
 
   if (!membership) {
-    // A mecanicien with no garage association (e.g. removed from staff).
-    // Don't call requireGarageMember here -- its fallback redirects to
+    // A mecanicien with no garage association: newly invited (pending
+    // invites listed below) or removed from staff. Don't call
+    // requireGarageMember here -- its fallback redirects to
     // /garage/dashboard, which would loop forever on this exact page.
+    const supabase = await createClient();
+    const { data: invitesData } = await supabase.rpc("list_my_garage_invites");
+    const pendingInvites = (invitesData ?? []) as PendingInvite[];
+    const resultKey =
+      inviteResult && inviteResult in INVITE_RESULT_KEYS
+        ? INVITE_RESULT_KEYS[inviteResult as keyof typeof INVITE_RESULT_KEYS]
+        : null;
+
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-zinc-50 px-4 py-16 dark:bg-black">
-        <div className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-zinc-950">
+        <div className="flex w-full max-w-md flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-zinc-950">
           <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-            {d.noGarageTitle}
+            {pendingInvites.length > 0 ? d.invitesTitle : d.noGarageTitle}
           </h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {d.noGarageDescription}
-          </p>
+          {resultKey && (
+            <p
+              role="status"
+              className="rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+            >
+              {d[resultKey]}
+            </p>
+          )}
+          {pendingInvites.length > 0 ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                {d.invitesDescription}
+              </p>
+              {pendingInvites.map((invite) => (
+                <div
+                  key={invite.id}
+                  className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+                >
+                  <div>
+                    <p className="font-medium text-black dark:text-zinc-50">
+                      {invite.garage_name}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      {d.inviteExpires.replace(
+                        "{date}",
+                        new Date(invite.expires_at).toLocaleDateString(dateLocale, {
+                          timeZone: APP_TIME_ZONE,
+                          day: "numeric",
+                          month: "long",
+                        })
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <form action={acceptMechanicInvite}>
+                      <input type="hidden" name="lang" value={lang} />
+                      <input type="hidden" name="inviteId" value={invite.id} />
+                      <button
+                        type="submit"
+                        className="rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
+                      >
+                        {d.acceptInvite}
+                      </button>
+                    </form>
+                    <form action={declineMechanicInvite}>
+                      <input type="hidden" name="lang" value={lang} />
+                      <input type="hidden" name="inviteId" value={invite.id} />
+                      <button
+                        type="submit"
+                        className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                      >
+                        {d.declineInvite}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {d.noGarageDescription}
+            </p>
+          )}
           <Link
             href={`/${lang}/account`}
             className="text-sm font-medium underline"

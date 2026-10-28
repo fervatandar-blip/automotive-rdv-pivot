@@ -6,12 +6,14 @@ import { inviteMechanic } from "@/app/actions/staff";
 
 type InviteFormDictionary = {
   title: string;
+  description: string;
   nameLabel: string;
   namePlaceholder: string;
   emailLabel: string;
   emailPlaceholder: string;
   submit: string;
   submitPending: string;
+  sentNotice: string;
 };
 
 export function InviteMechanicForm({
@@ -24,7 +26,7 @@ export function InviteMechanicForm({
   const { lang } = useParams<{ lang: string }>();
 
   useEffect(() => {
-    if (!pending && !state?.errors && !state?.message) {
+    if (!pending && state?.sentTo) {
       formRef.current?.reset();
     }
   }, [pending, state]);
@@ -37,11 +39,16 @@ export function InviteMechanicForm({
     >
       <input type="hidden" name="lang" value={lang} />
 
-      <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-        {dictionary.title}
-      </h2>
+      <div>
+        <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
+          {dictionary.title}
+        </h2>
+        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          {dictionary.description}
+        </p>
+      </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="fullName" className="text-sm font-medium">
             {dictionary.nameLabel}
@@ -74,7 +81,15 @@ export function InviteMechanicForm({
       </div>
 
       {state?.message && (
-        <p className="text-sm text-red-600">{state.message}</p>
+        <p role="alert" className="text-sm text-red-600">
+          {state.message}
+        </p>
+      )}
+
+      {state?.sentTo && !pending && (
+        <p role="status" className="text-sm text-green-700 dark:text-green-500">
+          {dictionary.sentNotice.replace("{email}", state.sentTo)}
+        </p>
       )}
 
       <button

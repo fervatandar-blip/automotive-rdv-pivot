@@ -52,6 +52,9 @@ export type InviteMechanicFormState =
         email?: string[];
       };
       message?: string;
+      // Set on success. Deliberately the same whether or not the email
+      // already has an account, so the form can't be used to probe for one.
+      sentTo?: string;
     }
   | undefined;
 
