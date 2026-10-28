@@ -179,7 +179,11 @@
     "reviews": "Avis",
     "noReviewsYet": "Aucun avis pour le moment.",
     "clientFallback": "Client",
-    "vehicleFallback": "Véhicule"
+    "vehicleFallback": "Véhicule",
+    "aboutTitle": "À propos",
+    "contactTitle": "Contact",
+    "hoursNotPublished": "Horaires d'ouverture pas encore publiés.",
+    "noContactDetails": "Aucune coordonnée publiée pour le moment."
   },
   "vehicles": {
     "title": "Mes véhicules",
@@ -418,6 +422,30 @@
       "rejected": "Rejeté"
     }
   },
+  "garageProfile": {
+    "title": "Profil du garage",
+    "subtitle": "Tout ce qui figure ici, sauf les informations légales et de facturation, est visible par les clients sur la page publique de votre garage. Chaque section s'enregistre séparément.",
+    "statusApproved": "En ligne",
+    "statusPending": "En cours de vérification",
+    "statusRejected": "Non approuvé",
+    "viewPublicPage": "Voir votre page publique",
+    "publicPageHidden": "Les clients ne peuvent pas voir votre garage tant qu'il n'est pas approuvé.",
+    "verificationLink": "Vérifier vos documents",
+    "detailsDescription": "Votre nom, votre description et vos coordonnées, tels que les clients les voient.",
+    "descriptionPlaceholder": "Pourquoi choisir votre garage ? Parlez de votre expérience, de vos points forts et de ce que les clients doivent savoir avant de venir.",
+    "legalTitle": "Informations légales et facturation (non visibles par les clients)",
+    "legalLockedNote": "Le pays et le numéro d'immatriculation de votre entreprise ont été vérifiés lors de l'approbation de votre garage. Contactez le support RDV pour les modifier.",
+    "hoursDescription": "Vos horaires d'ouverture sont les créneaux réservables définis sur la page Disponibilités. Les clients voient exactement ceux-ci.",
+    "manageHours": "Gérer les disponibilités",
+    "noHours": "Aucun horaire défini. Les clients ne peuvent pas réserver tant que vous n'avez pas ajouté vos horaires hebdomadaires.",
+    "locationDescription": "Placez le repère sur votre entrée pour que les clients vous trouvent.",
+    "capabilitiesDescription": "Aide les clients à filtrer les garages et à trouver le bon.",
+    "catalogTitle": "Marques et spécialités",
+    "catalogDescription": "Les marques que vous entretenez et vos domaines de spécialité.",
+    "save": "Enregistrer",
+    "saving": "Enregistrement...",
+    "saved": "Enregistré"
+  },
   "garageStaff": {
     "backToDashboard": "Retour au tableau de bord",
     "staffSuffix": "équipe",
@@ -613,7 +641,10 @@
     "completeSetup": "Terminer la configuration et passer aux documents",
     "saveChanges": "Enregistrer les modifications",
     "nameTooShortError": "Le nom doit contenir au moins 2 caractères.",
-    "invalidEmailError": "Veuillez saisir une adresse e-mail valide."
+    "invalidEmailError": "Veuillez saisir une adresse e-mail valide.",
+    "openingHoursHint": "Ces horaires deviennent vos créneaux réservables. Vous pourrez les affiner plus tard, y compris les pauses et les jours fériés, sur la page Disponibilités.",
+    "opensAt": "heure d'ouverture",
+    "closesAt": "heure de fermeture"
   },
   "errorBoundary": {
     "title": "Une erreur s'est produite",

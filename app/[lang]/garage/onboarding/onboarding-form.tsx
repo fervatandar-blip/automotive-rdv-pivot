@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { Check, ImageOff } from "lucide-react";
+import { Check } from "lucide-react";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { completeOnboarding } from "@/app/actions/garage";
 import { GarageMapPicker } from "@/components/garage-map-picker";
@@ -15,11 +14,8 @@ import {
   REGISTRATION_CONFIG,
   type Country,
 } from "@/lib/business-registration";
+import { GARAGE_LANGUAGES } from "@/lib/definitions";
 
-// Canonical values stored in garages.languages_spoken and submitted as the
-// "languages" checkbox value -- never localize these; only the displayed
-// label (via dictionary.languageLabels) changes per locale.
-const LANGUAGES = ["French", "English", "German", "Luxembourgish", "Portuguese"];
 
 type D = Dictionary["garageOnboarding"];
 
@@ -107,11 +103,6 @@ type Garage = {
   mobile_service: boolean;
   emergency_service: boolean;
   languages_spoken: string[] | null;
-  opening_hours: Record<
-    string,
-    { closed: true } | { closed: false; open: string; close: string }
-  > | null;
-  platform_terms_accepted_at: string | null;
   latitude: number | null;
   longitude: number | null;
 };
@@ -143,7 +134,6 @@ export function OnboardingForm({
   specialties,
   selectedBrandIds,
   selectedSpecialtyIds,
-  justSaved,
 }: {
   lang: Locale;
   dictionary: D;
@@ -152,13 +142,11 @@ export function OnboardingForm({
   specialties: { id: string; name: string }[];
   selectedBrandIds: string[];
   selectedSpecialtyIds: string[];
-  justSaved: boolean;
 }) {
   const [state, action, pending] = useActionState(
     completeOnboarding,
     undefined
   );
-  const isFirstRun = !garage.platform_terms_accepted_at;
   const languages = garage.languages_spoken ?? [];
   const [country, setCountry] = useState<Country>(
     COUNTRIES.includes(garage.country as Country)
@@ -265,34 +253,17 @@ export function OnboardingForm({
       >
         <input type="hidden" name="lang" value={lang} />
 
+        {/* First-run only (the page redirects onboarded garages to
+            /garage/profile). app/[lang]/garage/layout.tsx renders the
+            "Back to dashboard" link in its minimal pre-onboarding header. */}
         <div>
-          {/* Pre-onboarding, app/[lang]/garage/layout.tsx already renders its
-              own "Back to dashboard" link in the minimal header -- only add
-              this one once onboarded, where that layout instead shows the
-              full sidebar with no such link. */}
-          {!isFirstRun && (
-            <Link
-              href={`/${lang}/dashboard`}
-              className="text-sm font-medium underline"
-            >
-              &larr; {d.backToDashboard}
-            </Link>
-          )}
-          <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
-            {isFirstRun ? d.setupTitle : d.profileTitle}
+          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+            {d.setupTitle}
           </h1>
-          {isFirstRun && (
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {d.setupDescription}
-            </p>
-          )}
-        </div>
-
-        {justSaved && (
-          <p className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
-            {d.saved}
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {d.setupDescription}
           </p>
-        )}
+        </div>
         {state?.message && (
           <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
             {state.message}
@@ -302,27 +273,6 @@ export function OnboardingForm({
         <OnboardingStepIndicator steps={stepItems} />
 
         <div hidden={step !== 0} className="flex flex-col gap-8">
-          <div className="flex items-center gap-4 rounded-xl border border-dashed border-black/[.15] bg-white p-6 dark:border-white/[.2] dark:bg-zinc-950">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-black/[.04] text-zinc-400 dark:bg-white/[.06] dark:text-zinc-500">
-              <ImageOff className="h-6 w-6" strokeWidth={1.5} />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-black dark:text-zinc-50">
-                {d.noLogoUploaded}
-              </p>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                {d.uploadLogoPrefix}{" "}
-                <Link
-                  href={`/${lang}/garage/documents`}
-                  className="font-medium underline"
-                >
-                  {d.documentsLink}
-                </Link>
-                .
-              </p>
-            </div>
-          </div>
-
           <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
             <h2 className="font-semibold text-black dark:text-zinc-50">
               {d.garageDetails}
@@ -361,7 +311,7 @@ export function OnboardingForm({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
                 <label htmlFor="address" className="text-sm font-medium">
                   {d.addressLabel}
@@ -386,7 +336,7 @@ export function OnboardingForm({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
                 <label htmlFor="phone" className="text-sm font-medium">
                   {d.phoneLabel}
@@ -435,7 +385,7 @@ export function OnboardingForm({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
                 <label htmlFor="country" className="text-sm font-medium">
                   {d.countryLabel}
@@ -510,19 +460,21 @@ export function OnboardingForm({
 
         <div hidden={step !== 2}>
           <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-            <h2 className="font-semibold text-black dark:text-zinc-50">
-              {d.openingHoursTitle}
-            </h2>
-            <div className="flex flex-col gap-2">
+            <div>
+              <h2 className="font-semibold text-black dark:text-zinc-50">
+                {d.openingHoursTitle}
+              </h2>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                {d.openingHoursHint}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
               {d.days.map((day: string, index: number) => {
-                const existing = garage.opening_hours?.[index];
-                const closed = existing ? existing.closed : index === 0 || index === 6;
-                const open = (!existing?.closed && existing?.open) || "09:00";
-                const close = (!existing?.closed && existing?.close) || "18:00";
+                const closed = index === 0 || index === 6;
 
                 return (
-                  <div key={day} className="flex items-center gap-3 text-sm">
-                    <span className="w-24 shrink-0">{day}</span>
+                  <div key={day} className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+                    <span className="w-24 shrink-0 font-medium">{day}</span>
                     <CheckboxChip
                       name={`hours_${index}_closed`}
                       label={d.closed}
@@ -531,14 +483,16 @@ export function OnboardingForm({
                     <input
                       type="time"
                       name={`hours_${index}_open`}
-                      defaultValue={open}
+                      aria-label={`${day} ${d.opensAt}`}
+                      defaultValue="09:00"
                       className="rounded-md border border-black/[.08] px-2 py-1 dark:border-white/[.145] dark:bg-black"
                     />
                     <span>&ndash;</span>
                     <input
                       type="time"
                       name={`hours_${index}_close`}
-                      defaultValue={close}
+                      aria-label={`${day} ${d.closesAt}`}
+                      defaultValue="18:00"
                       className="rounded-md border border-black/[.08] px-2 py-1 dark:border-white/[.145] dark:bg-black"
                     />
                   </div>
@@ -572,7 +526,7 @@ export function OnboardingForm({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
                 <label htmlFor="pricingCategory" className="text-sm font-medium">
                   {d.pricingCategoryLabel}
@@ -611,12 +565,12 @@ export function OnboardingForm({
             <div className="flex flex-col gap-2">
               <span className="text-sm font-medium">{d.languagesSpokenLabel}</span>
               <div className="flex flex-wrap gap-4 text-sm">
-                {LANGUAGES.map((language) => (
+                {GARAGE_LANGUAGES.map((language) => (
                   <CheckboxChip
                     key={language}
                     name="languages"
                     value={language}
-                    label={d.languageLabels[language as keyof typeof d.languageLabels]}
+                    label={d.languageLabels[language]}
                     defaultChecked={languages.includes(language)}
                   />
                 ))}
@@ -773,7 +727,7 @@ export function OnboardingForm({
               <input
                 type="checkbox"
                 name="platformTermsAccepted"
-                defaultChecked={!isFirstRun}
+                defaultChecked={false}
                 required
                 className="mt-1"
               />
@@ -816,11 +770,7 @@ export function OnboardingForm({
             type="submit"
             className="rounded-full bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
           >
-            {pending
-              ? d.savingPending
-              : isFirstRun
-                ? d.completeSetup
-                : d.saveChanges}
+            {pending ? d.savingPending : d.completeSetup}
           </button>
         </div>
       </form>

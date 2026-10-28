@@ -179,7 +179,11 @@
     "reviews": "Reviews",
     "noReviewsYet": "No reviews yet.",
     "clientFallback": "Client",
-    "vehicleFallback": "Vehicle"
+    "vehicleFallback": "Vehicle",
+    "aboutTitle": "About",
+    "contactTitle": "Contact",
+    "hoursNotPublished": "Opening hours not published yet.",
+    "noContactDetails": "No contact details published yet."
   },
   "vehicles": {
     "title": "My vehicles",
@@ -418,6 +422,30 @@
       "rejected": "Rejected"
     }
   },
+  "garageProfile": {
+    "title": "Garage profile",
+    "subtitle": "Everything here except the legal & billing details is shown to clients on your public garage page. Each section saves on its own.",
+    "statusApproved": "Live",
+    "statusPending": "Pending review",
+    "statusRejected": "Not approved",
+    "viewPublicPage": "View your public page",
+    "publicPageHidden": "Clients can't see your garage until it's approved.",
+    "verificationLink": "Check your verification documents",
+    "detailsDescription": "Your name, description and contact details, as clients see them.",
+    "descriptionPlaceholder": "What makes your garage the right choice? Mention your experience, the work you do best, and anything clients should know before they arrive.",
+    "legalTitle": "Legal & billing (not shown to clients)",
+    "legalLockedNote": "Your business country and registration number were verified when your garage was approved. Contact RDV support to change them.",
+    "hoursDescription": "Your opening hours are the bookable hours you set on the Availability page. Clients see exactly these.",
+    "manageHours": "Manage availability",
+    "noHours": "No opening hours set yet. Clients can't book until you add your weekly hours.",
+    "locationDescription": "Place the pin on your entrance so clients can find you.",
+    "capabilitiesDescription": "Helps clients filter garages and find the right one.",
+    "catalogTitle": "Brands & specialties",
+    "catalogDescription": "The makes you service and the work you specialise in.",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved"
+  },
   "garageStaff": {
     "backToDashboard": "Back to dashboard",
     "staffSuffix": "staff",
@@ -613,7 +641,10 @@
     "completeSetup": "Complete setup & continue to documents",
     "saveChanges": "Save changes",
     "nameTooShortError": "Name must be at least 2 characters long.",
-    "invalidEmailError": "Please enter a valid email."
+    "invalidEmailError": "Please enter a valid email.",
+    "openingHoursHint": "These become your bookable hours. You can fine-tune them later, including split shifts and holidays, on the Availability page.",
+    "opensAt": "opening time",
+    "closesAt": "closing time"
   },
   "errorBoundary": {
     "title": "Something went wrong",

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { requireGarageOwner, requireSuperAdmin } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
 import {
@@ -117,8 +118,11 @@ export async function setGarageStatus(formData: FormData) {
   if (typeof garageId !== "string" || !garageId) return;
   if (status !== "approved" && status !== "rejected" && status !== "pending") return;
 
-  const supabase = await createClient();
-  await supabase.from("garages").update({ status }).eq("id", garageId);
+  // Service role: since 0034, status is not writable by any API role --
+  // otherwise a garage owner could approve themselves. requireSuperAdmin
+  // above is the authorization.
+  const admin = createAdminClient();
+  await admin.from("garages").update({ status }).eq("id", garageId);
 
   revalidateLocalizedPath(`/admin/garages/${garageId}`);
   revalidateLocalizedPath("/admin/garages");
@@ -137,8 +141,10 @@ export async function setVerificationLevel(formData: FormData) {
   if (typeof garageId !== "string" || !garageId) return;
   if (typeof level !== "string" || !validLevels.includes(level)) return;
 
-  const supabase = await createClient();
-  await supabase
+  // Service role, as in setGarageStatus: verification_level is not writable
+  // by API roles since 0034.
+  const admin = createAdminClient();
+  await admin
     .from("garages")
     .update({ verification_level: level })
     .eq("id", garageId);

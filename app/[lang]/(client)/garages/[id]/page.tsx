@@ -1,6 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  BatteryCharging,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Globe,
+  Mail,
+  Phone,
+  Siren,
+  Truck,
+} from "lucide-react";
 import { getOptionalAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { getAvailableSlotsForDate } from "@/lib/availability";
@@ -10,6 +20,7 @@ import { GarageMapDisplay } from "@/components/garage-map-display";
 import { bookAppointment } from "@/app/actions/appointments";
 import { joinWaitlist } from "@/app/actions/waitlist";
 import { formatRating } from "@/lib/ratings";
+import { hasAnyOpeningHours, summarizeWeeklyHours } from "@/lib/opening-hours";
 import { APP_TIME_ZONE, dateKeyToDisplayDate, todayKeyInAppZone } from "@/lib/timezone";
 
 type StepStatus = "complete" | "current" | "upcoming";
@@ -142,7 +153,9 @@ export default async function GarageDetailPage({
 
   const { data: garage } = await supabase
     .from("garages")
-    .select("id, name, address, city, website, latitude, longitude, stripe_charges_enabled")
+    .select(
+      "id, name, description, address, city, phone, email, website, latitude, longitude, stripe_charges_enabled, ev_capable, mobile_service, emergency_service, pricing_category, languages_spoken, garage_brands(brands(name)), garage_specialties(specialties(name))"
+    )
     .eq("id", garageId)
     .eq("status", "approved")
     .is("deleted_at", null)
@@ -151,6 +164,45 @@ export default async function GarageDetailPage({
   if (!garage) {
     notFound();
   }
+
+  const profile = garage as unknown as {
+    garage_brands: { brands: { name: string } | null }[] | null;
+    garage_specialties: { specialties: { name: string } | null }[] | null;
+  };
+  const brandNames = (profile.garage_brands ?? [])
+    .map((row) => row.brands?.name)
+    .filter((name): name is string => Boolean(name))
+    .sort((a, b) => a.localeCompare(b));
+  const specialtyNames = (profile.garage_specialties ?? [])
+    .map((row) => row.specialties?.name)
+    .filter((name): name is string => Boolean(name))
+    .sort((a, b) => a.localeCompare(b));
+
+  // Opening hours = the weekly availability windows bookings are made from
+  // (one source of truth; see lib/opening-hours.ts).
+  const { data: availabilityRows } = await supabase
+    .from("availability")
+    .select("day_of_week, start_time, end_time")
+    .eq("garage_id", garageId);
+  const weeklyHours = summarizeWeeklyHours(availabilityRows ?? []);
+  const fields = dictionary.garageOnboarding;
+  const capabilities = [
+    garage.ev_capable && { icon: BatteryCharging, label: fields.evCapableShort },
+    garage.mobile_service && { icon: Truck, label: fields.mobileServiceShort },
+    garage.emergency_service && { icon: Siren, label: fields.emergencyServiceShort },
+  ].filter((item): item is { icon: typeof Truck; label: string } => Boolean(item));
+  const pricingLabel =
+    garage.pricing_category === "budget"
+      ? fields.pricingBudget
+      : garage.pricing_category === "standard"
+        ? fields.pricingStandard
+        : garage.pricing_category === "premium"
+          ? fields.pricingPremium
+          : null;
+  const languageLabels = (garage.languages_spoken ?? []).map(
+    (language: string) =>
+      fields.languageLabels[language as keyof typeof fields.languageLabels] ?? language
+  );
 
   const { data: services } = await supabase
     .from("services")
@@ -275,23 +327,146 @@ export default async function GarageDetailPage({
               {[garage.address, garage.city].filter(Boolean).join(", ")}
             </p>
           )}
-          {garage.website && (
-            <a
-              href={garage.website}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-1 inline-block text-sm font-medium underline"
-            >
-              {garage.website.replace(/^https?:\/\//, "")}
-            </a>
-          )}
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
             {formatRating(
               reviewRows.map((review) => review.rating),
               d.noReviewsYet
             )}
           </p>
+          {(capabilities.length > 0 || pricingLabel) && (
+            <ul className="mt-3 flex flex-wrap gap-2" aria-label={fields.servicesCapabilitiesTitle}>
+              {capabilities.map(({ icon: Icon, label }) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-1.5 rounded-full border border-black/[.08] bg-white px-3 py-1 text-xs font-medium text-black dark:border-white/[.145] dark:bg-zinc-950 dark:text-zinc-50"
+                >
+                  <Icon className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400" strokeWidth={1.75} />
+                  {label}
+                </li>
+              ))}
+              {pricingLabel && (
+                <li className="rounded-full border border-black/[.08] bg-white px-3 py-1 text-xs font-medium text-zinc-600 dark:border-white/[.145] dark:bg-zinc-950 dark:text-zinc-400">
+                  {fields.pricingCategoryLabel}: {pricingLabel}
+                </li>
+              )}
+            </ul>
+          )}
         </div>
+
+        {garage.description && (
+          <section aria-labelledby="about-title" className="flex flex-col gap-2">
+            <h2 id="about-title" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              {d.aboutTitle}
+            </h2>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-black dark:text-zinc-50">
+              {garage.description}
+            </p>
+          </section>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <section
+            aria-labelledby="hours-title"
+            className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+          >
+            <h2 id="hours-title" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              {fields.openingHoursTitle}
+            </h2>
+            {hasAnyOpeningHours(weeklyHours) ? (
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                {weeklyHours.map((day) => (
+                  <div key={day.dayOfWeek} className="contents">
+                    <dt className="text-zinc-600 dark:text-zinc-400">{fields.days[day.dayOfWeek]}</dt>
+                    <dd className="text-right font-medium text-black dark:text-zinc-50">
+                      {day.ranges.length > 0 ? day.ranges.join(", ") : fields.closed}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.hoursNotPublished}</p>
+            )}
+          </section>
+
+          <section
+            aria-labelledby="contact-title"
+            className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+          >
+            <h2 id="contact-title" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              {d.contactTitle}
+            </h2>
+            {garage.phone || garage.email || garage.website ? (
+              <ul className="flex flex-col gap-2 text-sm">
+                {garage.phone && (
+                  <li>
+                    <a href={`tel:${garage.phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-2 font-medium underline-offset-2 hover:underline">
+                      <Phone className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
+                      {garage.phone}
+                    </a>
+                  </li>
+                )}
+                {garage.email && (
+                  <li>
+                    <a href={`mailto:${garage.email}`} className="flex items-center gap-2 break-all font-medium underline-offset-2 hover:underline">
+                      <Mail className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
+                      {garage.email}
+                    </a>
+                  </li>
+                )}
+                {garage.website && (
+                  <li>
+                    <a
+                      href={garage.website}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="flex items-center gap-2 break-all font-medium underline-offset-2 hover:underline"
+                    >
+                      <Globe className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
+                      {garage.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                    </a>
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.noContactDetails}</p>
+            )}
+          </section>
+        </div>
+
+        {(brandNames.length > 0 || specialtyNames.length > 0 || languageLabels.length > 0) && (
+          <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
+            {specialtyNames.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{fields.specialtiesTitle}</h2>
+                <ul className="flex flex-wrap gap-1.5">
+                  {specialtyNames.map((name) => (
+                    <li key={name} className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-black dark:bg-white/[.08] dark:text-zinc-50">
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {brandNames.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{fields.brandsSupportedTitle}</h2>
+                <ul className="flex flex-wrap gap-1.5">
+                  {brandNames.map((name) => (
+                    <li key={name} className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-black dark:bg-white/[.08] dark:text-zinc-50">
+                      {name}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {languageLabels.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{fields.languagesSpokenLabel}</h2>
+                <p className="text-sm text-black dark:text-zinc-50">{languageLabels.join(", ")}</p>
+              </div>
+            )}
+          </section>
+        )}
 
         {garage.latitude !== null && garage.longitude !== null && (
           <GarageMapDisplay

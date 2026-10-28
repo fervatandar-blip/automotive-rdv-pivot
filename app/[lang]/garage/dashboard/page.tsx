@@ -488,7 +488,7 @@ export default async function GarageDashboardPage({
               </p>
             </div>
             <Link
-              href={`/${lang}/garage/onboarding`}
+              href={`/${lang}/garage/profile`}
               className="shrink-0 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
             >
               {d.reviewProfile}

@@ -213,46 +213,106 @@ export type AvailabilityOverrideFormState =
     }
   | undefined;
 
+export const GARAGE_DESCRIPTION_MAX_LENGTH = 1000;
+
+// Canonical values stored in garages.languages_spoken -- never localize
+// these; only the displayed label (dictionary languageLabels) changes.
+export const GARAGE_LANGUAGES = [
+  "French",
+  "English",
+  "German",
+  "Luxembourgish",
+  "Portuguese",
+] as const;
+
+// Field groups shared by the first-run onboarding wizard (all at once) and
+// the garage profile editor (one section per form), so both validate the
+// same fields identically.
+const garageDetailsShape = {
+  name: z
+    .string()
+    .min(2, { error: "Name must be at least 2 characters long." })
+    .trim(),
+  description: z
+    .string()
+    .trim()
+    .max(GARAGE_DESCRIPTION_MAX_LENGTH, {
+      error: `Keep the description under ${GARAGE_DESCRIPTION_MAX_LENGTH} characters.`,
+    })
+    .optional(),
+  address: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+  phone: z.string().trim().optional(),
+  email: z.email({ error: "Please enter a valid email." }).optional(),
+  // Matches the garages_website_check constraint (0031): http(s) only, so a
+  // garage can't put a javascript:/data: URL behind its public profile link.
+  website: z
+    .url({
+      protocol: /^https?$/,
+      error: "Enter a full URL, starting with http:// or https://.",
+    })
+    .optional(),
+  country: z.enum(COUNTRIES, { error: "Select a country." }),
+  registrationNumber: z.string().trim().optional(),
+  vatNumber: z.string().trim().optional(),
+};
+
+const garageCapabilitiesShape = {
+  pricingCategory: z.enum(["budget", "standard", "premium"]).optional(),
+  technicianCount: z.coerce
+    .number({ error: "Enter a number." })
+    .int()
+    .nonnegative({ error: "Can't be negative." })
+    .optional(),
+};
+
+function refineRegistrationNumber(
+  data: { country: (typeof COUNTRIES)[number]; registrationNumber?: string },
+  ctx: z.RefinementCtx
+) {
+  if (
+    data.registrationNumber &&
+    !REGISTRATION_CONFIG[data.country].pattern.test(data.registrationNumber)
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["registrationNumber"],
+      message: `Doesn't look like a valid ${REGISTRATION_CONFIG[data.country].label}.`,
+    });
+  }
+}
+
 export const GarageOnboardingFormSchema = z
-  .object({
-    name: z
-      .string()
-      .min(2, { error: "Name must be at least 2 characters long." })
-      .trim(),
-    description: z
-      .string()
-      .trim()
-      .max(1000, { error: "Keep the description under 1000 characters." })
-      .optional(),
-    address: z.string().trim().optional(),
-    city: z.string().trim().optional(),
-    phone: z.string().trim().optional(),
-    email: z.email({ error: "Please enter a valid email." }).optional(),
-    website: z
-      .url({ error: "Enter a full URL, starting with http:// or https://." })
-      .optional(),
-    country: z.enum(COUNTRIES, { error: "Select a country." }),
-    registrationNumber: z.string().trim().optional(),
-    vatNumber: z.string().trim().optional(),
-    pricingCategory: z.enum(["budget", "standard", "premium"]).optional(),
-    technicianCount: z.coerce
-      .number({ error: "Enter a number." })
-      .int()
-      .nonnegative({ error: "Can't be negative." })
-      .optional(),
-  })
-  .superRefine((data, ctx) => {
-    if (
-      data.registrationNumber &&
-      !REGISTRATION_CONFIG[data.country].pattern.test(data.registrationNumber)
-    ) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["registrationNumber"],
-        message: `Doesn't look like a valid ${REGISTRATION_CONFIG[data.country].label}.`,
-      });
+  .object({ ...garageDetailsShape, ...garageCapabilitiesShape })
+  .superRefine(refineRegistrationNumber);
+
+export const GarageDetailsFormSchema = z
+  .object(garageDetailsShape)
+  .superRefine(refineRegistrationNumber);
+
+export const GarageCapabilitiesFormSchema = z.object(garageCapabilitiesShape);
+
+export const GARAGE_PROFILE_SECTIONS = [
+  "details",
+  "location",
+  "capabilities",
+  "catalog",
+] as const;
+export type GarageProfileSection = (typeof GARAGE_PROFILE_SECTIONS)[number];
+
+export type GarageProfileFormState =
+  | {
+      errors?: Partial<
+        Record<
+          | keyof typeof garageDetailsShape
+          | keyof typeof garageCapabilitiesShape,
+          string[]
+        >
+      >;
+      message?: string;
+      savedAt?: number;
     }
-  });
+  | undefined;
 
 export type GarageOnboardingFormState =
   | {

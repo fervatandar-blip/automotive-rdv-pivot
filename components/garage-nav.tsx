@@ -88,7 +88,7 @@ function navGroups(lang: Locale, isOwner: boolean) {
     {
       label: "Settings & Compliance",
       items: [
-        { href: `/${lang}/garage/onboarding`, label: "Garage Profile", icon: Building2 },
+        { href: `/${lang}/garage/profile`, label: "Garage Profile", icon: Building2 },
         { href: `/${lang}/garage/documents`, label: "Verification & KYC", icon: FileText },
         // Owner-only: the staff page itself gates on requireGarageOwner, so
         // showing this to a mecanicien would just be a dead-end link that
