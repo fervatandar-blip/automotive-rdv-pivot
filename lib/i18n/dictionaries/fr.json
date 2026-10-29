@@ -375,9 +375,11 @@
   },
   "garageAvailability": {
     "availabilitySuffix": "disponibilités",
+    "weeklyScheduleTitle": "Horaires hebdomadaires (créneaux réservables)",
+    "closed": "Fermé",
+    "breakLabel": "Pause {range}",
     "calendar": "Calendrier",
     "manageServices": "Gérer les services",
-    "noAvailabilitySet": "Aucune disponibilité définie.",
     "delete": "Supprimer",
     "upcomingOverrides": "Exceptions de date à venir",
     "closedAllDay": "Fermé toute la journée",
@@ -392,11 +394,17 @@
       "Samedi"
     ],
     "addForm": {
-      "title": "Ajouter une disponibilité",
-      "dayLabel": "Jour",
+      "conflict": "Rien n'a été ajouté : ces horaires chevauchent des horaires existants le {days}. Modifiez les heures ou supprimez d'abord la plage existante.",
+      "added": "Ajouté à {count} jour(s).",
+      "clear": "Effacer",
+      "everyDay": "Tous les jours",
+      "weekdays": "Lun–Ven",
+      "daysLabel": "Jours",
+      "description": "Choisissez les jours et une plage horaire. Pour une pause déjeuner, ajoutez deux plages, par ex. 08:00–12:00 et 13:30–18:00. Les clients ne peuvent pas réserver pendant la pause.",
+      "title": "Ajouter des horaires",
       "startLabel": "Début",
       "endLabel": "Fin",
-      "submit": "Ajouter le créneau",
+      "submit": "Ajouter les horaires",
       "submitPending": "Ajout en cours..."
     },
     "overrideForm": {

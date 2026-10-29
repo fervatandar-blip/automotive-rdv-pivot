@@ -375,9 +375,11 @@
   },
   "garageAvailability": {
     "availabilitySuffix": "availability",
+    "weeklyScheduleTitle": "Weekly schedule (bookable hours)",
+    "closed": "Closed",
+    "breakLabel": "Break {range}",
     "calendar": "Calendar",
     "manageServices": "Manage services",
-    "noAvailabilitySet": "No availability set.",
     "delete": "Delete",
     "upcomingOverrides": "Upcoming date overrides",
     "closedAllDay": "Closed all day",
@@ -392,11 +394,17 @@
       "Saturday"
     ],
     "addForm": {
-      "title": "Add availability",
-      "dayLabel": "Day",
+      "conflict": "Nothing was added: this overlaps existing hours on {days}. Adjust the times or delete the existing window first.",
+      "added": "Added to {count} day(s).",
+      "clear": "Clear",
+      "everyDay": "Every day",
+      "weekdays": "Mon–Fri",
+      "daysLabel": "Days",
+      "description": "Pick the days and a time window. For a lunch break, add two windows, e.g. 08:00–12:00 and 13:30–18:00. Clients can't book during the gap.",
+      "title": "Add opening hours",
       "startLabel": "Start",
       "endLabel": "End",
-      "submit": "Add slot",
+      "submit": "Add hours",
       "submitPending": "Adding..."
     },
     "overrideForm": {

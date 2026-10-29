@@ -17,6 +17,11 @@ function revalidateLocalizedPath(path: string) {
   }
 }
 
+function toMinutes(time: string) {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
 export async function createAvailability(
   state: AvailabilityFormState,
   formData: FormData
@@ -25,7 +30,7 @@ export async function createAvailability(
   const { garage } = await requireGarageMember(lang);
 
   const validatedFields = AvailabilityFormSchema.safeParse({
-    dayOfWeek: formData.get("dayOfWeek"),
+    days: formData.getAll("days"),
     startTime: formData.get("startTime"),
     endTime: formData.get("endTime"),
   });
@@ -34,22 +39,62 @@ export async function createAvailability(
     return { errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { dayOfWeek, startTime, endTime } = validatedFields.data;
+  const { days, startTime, endTime } = validatedFields.data;
   const supabase = await createClient();
 
-  const { error } = await supabase.from("availability").insert({
-    garage_id: garage.id,
-    day_of_week: dayOfWeek,
-    start_time: startTime,
-    end_time: endTime,
-  });
+  // All-or-nothing across the chosen days: report every day that already
+  // has an overlapping window and add none, rather than silently applying
+  // the window to only some of them. The availability_no_overlap
+  // constraint (0035) still guards the race between this check and the
+  // insert.
+  const { data: existing, error: existingError } = await supabase
+    .from("availability")
+    .select("day_of_week, start_time, end_time")
+    .eq("garage_id", garage.id)
+    .in("day_of_week", days);
+
+  if (existingError) {
+    return { message: existingError.message };
+  }
+
+  const newStart = toMinutes(startTime);
+  const newEnd = toMinutes(endTime);
+  const conflictDays = [
+    ...new Set(
+      (existing ?? [])
+        .filter(
+          (window) =>
+            toMinutes(window.start_time) < newEnd && newStart < toMinutes(window.end_time)
+        )
+        .map((window) => window.day_of_week)
+    ),
+  ].sort();
+
+  if (conflictDays.length > 0) {
+    return { conflictDays };
+  }
+
+  const { error } = await supabase.from("availability").insert(
+    days.map((day) => ({
+      garage_id: garage.id,
+      day_of_week: day,
+      start_time: startTime,
+      end_time: endTime,
+    }))
+  );
 
   if (error) {
-    return { message: error.message };
+    return {
+      message:
+        error.code === "23P01"
+          ? "That window overlaps hours that were just added. Refresh and try again."
+          : error.message,
+    };
   }
 
   revalidateLocalizedPath("/garage/availability");
-  return {};
+  revalidateLocalizedPath("/garage/profile");
+  return { added: days.length };
 }
 
 export async function deleteAvailability(formData: FormData) {
@@ -69,6 +114,7 @@ export async function deleteAvailability(formData: FormData) {
     .eq("garage_id", garage.id);
 
   revalidateLocalizedPath("/garage/availability");
+  revalidateLocalizedPath("/garage/profile");
 }
 
 export async function createAvailabilityOverride(

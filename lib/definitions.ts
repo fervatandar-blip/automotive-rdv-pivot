@@ -143,19 +143,22 @@ export type ServiceFormState =
     }
   | undefined;
 
+const TIME_OF_DAY = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+/**
+ * One weekly opening window, applied to one or more weekdays at once (so a
+ * Mon-Fri morning shift is one submission). A split shift is simply two
+ * windows on the same days, e.g. 08:00-12:00 and 13:30-18:00; the gap
+ * between them is never bookable (lib/slots.ts walks windows separately).
+ */
 export const AvailabilityFormSchema = z
   .object({
-    dayOfWeek: z.coerce
-      .number({ error: "Choose a day." })
-      .int()
-      .min(0)
-      .max(6),
-    startTime: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/, { error: "Enter a valid start time." }),
-    endTime: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/, { error: "Enter a valid end time." }),
+    days: z
+      .array(z.coerce.number().int().min(0).max(6))
+      .min(1, { error: "Choose at least one day." })
+      .transform((days) => [...new Set(days)].sort()),
+    startTime: z.string().regex(TIME_OF_DAY, { error: "Enter a valid start time." }),
+    endTime: z.string().regex(TIME_OF_DAY, { error: "Enter a valid end time." }),
   })
   .refine((data) => data.endTime > data.startTime, {
     error: "End time must be after start time.",
@@ -165,11 +168,15 @@ export const AvailabilityFormSchema = z
 export type AvailabilityFormState =
   | {
       errors?: {
-        dayOfWeek?: string[];
+        days?: string[];
         startTime?: string[];
         endTime?: string[];
       };
       message?: string;
+      // Weekdays (0 = Sunday) that already had an overlapping window, so
+      // nothing was added for them.
+      conflictDays?: number[];
+      added?: number;
     }
   | undefined;
 

@@ -70,5 +70,9 @@ export function computeAvailableSlots({
     }
   }
 
-  return slots;
+  // Windows can't overlap (availability_no_overlap, 0035), but overrides or
+  // legacy rows could still produce the same start twice; never offer a
+  // duplicate slot, and always list them in time order regardless of the
+  // order windows arrived in.
+  return [...new Set(slots)].sort();
 }

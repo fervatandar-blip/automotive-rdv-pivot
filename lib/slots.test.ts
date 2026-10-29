@@ -153,6 +153,55 @@ describe("computeAvailableSlots", () => {
     expect(slots).toEqual(["09:00", "14:00"]);
   });
 
+  it("never offers a lunch-break slot in a split shift", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows: [
+        { start_time: "13:30:00", end_time: "15:00:00" },
+        { start_time: "08:00:00", end_time: "12:00:00" },
+      ],
+      durationMinutes: 60,
+      bookedRanges: [],
+      now: EARLY_NOW,
+    });
+
+    // 11:00-12:00 is the last morning slot; nothing until 13:30.
+    expect(slots).toEqual(["08:00", "09:00", "10:00", "11:00", "13:30"]);
+  });
+
+  it("doesn't let a service run across the lunch break", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows: [
+        { start_time: "08:00:00", end_time: "12:00:00" },
+        { start_time: "13:30:00", end_time: "18:00:00" },
+      ],
+      durationMinutes: 90,
+      bookedRanges: [],
+      now: EARLY_NOW,
+    });
+
+    // 11:00 + 90 min would end at 12:30, inside the break.
+    expect(slots).not.toContain("11:00");
+    expect(slots).toEqual(["08:00", "09:30", "13:30", "15:00", "16:30"]);
+  });
+
+  it("de-duplicates and sorts slots when windows repeat or arrive out of order", () => {
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows: [
+        { start_time: "14:00:00", end_time: "15:00:00" },
+        { start_time: "09:00:00", end_time: "10:00:00" },
+        { start_time: "09:00:00", end_time: "10:00:00" },
+      ],
+      durationMinutes: 60,
+      bookedRanges: [],
+      now: EARLY_NOW,
+    });
+
+    expect(slots).toEqual(["09:00", "14:00"]);
+  });
+
   it("returns no slots for an empty window list (e.g. a closed override day)", () => {
     const slots = computeAvailableSlots({
       date: "2026-06-01",
