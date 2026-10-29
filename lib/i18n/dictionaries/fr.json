@@ -203,7 +203,9 @@
       "licensePlate": "Plaque d'immatriculation",
       "licensePlatePlaceholder": "LU 1234",
       "submit": "Ajouter le véhicule",
-      "submitPending": "Ajout en cours..."
+      "submitPending": "Ajout en cours...",
+      "vin": "VIN (facultatif)",
+      "vinHint": "Le numéro d'identification du véhicule à 17 caractères, sur votre certificat d'immatriculation (champ E). Aide votre garage à commander les bonnes pièces."
     }
   },
   "account": {
@@ -546,9 +548,27 @@
   },
   "garageClients": {
     "title": "Clients",
+    "subtitle": "Toutes les personnes ayant réservé chez vous, avec leurs véhicules et chaque visite.",
     "appointment": "rendez-vous",
     "appointments": "rendez-vous",
-    "noClientsYet": "Aucun client pour le moment."
+    "noClientsYet": "Aucun client pour le moment.",
+    "searchLabel": "Rechercher des clients par nom, e-mail, plaque d'immatriculation ou VIN",
+    "searchPlaceholder": "Rechercher par nom, plaque (ex. LU 1234) ou VIN",
+    "clearSearch": "Effacer la recherche",
+    "resultsCount": "{count} client(s) correspondant(s)",
+    "clientCount": "{count} client(s)",
+    "noMatches": "Aucun client ni véhicule ne correspond à cette recherche.",
+    "visitCount": "{count} visite(s)",
+    "unnamedClient": "Client sans nom",
+    "vehicleFallback": "Véhicule",
+    "serviceFallback": "Prestation",
+    "statuses": {
+      "pending_payment": "Paiement en attente",
+      "pending": "En attente",
+      "confirmed": "Confirmé",
+      "cancelled": "Annulé",
+      "completed": "Terminé"
+    }
   },
   "garageStripeConnect": {
     "backToDashboard": "Retour au tableau de bord",

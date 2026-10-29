@@ -203,7 +203,9 @@
       "licensePlate": "License plate",
       "licensePlatePlaceholder": "LU 1234",
       "submit": "Add vehicle",
-      "submitPending": "Adding..."
+      "submitPending": "Adding...",
+      "vin": "VIN (optional)",
+      "vinHint": "The 17-character vehicle identification number, on your registration certificate (field E). Helps your garage order the right parts."
     }
   },
   "account": {
@@ -546,9 +548,27 @@
   },
   "garageClients": {
     "title": "Clients",
+    "subtitle": "Everyone who has booked with you, with the vehicles they brought and each visit.",
     "appointment": "appointment",
     "appointments": "appointments",
-    "noClientsYet": "No clients yet."
+    "noClientsYet": "No clients yet.",
+    "searchLabel": "Search clients by name, email, license plate or VIN",
+    "searchPlaceholder": "Search by name, plate (e.g. LU 1234) or VIN",
+    "clearSearch": "Clear search",
+    "resultsCount": "{count} matching client(s)",
+    "clientCount": "{count} client(s)",
+    "noMatches": "No client or vehicle matches that search.",
+    "visitCount": "{count} visit(s)",
+    "unnamedClient": "Unnamed client",
+    "vehicleFallback": "Vehicle",
+    "serviceFallback": "Service",
+    "statuses": {
+      "pending_payment": "Awaiting payment",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "completed": "Completed"
+    }
   },
   "garageStripeConnect": {
     "backToDashboard": "Back to dashboard",

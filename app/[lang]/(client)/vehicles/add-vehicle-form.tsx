@@ -15,6 +15,8 @@ type VehicleFormDictionary = {
   yearPlaceholder: string;
   licensePlate: string;
   licensePlatePlaceholder: string;
+  vin: string;
+  vinHint: string;
   submit: string;
   submitPending: string;
 };
@@ -111,6 +113,25 @@ export function AddVehicleForm({
             <p className="text-sm text-red-600">
               {state.errors.licensePlate[0]}
             </p>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-1 sm:col-span-2">
+          <label htmlFor="vin" className="text-sm font-medium">
+            {dictionary.vin}
+          </label>
+          <input
+            id="vin"
+            name="vin"
+            maxLength={24}
+            autoCapitalize="characters"
+            spellCheck={false}
+            placeholder="WVWZZZ1KZAW123456"
+            className="rounded-md border border-black/[.08] px-3 py-2 font-mono uppercase dark:border-white/[.145] dark:bg-black"
+          />
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">{dictionary.vinHint}</p>
+          {state?.errors?.vin && (
+            <p className="text-sm text-red-600">{state.errors.vin[0]}</p>
           )}
         </div>
       </div>

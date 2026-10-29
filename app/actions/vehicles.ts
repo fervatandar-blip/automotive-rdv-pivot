@@ -24,13 +24,14 @@ export async function addVehicle(
     model: formData.get("model") || undefined,
     year: formData.get("year") || undefined,
     licensePlate: formData.get("licensePlate") || undefined,
+    vin: formData.get("vin") || undefined,
   });
 
   if (!validatedFields.success) {
     return { errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { brandId, model, year, licensePlate } = validatedFields.data;
+  const { brandId, model, year, licensePlate, vin } = validatedFields.data;
   const supabase = await createClient();
 
   const { error } = await supabase.from("vehicles").insert({
@@ -39,6 +40,7 @@ export async function addVehicle(
     model: model ?? null,
     year: year ?? null,
     license_plate: licensePlate ?? null,
+    vin: vin ?? null,
   });
 
   if (error) {

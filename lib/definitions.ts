@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { COUNTRIES, REGISTRATION_CONFIG } from "@/lib/business-registration";
+import { normalizeVin, VIN_PATTERN } from "@/lib/vehicle-identifiers";
 
 export const SignupFormSchema = z.object({
   fullName: z
@@ -378,6 +379,15 @@ export const VehicleFormSchema = z.object({
     .trim()
     .max(20, { error: "Keep it under 20 characters." })
     .optional(),
+  vin: z
+    .string()
+    .transform(normalizeVin)
+    .pipe(
+      z.string().regex(VIN_PATTERN, {
+        error: "A VIN is 17 letters and digits (no I, O or Q).",
+      })
+    )
+    .optional(),
 });
 
 export type VehicleFormState =
@@ -387,6 +397,7 @@ export type VehicleFormState =
         model?: string[];
         year?: string[];
         licensePlate?: string[];
+        vin?: string[];
       };
       message?: string;
     }

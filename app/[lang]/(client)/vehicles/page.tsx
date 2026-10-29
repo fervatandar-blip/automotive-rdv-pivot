@@ -12,6 +12,7 @@ type VehicleRow = {
   model: string | null;
   year: number | null;
   license_plate: string | null;
+  vin: string | null;
   brands: { name: string } | null;
 };
 
@@ -30,7 +31,7 @@ export default async function VehiclesPage({
   const [{ data: vehicles }, { data: brands }] = await Promise.all([
     supabase
       .from("vehicles")
-      .select("id, model, year, license_plate, brands(name)")
+      .select("id, model, year, license_plate, vin, brands(name)")
       .eq("client_id", user.id)
       .order("created_at", { ascending: false }),
     supabase.from("brands").select("id, name").order("name"),
@@ -69,6 +70,11 @@ export default async function VehiclesPage({
                         .filter(Boolean)
                         .join(" · ") || d.noDetailsAdded}
                     </p>
+                    {vehicle.vin && (
+                      <p className="mt-0.5 font-mono text-xs text-zinc-500 dark:text-zinc-400">
+                        VIN {vehicle.vin}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <form action={deleteVehicle}>
