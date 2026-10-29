@@ -59,6 +59,7 @@ function ProfileSection({
   title,
   description,
   p,
+  hideSave = false,
   children,
 }: {
   section: GarageProfileSection;
@@ -66,6 +67,7 @@ function ProfileSection({
   title: string;
   description: string;
   p: ProfileDictionary;
+  hideSave?: boolean;
   children: (errors: Record<string, string[] | undefined>) => ReactNode;
 }) {
   const [state, action, pending] = useActionState(updateGarageProfile, undefined);
@@ -92,7 +94,7 @@ function ProfileSection({
 
       {children(errors)}
 
-      <div className="flex flex-wrap items-center gap-3 border-t border-black/[.06] pt-4 dark:border-white/[.1]">
+      <div hidden={hideSave} className="flex flex-wrap items-center gap-3 border-t border-black/[.06] pt-4 dark:border-white/[.1]">
         <button
           type="submit"
           disabled={pending}
@@ -226,8 +228,9 @@ function DetailsFields({
       </div>
 
       <fieldset className="flex flex-col gap-4 rounded-lg bg-zinc-50 p-4 dark:bg-white/[.03]">
-        <legend className="sr-only">{p.legalTitle}</legend>
-        <p className="text-sm font-medium text-black dark:text-zinc-50">{p.legalTitle}</p>
+        <legend className="float-left w-full text-sm font-medium text-black dark:text-zinc-50">
+          {p.legalTitle}
+        </legend>
         {identityLocked && (
           <p className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
             <Lock className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
@@ -363,7 +366,16 @@ export function ProfileEditor({
         )}
       </section>
 
-      <ProfileSection section="location" lang={lang} title={d.locationTitle} description={p.locationDescription} p={p}>
+      {/* Without a Maps key there's nothing to edit here, so no Save button
+          (the picker still round-trips the stored pin either way). */}
+      <ProfileSection
+        section="location"
+        lang={lang}
+        title={d.locationTitle}
+        description={p.locationDescription}
+        p={p}
+        hideSave={!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+      >
         {() => (
           <GarageMapPicker initialLatitude={garage.latitude} initialLongitude={garage.longitude} />
         )}

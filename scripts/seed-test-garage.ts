@@ -5,7 +5,10 @@
  * manually filling out every onboarding form.
  *
  * Usage:
- *   npx tsx scripts/seed-test-garage.ts <garage-owner-email>
+ *   node scripts/seed-test-garage.ts <garage-owner-email>
+ *
+ * (Node 24 runs TypeScript directly. For a fresh account to seed, run
+ * scripts/create-test-garage.ts first.)
  *
  * WARNING: this uses the Supabase service-role key to bypass RLS entirely,
  * force-approves the garage and every document, and overwrites existing
@@ -52,9 +55,10 @@ type OpeningHours = Record<
   { closed: true } | { closed: false; open: string; close: string }
 >;
 
-// Mon-Fri 08:00-18:00, Sat 09:00-13:00, Sun closed. Keys match the day
-// index app/actions/garage.ts's readOpeningHours writes (0 = Sunday,
-// matching JS Date#getDay()).
+// Mon-Fri 08:00-18:00, Sat 09:00-13:00, Sun closed (0 = Sunday, matching
+// availability.day_of_week). Written to the availability table only --
+// that's the single source of opening hours since the garage-profile
+// rework; garages.opening_hours is no longer read or written.
 const OPENING_HOURS: OpeningHours = {
   0: { closed: true },
   1: { closed: false, open: "08:00", close: "18:00" },
@@ -117,7 +121,7 @@ function fail(message: string): never {
 async function main() {
   const email = process.argv[2];
   if (!email) {
-    fail("Usage: npx tsx scripts/seed-test-garage.ts <garage-owner-email>");
+    fail("Usage: node scripts/seed-test-garage.ts <garage-owner-email>");
   }
 
   const supabase = createAdminClient();
@@ -150,12 +154,17 @@ async function main() {
   const { error: updateError } = await supabase
     .from("garages")
     .update({
+      name: "RDV Demo Garage (test)",
       description:
-        "Full-service auto repair and maintenance garage in the heart of Luxembourg City, specializing in European makes and EV servicing.",
+        "Full-service auto repair and maintenance garage in the heart of Luxembourg City, specializing in European makes and EV servicing.\n\nThis is a test garage used to try out RDV -- bookings here are not real.",
       address: "12 Rue de Bonnevoie",
       city: "Luxembourg City",
       phone: "+352 26 12 34 56",
-      opening_hours: OPENING_HOURS,
+      email: "contact@rdv.invalid",
+      website: "https://example.com",
+      country: "LU",
+      latitude: 49.6006,
+      longitude: 6.1342,
       ev_capable: true,
       mobile_service: true,
       emergency_service: true,
@@ -274,7 +283,7 @@ async function main() {
 
   // 7. Summary.
   console.log("=== Seed complete ===");
-  console.log(`Garage:      ${garage.name} (${garage.id})`);
+  console.log(`Garage:      RDV Demo Garage (test) (${garage.id})`);
   console.log(`Status:      approved`);
   console.log(`Brands:      ${brands?.length ?? 0} linked (${BRAND_NAMES.join(", ")})`);
   console.log(`Specialties: ${specialties?.length ?? 0} linked (${SPECIALTY_NAMES.join(", ")})`);

@@ -20,10 +20,26 @@ export function GarageMapPicker({
   );
 
   if (!apiKey) {
+    // Still submit the stored pin: without these inputs, saving the form
+    // would send no coordinates and the action would clear the garage's
+    // existing location.
     return (
-      <p className="text-sm text-zinc-500 dark:text-zinc-500">
-        Map picker unavailable (Google Maps isn&apos;t configured yet).
-      </p>
+      <div className="flex flex-col gap-1">
+        {position && (
+          <>
+            <input type="hidden" name="latitude" value={position.lat} />
+            <input type="hidden" name="longitude" value={position.lng} />
+          </>
+        )}
+        <p className="text-sm text-zinc-500 dark:text-zinc-500">
+          Map picker unavailable (Google Maps isn&apos;t configured yet).
+        </p>
+        {position && (
+          <p className="text-xs text-zinc-500 dark:text-zinc-500">
+            Current pin: {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
+          </p>
+        )}
+      </div>
     );
   }
 
