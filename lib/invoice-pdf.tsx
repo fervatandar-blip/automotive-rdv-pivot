@@ -75,7 +75,10 @@ export type InvoiceData = {
   };
   client: {
     name: string;
-    email: string;
+    // Walk-in customers (0038) may have no email; a phone number is
+    // printed instead when that's all there is.
+    email: string | null;
+    phone?: string | null;
   };
   service: {
     name: string;
@@ -138,7 +141,10 @@ function InvoiceDocument({ invoice }: { invoice: InvoiceData }) {
           <View>
             <Text style={styles.label}>BILL TO</Text>
             <Text>{invoice.client.name}</Text>
-            <Text>{invoice.client.email}</Text>
+            {invoice.client.email ? <Text>{invoice.client.email}</Text> : null}
+            {!invoice.client.email && invoice.client.phone ? (
+              <Text>{invoice.client.phone}</Text>
+            ) : null}
           </View>
         </View>
 

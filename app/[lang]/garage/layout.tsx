@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { getGarageMembership } from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { GarageSidebar, GarageTopBar } from "@/components/garage-nav";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { AnimatedLogo } from "@/components/animated-logo";
 
 // /garage/login and /garage/signup are public -- an anonymous visitor must
@@ -68,7 +69,12 @@ export default async function GarageLayout({
     <div className="flex flex-1">
       <GarageSidebar lang={lang} isOwner={isOwner} />
       <div className="flex flex-1 flex-col">
-        <GarageTopBar lang={lang} garageName={garage.name} status={garage.status} />
+        <GarageTopBar
+          lang={lang}
+          garageName={garage.name}
+          status={garage.status}
+          walkIn={(await getDictionary(lang)).walkIn}
+        />
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
     </div>

@@ -51,6 +51,8 @@ type AssignedAppointment = {
   repair_stage: string | null;
   services: { name: string } | null;
   profiles: { full_name: string } | null;
+  // Walk-in customer (0038) when the job isn't for a registered client.
+  walk_in: { full_name: string } | null;
 };
 
 function MechanicAppointmentCard({
@@ -78,7 +80,7 @@ function MechanicAppointmentCard({
           {appointment.services?.name ?? d.serviceFallback}
         </h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {d.clientLabel} {appointment.profiles?.full_name ?? d.clientFallback}
+          {d.clientLabel} {appointment.profiles?.full_name ?? appointment.walk_in?.full_name ?? d.clientFallback}
         </p>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           {formatDateTime(appointment.start_time, dateLocale)}
@@ -122,12 +124,14 @@ function MechanicAppointmentCard({
         )}
       </div>
       <div className="flex shrink-0 flex-col gap-1.5">
-        <Link
-          href={`/${lang}/appointments/${appointment.id}/messages`}
-          className="w-full rounded-full border border-black/[.08] px-4 py-1 text-center text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-        >
-          {d.message}
-        </Link>
+        {appointment.profiles && (
+          <Link
+            href={`/${lang}/appointments/${appointment.id}/messages`}
+            className="w-full rounded-full border border-black/[.08] px-4 py-1 text-center text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+          >
+            {d.message}
+          </Link>
+        )}
         {canConfirm && (
           <form action={confirmAppointment}>
             <input type="hidden" name="id" value={appointment.id} />
@@ -356,7 +360,7 @@ export default async function GarageDashboardPage({
     const { data: appointments } = await supabase
       .from("appointments")
       .select(
-        "id, start_time, status, repair_stage, services(name), profiles!appointments_client_id_fkey(full_name)"
+        "id, start_time, status, repair_stage, services(name), profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name)"
       )
       .eq("garage_id", garage.id)
       .eq("assigned_mechanic_id", profile.id)
@@ -447,7 +451,7 @@ export default async function GarageDashboardPage({
     ownerSupabase
       .from("appointments")
       .select(
-        "id, start_time, status, repair_stage, services(name), profiles!appointments_client_id_fkey(full_name)"
+        "id, start_time, status, repair_stage, services(name), profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name)"
       )
       .eq("garage_id", garage.id)
       .in("status", ["pending", "confirmed"])

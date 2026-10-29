@@ -390,6 +390,78 @@ export const VehicleFormSchema = z.object({
     .optional(),
 });
 
+/**
+ * Quick walk-in (garage side). The customer is an existing walk-in
+ * customer, a registered client who has booked here before, or a new
+ * walk-in; the vehicle is one of theirs, a new one (walk-in customers
+ * only -- registered clients manage their own vehicles), or none.
+ * Timing is "now" or a time later today, resolved server-side in the
+ * garage's zone.
+ */
+export const WalkInFormSchema = z
+  .object({
+    customerKind: z.enum(["garage_customer", "client", "new"], { error: "Choose a customer." }),
+    customerId: z.uuid().optional(),
+    newName: z.string().trim().max(120, { error: "Keep the name under 120 characters." }).optional(),
+    newPhone: z.string().trim().max(40, { error: "Keep the phone number under 40 characters." }).optional(),
+    newEmail: z
+      .email({ error: "Please enter a valid email." })
+      .transform((value) => value.toLowerCase())
+      .optional(),
+    vehicleChoice: z.union([z.uuid(), z.literal("new"), z.literal("none")]).default("none"),
+    plate: z.string().trim().max(20, { error: "Keep it under 20 characters." }).optional(),
+    brandId: z.uuid().optional(),
+    model: z.string().trim().max(100, { error: "Keep it under 100 characters." }).optional(),
+    vin: z
+      .string()
+      .transform(normalizeVin)
+      .pipe(z.string().regex(VIN_PATTERN, { error: "A VIN is 17 letters and digits (no I, O or Q)." }))
+      .optional(),
+    serviceId: z.uuid({ error: "Choose a service." }),
+    mechanicId: z.uuid().optional(),
+    when: z.enum(["now", "at"]).default("now"),
+    time: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: "Enter a valid time." })
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.customerKind === "new" && !data.newName) {
+      ctx.addIssue({ code: "custom", path: ["newName"], message: "Enter the customer's name." });
+    }
+    if (data.customerKind === "new" && !data.newPhone && !data.newEmail) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["newPhone"],
+        message: "Add a phone number or email so you can reach them.",
+      });
+    }
+    if (data.customerKind !== "new" && !data.customerId) {
+      ctx.addIssue({ code: "custom", path: ["customerId"], message: "Choose a customer." });
+    }
+    if (data.vehicleChoice === "new" && data.customerKind === "client") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["vehicleChoice"],
+        message: "Registered clients add their own vehicles. Pick one of theirs or none.",
+      });
+    }
+    if (data.vehicleChoice === "new" && !data.plate && !data.model) {
+      ctx.addIssue({ code: "custom", path: ["plate"], message: "Enter at least the plate or the model." });
+    }
+    if (data.when === "at" && !data.time) {
+      ctx.addIssue({ code: "custom", path: ["time"], message: "Enter a time." });
+    }
+  });
+
+export type WalkInFormState =
+  | {
+      errors?: Partial<Record<keyof z.input<typeof WalkInFormSchema>, string[]>>;
+      message?: string;
+      created?: { appointmentId: string; startLabel: string; mechanicName: string | null; customerName: string };
+    }
+  | undefined;
+
 export type VehicleFormState =
   | {
       errors?: {

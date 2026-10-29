@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { QuickWalkInButton } from "@/components/quick-walk-in-modal";
+import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
 import {
@@ -120,10 +122,13 @@ export function GarageTopBar({
   lang,
   garageName,
   status,
+  walkIn,
 }: {
   lang: Locale;
   garageName: string;
   status: string;
+  // The Quick walk-in button is offered from the garage area only.
+  walkIn?: Dictionary["walkIn"];
 }) {
   return (
     <header className="flex items-center justify-between gap-4 border-b border-black/[.08] bg-white px-6 py-4 dark:border-white/[.145] dark:bg-zinc-950 sm:px-8">
@@ -135,11 +140,14 @@ export function GarageTopBar({
           {garageName}
         </h1>
       </div>
-      <span
-        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_BADGE[status] ?? ""}`}
-      >
-        {status}
-      </span>
+      <div className="flex items-center gap-3">
+        <span
+          className={`hidden shrink-0 rounded-full px-2.5 py-1 text-xs font-medium sm:inline ${STATUS_BADGE[status] ?? ""}`}
+        >
+          {status}
+        </span>
+        {walkIn && <QuickWalkInButton lang={lang} d={walkIn} />}
+      </div>
     </header>
   );
 }

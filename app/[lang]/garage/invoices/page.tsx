@@ -16,6 +16,7 @@ type InvoiceRow = {
   appointments: {
     services: { name: string } | null;
     client: { full_name: string } | null;
+    walk_in?: { full_name: string } | null;
   } | null;
 };
 
@@ -24,6 +25,7 @@ type CompletedAppointmentRow = {
   start_time: string;
   services: { name: string } | null;
   client: { full_name: string } | null;
+  walk_in?: { full_name: string } | null;
 };
 
 type PaymentRow = {
@@ -37,6 +39,7 @@ type PaymentRow = {
   appointments: {
     services: { name: string } | null;
     client: { full_name: string } | null;
+    walk_in?: { full_name: string } | null;
   } | null;
 };
 
@@ -71,7 +74,7 @@ export default async function GarageInvoicesPage({
       supabase
         .from("invoices")
         .select(
-          "id, appointment_id, invoice_number, amount, currency, issued_at, file_path, appointments(services(name), client:profiles!appointments_client_id_fkey(full_name))"
+          "id, appointment_id, invoice_number, amount, currency, issued_at, file_path, appointments(services(name), client:profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name))"
         )
         .eq("garage_id", garage.id)
         .order("issued_at", { ascending: false }),
@@ -85,7 +88,7 @@ export default async function GarageInvoicesPage({
       supabase
         .from("appointments")
         .select(
-          "id, start_time, services(name), client:profiles!appointments_client_id_fkey(full_name)"
+          "id, start_time, services(name), client:profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name)"
         )
         .eq("garage_id", garage.id)
         .eq("status", "completed")
@@ -248,7 +251,7 @@ export default async function GarageInvoicesPage({
                       {appointment.services?.name ?? d.serviceFallback}
                     </h3>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      {appointment.client?.full_name ?? d.clientFallback} &middot;{" "}
+                      {appointment.client?.full_name ?? appointment.walk_in?.full_name ?? d.clientFallback} &middot;{" "}
                       {new Date(appointment.start_time).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                     </p>
                   </div>
@@ -291,6 +294,7 @@ export default async function GarageInvoicesPage({
                       {invoice.appointments?.services?.name ?? d.serviceFallback}{" "}
                       {d.for}{" "}
                       {invoice.appointments?.client?.full_name ??
+                        invoice.appointments?.walk_in?.full_name ??
                         d.clientFallbackLowercase}
                     </p>
                     <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

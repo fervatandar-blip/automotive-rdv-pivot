@@ -442,17 +442,29 @@ async function generateInvoice(
     const { data: appointment } = await supabase
       .from("appointments")
       .select(
-        "start_time, client_id, client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, address, city, email, vat_number, registration_number), services(name, duration_minutes, price)"
+        "start_time, client_id, garage_customer_id, client:profiles!appointments_client_id_fkey(full_name, email), walk_in:garage_customers(full_name, email, phone), garage:garages!appointments_garage_id_fkey(name, address, city, email, vat_number, registration_number), services(name, duration_minutes, price)"
       )
       .eq("id", appointmentId)
       .single();
 
     if (!appointment) return;
 
-    const client = appointment.client as unknown as {
+    // The invoice recipient: a registered client, or a walk-in customer
+    // (0038) who may have no email at all.
+    const registered = appointment.client as unknown as {
       full_name: string;
       email: string;
     } | null;
+    const walkIn = appointment.walk_in as unknown as {
+      full_name: string;
+      email: string | null;
+      phone: string | null;
+    } | null;
+    const recipient = registered
+      ? { name: registered.full_name, email: registered.email, phone: null }
+      : walkIn
+        ? { name: walkIn.full_name, email: walkIn.email, phone: walkIn.phone }
+        : null;
     const garageInfo = appointment.garage as unknown as {
       name: string;
       address: string | null;
@@ -467,7 +479,7 @@ async function generateInvoice(
       price: number;
     } | null;
 
-    if (!client || !garageInfo || !service) return;
+    if (!recipient || !garageInfo || !service) return;
 
     // increment_invoice_number must run before rendering (the number is
     // printed inside the PDF itself, so it has to be known first) --
@@ -505,7 +517,7 @@ async function generateInvoice(
         vatNumber: garageInfo.vat_number,
         registrationNumber: garageInfo.registration_number,
       },
-      client: { name: client.full_name, email: client.email },
+      client: recipient,
       service: {
         name: service.name,
         durationMinutes: service.duration_minutes,
@@ -532,6 +544,7 @@ async function generateInvoice(
       appointment_id: appointmentId,
       garage_id: garageId,
       client_id: appointment.client_id,
+      garage_customer_id: appointment.garage_customer_id,
       invoice_number: invoiceNumber,
       amount: service.price,
       currency: "EUR",

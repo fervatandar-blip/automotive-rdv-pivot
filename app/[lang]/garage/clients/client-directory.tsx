@@ -4,6 +4,8 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { Car, Search, X } from "lucide-react";
 import { normalizeVehicleSearch } from "@/lib/vehicle-identifiers";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
+import type { Locale } from "@/lib/i18n/config";
+import { anonymizeGarageCustomer } from "@/app/actions/walk-ins";
 
 type D = Dictionary["garageClients"];
 
@@ -25,6 +27,10 @@ export type DirectoryVehicle = {
 
 export type DirectoryClient = {
   id: string;
+  kind: "client" | "walk_in";
+  // Walk-in customers only: their garage_customers id, for erasure.
+  customerId?: string;
+  anonymized?: boolean;
   name: string;
   email: string;
   appointmentCount: number;
@@ -49,10 +55,12 @@ function vehicleMatches(vehicle: DirectoryVehicle, term: string) {
 export function ClientDirectory({
   clients,
   d,
+  lang,
   initialQuery,
 }: {
   clients: DirectoryClient[];
   d: D;
+  lang: Locale;
   initialQuery: string;
 }) {
   const [query, setQuery] = useState(initialQuery);
@@ -132,14 +140,37 @@ export function ClientDirectory({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-black dark:text-zinc-50">{client.name}</p>
-                    <p className="truncate text-sm text-zinc-600 dark:text-zinc-400">{client.email}</p>
+                    <p className="flex items-center gap-2 truncate font-medium text-black dark:text-zinc-50">
+                      {client.name}
+                      {client.kind === "walk_in" && (
+                        <span className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-400">
+                          {d.walkInBadge}
+                        </span>
+                      )}
+                    </p>
+                    {client.email && (
+                      <p className="truncate text-sm text-zinc-600 dark:text-zinc-400">{client.email}</p>
+                    )}
                   </div>
                   <span className="shrink-0 rounded-full bg-black/[.04] px-2.5 py-1 text-xs font-medium text-zinc-700 dark:bg-white/[.06] dark:text-zinc-300">
                     {client.appointmentCount}{" "}
                     {client.appointmentCount === 1 ? d.appointment : d.appointments}
                   </span>
                 </div>
+
+                {client.kind === "walk_in" && client.customerId && !client.anonymized && (
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-zinc-500 underline dark:text-zinc-400">{d.anonymize}</summary>
+                    <form action={anonymizeGarageCustomer} className="mt-2 flex flex-wrap items-center gap-3">
+                      <input type="hidden" name="lang" value={lang} />
+                      <input type="hidden" name="customerId" value={client.customerId} />
+                      <span className="text-zinc-600 dark:text-zinc-400">{d.anonymizeConfirm}</span>
+                      <button type="submit" className="rounded-full border border-red-200 px-3 py-1 font-medium text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950">
+                        {d.anonymize}
+                      </button>
+                    </form>
+                  </details>
+                )}
 
                 {vehicles.length > 0 && (
                   <ul className="flex flex-col gap-2">

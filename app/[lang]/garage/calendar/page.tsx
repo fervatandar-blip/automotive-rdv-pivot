@@ -32,6 +32,8 @@ type CalendarAppointment = {
   assigned_mechanic_id: string | null;
   services: { name: string } | null;
   profiles: { full_name: string } | null;
+  // Walk-in customer (0038) when the job isn't for a registered client.
+  walk_in: { full_name: string } | null;
 };
 
 type Mechanic = { id: string; full_name: string };
@@ -93,7 +95,7 @@ function AppointmentChip({
         </p>
         {!compact && (
           <p className="truncate text-zinc-500 dark:text-zinc-500">
-            {appointment.profiles?.full_name ?? d.clientFallback}
+            {appointment.profiles?.full_name ?? appointment.walk_in?.full_name ?? d.clientFallback}
           </p>
         )}
         {compact && assignedMechanic && (
@@ -136,12 +138,14 @@ function AppointmentChip({
         )}
         {!compact && (
           <div className="mt-1.5 flex flex-col gap-1">
-            <Link
-              href={`/${lang}/appointments/${appointment.id}/messages`}
-              className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
-            >
-              {d.message}
-            </Link>
+            {appointment.profiles && (
+              <Link
+                href={`/${lang}/appointments/${appointment.id}/messages`}
+                className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
+              >
+                {d.message}
+              </Link>
+            )}
             {canConfirm && (
               <form action={confirmAppointment}>
                 <input type="hidden" name="id" value={appointment.id} />
@@ -296,7 +300,7 @@ export default async function GarageCalendarPage({
   const { data: appointments } = await supabase
     .from("appointments")
     .select(
-      "id, start_time, status, assigned_mechanic_id, services(name), profiles!appointments_client_id_fkey(full_name)"
+      "id, start_time, status, assigned_mechanic_id, services(name), profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name)"
     )
     .eq("garage_id", garage.id)
     .gte("start_time", rangeStart.toISOString())

@@ -48,6 +48,8 @@ export default async function GarageMessagesPage({
       "id, start_time, services(name), client:profiles!appointments_client_id_fkey(full_name)"
     )
     .eq("garage_id", garage.id)
+    // Walk-in customers (0038) have no RDV account, so no message thread.
+    .not("client_id", "is", null)
     .order("start_time", { ascending: false });
 
   const appointmentRows = (appointments ?? []) as unknown as AppointmentRow[];
