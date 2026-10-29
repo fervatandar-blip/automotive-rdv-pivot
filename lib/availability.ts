@@ -58,25 +58,34 @@ export async function getAvailableSlotsForDate({
   const dayStart = zonedStartOfDay(date);
   const dayEnd = zonedStartOfDay(addDaysToDateKey(date, 1));
 
-  // A security-definer RPC, not a direct table select: appointments' RLS
-  // only lets the appointment's own client or a garage member see a row, so
-  // a browsing client's session can't see a *different* client's booking --
-  // this returns only start_time/end_time (public availability info, no
-  // client identity) regardless of who's asking.
-  const { data: appointments } = (await supabase.rpc("get_booked_ranges", {
-    target_garage_id: garageId,
-    range_start: dayStart.toISOString(),
-    range_end: dayEnd.toISOString(),
-    exclude_appointment_id: excludeAppointmentId ?? null,
-  })) as { data: { start_time: string; end_time: string }[] | null };
+  // Security-definer RPCs, not direct table selects: appointments' RLS
+  // only lets the appointment's own client or a garage member see a row,
+  // so a browsing client can't see other bookings. These return only
+  // start/end times with an anonymous per-mechanic lane, plus how many
+  // mechanics can be booked in parallel (0037).
+  const [{ data: appointments }, { data: capacity }] = await Promise.all([
+    supabase.rpc("get_booked_ranges", {
+      target_garage_id: garageId,
+      range_start: dayStart.toISOString(),
+      range_end: dayEnd.toISOString(),
+      exclude_appointment_id: excludeAppointmentId ?? null,
+    }) as unknown as Promise<{
+      data: { start_time: string; end_time: string; lane: number }[] | null;
+    }>,
+    supabase.rpc("get_bookable_mechanic_count", {
+      target_garage_id: garageId,
+    }) as unknown as Promise<{ data: number | null }>,
+  ]);
 
   const slots = computeAvailableSlots({
     date,
     windows,
     durationMinutes,
+    capacity: capacity ?? 0,
     bookedRanges: (appointments ?? []).map((appointment) => ({
       start: new Date(appointment.start_time),
       end: new Date(appointment.end_time),
+      lane: appointment.lane,
     })),
   });
 

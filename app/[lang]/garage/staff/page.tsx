@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
-import { cancelMechanicInvite, removeMechanic } from "@/app/actions/staff";
+import { cancelMechanicInvite, removeMechanic, setOwnerTakesBookings } from "@/app/actions/staff";
+import { CheckboxChip } from "@/components/checkbox-chip";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import { InviteMechanicForm } from "./invite-form";
 
@@ -21,10 +22,15 @@ type InviteRow = {
 
 export default async function GarageStaffPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ lang: string }>;
+  searchParams: Promise<{ moved?: string; stranded?: string; error?: string }>;
 }) {
   const { lang: rawLang } = await params;
+  const { moved, stranded, error: toggleError } = await searchParams;
+  const movedCount = Number(moved) || 0;
+  const strandedCount = Number(stranded) || 0;
   const lang = resolveLocale(rawLang);
   const { garage } = await requireGarageOwner(lang);
   const dictionary = await getDictionary(lang);
@@ -50,6 +56,8 @@ export default async function GarageStaffPage({
   ]);
 
   const staffRows = (staff ?? []) as unknown as StaffRow[];
+  // Bookable mechanics (0037): accepted staff + the owner unless opted out.
+  const bookableCount = staffRows.length + (garage.owner_takes_bookings ? 1 : 0);
   const inviteRows = (invites ?? []) as InviteRow[];
 
   return (
@@ -69,6 +77,58 @@ export default async function GarageStaffPage({
           </div>
           <LanguageSwitcher lang={lang} />
         </div>
+
+        {(movedCount > 0 || strandedCount > 0 || toggleError) && (
+          <div className="flex flex-col gap-2">
+            {movedCount > 0 && (
+              <p role="status" className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
+                {d.jobsMoved.replace("{count}", String(movedCount))}
+              </p>
+            )}
+            {strandedCount > 0 && (
+              <p role="alert" className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
+                {d.jobsStranded.replace("{count}", String(strandedCount))}{" "}
+                <Link href={`/${lang}/garage/calendar`} className="font-medium underline">
+                  {d.openCalendar}
+                </Link>
+              </p>
+            )}
+            {toggleError && (
+              <p role="alert" className="text-sm text-red-600">{d.toggleError}</p>
+            )}
+          </div>
+        )}
+
+        <section
+          aria-labelledby="capacity-title"
+          className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+        >
+          <div>
+            <h2 id="capacity-title" className="text-lg font-semibold text-black dark:text-zinc-50">
+              {d.capacityTitle}
+            </h2>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              {bookableCount === 0
+                ? d.capacityNone
+                : d.capacitySummary.replace("{count}", String(bookableCount))}
+            </p>
+          </div>
+          <form action={setOwnerTakesBookings} className="flex flex-wrap items-center justify-between gap-3">
+            <input type="hidden" name="lang" value={lang} />
+            <CheckboxChip
+              name="takesBookings"
+              label={d.ownerTakesBookings}
+              defaultChecked={garage.owner_takes_bookings}
+            />
+            <button
+              type="submit"
+              className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+            >
+              {d.save}
+            </button>
+          </form>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">{d.capacityHint}</p>
+        </section>
 
         <InviteMechanicForm dictionary={d.inviteForm} />
 

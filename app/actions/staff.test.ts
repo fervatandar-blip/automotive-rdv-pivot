@@ -35,7 +35,7 @@ vi.mock("@/lib/email", async () => {
 });
 
 const OWNER = { id: "owner-1" };
-const GARAGE = { id: "garage-1", name: "Garage <b>Bad</b> & Co" };
+const GARAGE = { id: "garage-1", name: "Garage <b>Bad</b> & Co", owner_id: "owner-1" };
 vi.mock("@/lib/dal", () => ({
   requireGarageOwner: vi.fn().mockResolvedValue({
     profile: OWNER,
@@ -64,7 +64,7 @@ function makeClient(results: Record<string, unknown>, ops: Op[], extra: object =
           }
           return builder;
         };
-      for (const method of ["insert", "update", "delete", "select", "eq", "is", "gt", "limit", "order"]) {
+      for (const method of ["insert", "update", "delete", "select", "eq", "is", "gt", "in", "limit", "order"]) {
         builder[method] = chain(method);
       }
       builder.single = () => Promise.resolve(results[`${table}.${operation}`] ?? { data: null, error: null });
@@ -86,6 +86,8 @@ let inviteUserByEmailResult: {
 };
 let rpcResult: { data: unknown; error: unknown };
 const rpcCalls: { name: string; args: unknown }[] = [];
+// Appointment ids whose reassignment RPC should fail (no free mechanic).
+const rpcErrorsFor = new Set<string>();
 const inviteUserByEmail = vi.fn(() => Promise.resolve(inviteUserByEmailResult));
 
 vi.mock("@/lib/supabase/server", () => ({
@@ -94,6 +96,10 @@ vi.mock("@/lib/supabase/server", () => ({
       makeClient(userResults, userOps, {
         rpc: (name: string, args: unknown) => {
           rpcCalls.push({ name, args });
+          const target = (args as { target_appointment_id?: string })?.target_appointment_id;
+          if (name === "assign_appointment_mechanic" && target && rpcErrorsFor.has(target)) {
+            return Promise.resolve({ data: null, error: { code: "23P01", message: "no_mechanic_available" } });
+          }
           return Promise.resolve(rpcResult);
         },
       })
@@ -106,7 +112,7 @@ vi.mock("@/lib/supabase/admin", () => ({
   ),
 }));
 
-const { inviteMechanic, acceptMechanicInvite } = await import("./staff");
+const { inviteMechanic, acceptMechanicInvite, removeMechanic, setOwnerTakesBookings } = await import("./staff");
 
 function inviteForm(email = "Jean.Dupont@Example.com") {
   const formData = new FormData();
@@ -140,6 +146,7 @@ beforeEach(() => {
   };
   inviteUserByEmailResult = { data: { user: { id: "new-user" } }, error: null };
   rpcResult = { data: "accepted", error: null };
+  rpcErrorsFor.clear();
 });
 
 describe("inviteMechanic: no account enumeration", () => {
@@ -302,5 +309,59 @@ describe("acceptMechanicInvite", () => {
     expect(await redirectedTo(acceptMechanicInvite(acceptForm()))).toBe(
       "/en/garage/dashboard?invite=error"
     );
+  });
+});
+
+describe("mechanic capacity changes reassign upcoming jobs", () => {
+  function staffForm(fields: Record<string, string>) {
+    const formData = new FormData();
+    formData.set("lang", "en");
+    for (const [key, value] of Object.entries(fields)) formData.set(key, value);
+    return formData;
+  }
+
+  it("removing a mechanic hands each upcoming job to the auto-assigner and reports what's stranded", async () => {
+    userResults["appointments.select"] = { data: [{ id: "job-1" }, { id: "job-2" }, { id: "job-3" }], error: null };
+    rpcErrorsFor.add("job-2");
+
+    const url = await redirectedTo(removeMechanic(staffForm({ profileId: "mech-9" })));
+
+    expect(userOps.some((op) => op.table === "garage_staff" && op.method === "delete")).toBe(true);
+    const reassigned = rpcCalls.filter((call) => call.name === "assign_appointment_mechanic");
+    expect(reassigned.map((call) => call.args)).toEqual([
+      { target_appointment_id: "job-1", target_mechanic_id: null },
+      { target_appointment_id: "job-2", target_mechanic_id: null },
+      { target_appointment_id: "job-3", target_mechanic_id: null },
+    ]);
+    // Only that mechanic's upcoming, active jobs at this garage.
+    const filters = userOps.filter((op) => op.table === "appointments").map((op) => [op.method, ...op.args]);
+    expect(filters).toContainEqual(["eq", "assigned_mechanic_id", "mech-9"]);
+    expect(filters).toContainEqual(["eq", "garage_id", "garage-1"]);
+    expect(url).toBe("/en/garage/staff?moved=2&stranded=1");
+  });
+
+  it("opting the owner out reassigns the owner's upcoming jobs", async () => {
+    userResults["appointments.select"] = { data: [{ id: "job-1" }], error: null };
+
+    const url = await redirectedTo(setOwnerTakesBookings(staffForm({})));
+
+    const update = userOps.find((op) => op.table === "garages" && op.method === "update");
+    expect(update?.args[0]).toEqual({ owner_takes_bookings: false });
+    expect(userOps.filter((op) => op.table === "appointments").map((op) => [op.method, ...op.args])).toContainEqual([
+      "eq",
+      "assigned_mechanic_id",
+      "owner-1",
+    ]);
+    expect(url).toBe("/en/garage/staff?moved=1");
+  });
+
+  it("opting the owner back in reassigns nothing", async () => {
+    const url = await redirectedTo(setOwnerTakesBookings(staffForm({ takesBookings: "on" })));
+
+    expect(userOps.find((op) => op.table === "garages" && op.method === "update")?.args[0]).toEqual({
+      owner_takes_bookings: true,
+    });
+    expect(rpcCalls).toHaveLength(0);
+    expect(url).toBe("/en/garage/staff");
   });
 });

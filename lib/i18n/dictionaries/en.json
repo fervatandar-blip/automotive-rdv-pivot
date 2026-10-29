@@ -343,7 +343,11 @@
       "October",
       "November",
       "December"
-    ]
+    ],
+    "autoAssign": "Auto-assign",
+    "ownerFallback": "Owner",
+    "mechanicBusyError": "That mechanic already has a job at that time, so the assignment wasn't changed. Pick someone else or Auto-assign.",
+    "assignFailedError": "Couldn't change the mechanic. Please try again."
   },
   "garageServices": {
     "servicesSuffix": "services",
@@ -477,7 +481,17 @@
       "submit": "Send invite",
       "submitPending": "Sending invite...",
       "sentNotice": "Invitation sent to {email}. They'll appear in your team once they accept."
-    }
+    },
+    "capacityTitle": "Who can be booked",
+    "capacitySummary": "{count} mechanic(s) can be booked at the same time. Online slots stay open while at least one of them is free.",
+    "capacityNone": "Nobody can be booked right now, so clients see no free slots. Turn on the switch below or invite a mechanic.",
+    "ownerTakesBookings": "I also work on cars (clients can be booked with me)",
+    "capacityHint": "Everyone follows your garage's opening hours. Individual days off aren't supported yet; use a date override or reassign jobs in the calendar.",
+    "save": "Save",
+    "jobsMoved": "{count} upcoming job(s) were moved to a free mechanic.",
+    "jobsStranded": "{count} upcoming job(s) couldn't be moved because no other mechanic is free then. Reassign or reschedule them.",
+    "openCalendar": "Open the calendar",
+    "toggleError": "Couldn't save that setting. Please try again."
   },
   "garageInvoices": {
     "titleSuffix": "Invoices & Financials",

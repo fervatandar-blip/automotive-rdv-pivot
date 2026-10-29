@@ -52,12 +52,14 @@ function AppointmentChip({
   compact = false,
   d,
   dateLocale,
+  returnTo,
 }: {
   appointment: CalendarAppointment;
   lang: Locale;
   mechanics: Mechanic[];
   isOwner: boolean;
   compact?: boolean;
+  returnTo: { view: string; date: string };
   d: D;
   dateLocale: string;
 }) {
@@ -110,12 +112,14 @@ function AppointmentChip({
           <form action={assignMechanic} className="mt-1.5 flex gap-1">
             <input type="hidden" name="id" value={appointment.id} />
             <input type="hidden" name="lang" value={lang} />
+            <input type="hidden" name="returnView" value={returnTo.view} />
+            <input type="hidden" name="returnDate" value={returnTo.date} />
             <select
               name="mechanicId"
               defaultValue={appointment.assigned_mechanic_id ?? ""}
               className="min-w-0 flex-1 rounded border border-black/[.08] bg-white px-1 py-0.5 text-[11px] dark:border-white/[.145] dark:bg-black"
             >
-              <option value="">{d.unassigned}</option>
+              <option value="">{d.autoAssign}</option>
               {mechanics.map((mechanic) => (
                 <option key={mechanic.id} value={mechanic.id}>
                   {mechanic.full_name}
@@ -245,7 +249,7 @@ export default async function GarageCalendarPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ view?: string; date?: string }>;
+  searchParams: Promise<{ view?: string; date?: string; error?: string }>;
 }) {
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
@@ -253,7 +257,7 @@ export default async function GarageCalendarPage({
   const dictionary = await getDictionary(lang);
   const d = dictionary.garageCalendar;
   const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
-  const { view: viewParam, date: dateParam } = await searchParams;
+  const { view: viewParam, date: dateParam, error: errorParam } = await searchParams;
   const view = viewParam === "month" ? "month" : "week";
   const anchor = parseDateKey(dateParam ?? todayKey());
 
@@ -275,9 +279,19 @@ export default async function GarageCalendarPage({
     .from("garage_staff")
     .select("profiles(id, full_name)")
     .eq("garage_id", garage.id);
-  const mechanics = (staffRows ?? [])
+  const staffMechanics = (staffRows ?? [])
     .map((row) => row.profiles as unknown as Mechanic | null)
     .filter((mechanic): mechanic is Mechanic => mechanic !== null);
+
+  // The bookable mechanics (0037): accepted staff, plus the owner unless
+  // they've opted out of taking jobs.
+  const { data: ownerProfile } = garage.owner_takes_bookings
+    ? await supabase.from("profiles").select("id, full_name").eq("id", garage.owner_id).maybeSingle()
+    : { data: null };
+  const mechanics: Mechanic[] = [
+    ...(ownerProfile ? [{ id: ownerProfile.id, full_name: ownerProfile.full_name || d.ownerFallback }] : []),
+    ...staffMechanics,
+  ];
 
   const { data: appointments } = await supabase
     .from("appointments")
@@ -299,6 +313,7 @@ export default async function GarageCalendarPage({
 
   const todaysKey = todayKey();
   const anchorKey = toDateKey(anchor);
+  const returnTo = { view, date: anchorKey };
   const prevAnchor =
     view === "week" ? addDays(anchor, -7) : addMonths(startOfMonth(anchor), -1);
   const nextAnchor =
@@ -326,6 +341,12 @@ export default async function GarageCalendarPage({
           </div>
           <LanguageSwitcher lang={lang} />
         </div>
+
+        {(errorParam === "mechanic-busy" || errorParam === "assign-failed") && (
+          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+            {errorParam === "mechanic-busy" ? d.mechanicBusyError : d.assignFailedError}
+          </p>
+        )}
 
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex rounded-full border border-black/[.08] p-1 dark:border-white/[.145]">
@@ -397,6 +418,7 @@ export default async function GarageCalendarPage({
                           isOwner={isOwner}
                           d={d}
                           dateLocale={dateLocale}
+                          returnTo={returnTo}
                         />
                       ))
                     ) : (
@@ -460,6 +482,7 @@ export default async function GarageCalendarPage({
                         compact
                         d={d}
                         dateLocale={dateLocale}
+                        returnTo={returnTo}
                       />
                     ))}
                     {overflow > 0 && (

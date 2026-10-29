@@ -343,7 +343,11 @@
       "octobre",
       "novembre",
       "décembre"
-    ]
+    ],
+    "autoAssign": "Attribution automatique",
+    "ownerFallback": "Propriétaire",
+    "mechanicBusyError": "Ce mécanicien a déjà un rendez-vous à ce moment-là : l'attribution n'a pas été modifiée. Choisissez quelqu'un d'autre ou l'attribution automatique.",
+    "assignFailedError": "Impossible de changer le mécanicien. Veuillez réessayer."
   },
   "garageServices": {
     "servicesSuffix": "services",
@@ -477,7 +481,17 @@
       "submit": "Envoyer l'invitation",
       "submitPending": "Envoi en cours...",
       "sentNotice": "Invitation envoyée à {email}. Il apparaîtra dans votre équipe dès qu'il aura accepté."
-    }
+    },
+    "capacityTitle": "Qui peut être réservé",
+    "capacitySummary": "{count} mécanicien(s) peuvent être réservés en même temps. Les créneaux en ligne restent ouverts tant qu'au moins l'un d'eux est libre.",
+    "capacityNone": "Personne ne peut être réservé pour le moment : les clients ne voient aucun créneau. Activez l'option ci-dessous ou invitez un mécanicien.",
+    "ownerTakesBookings": "Je travaille aussi sur les véhicules (les clients peuvent être réservés avec moi)",
+    "capacityHint": "Tout le monde suit les horaires d'ouverture du garage. Les jours de congé individuels ne sont pas encore pris en charge ; utilisez une exception de date ou réattribuez les rendez-vous dans le calendrier.",
+    "save": "Enregistrer",
+    "jobsMoved": "{count} rendez-vous à venir ont été attribués à un mécanicien libre.",
+    "jobsStranded": "{count} rendez-vous à venir n'ont pas pu être déplacés car aucun autre mécanicien n'est libre à ce moment-là. Réattribuez-les ou reprogrammez-les.",
+    "openCalendar": "Ouvrir le calendrier",
+    "toggleError": "Impossible d'enregistrer ce paramètre. Veuillez réessayer."
   },
   "garageInvoices": {
     "titleSuffix": "Factures et finances",

@@ -785,24 +785,41 @@ export async function assignMechanic(formData: FormData) {
   const id = formData.get("id");
   const mechanicId = formData.get("mechanicId");
 
+  // Back to the same calendar view; only known values are echoed into the URL.
+  const returnView = formData.get("returnView") === "month" ? "month" : "week";
+  const returnDate = formData.get("returnDate");
+  const calendarUrl = (error?: string) => {
+    const params = new URLSearchParams({ view: returnView });
+    if (typeof returnDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(returnDate)) {
+      params.set("date", returnDate);
+    }
+    if (error) params.set("error", error);
+    return `/${lang}/garage/calendar?${params}`;
+  };
+
   if (typeof id !== "string" || !id) {
-    return;
+    redirect(calendarUrl());
   }
 
   const supabase = await createClient();
 
   // Goes through a SECURITY DEFINER function (not a direct table update)
   // since appointments has no general UPDATE policy for the authenticated
-  // role -- see 0027_appointment_write_integrity.sql. requireGarageOwner
-  // above already restricts which garage's mechanics this form can offer;
-  // the function's own is_garage_member(garage_id) check is the DB-level
-  // floor underneath that.
-  await supabase.rpc("assign_appointment_mechanic", {
+  // role -- see 0027_appointment_write_integrity.sql. An empty choice means
+  // "auto-assign": the appointments_assign_mechanic trigger (0037) picks a
+  // free mechanic. A specific mechanic who is busy then (or isn't part of
+  // this garage) is refused with 23P01 rather than silently swapped.
+  const { error } = await supabase.rpc("assign_appointment_mechanic", {
     target_appointment_id: id,
     target_mechanic_id:
       typeof mechanicId === "string" && mechanicId ? mechanicId : null,
   });
 
   revalidateLocalizedPath("/garage/calendar");
-  revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/garage/dashboard");
+
+  if (error) {
+    console.error("[appointments] assign_appointment_mechanic failed:", error);
+  }
+  redirect(calendarUrl(error ? (error.code === "23P01" ? "mechanic-busy" : "assign-failed") : undefined));
 }

@@ -202,6 +202,52 @@ describe("computeAvailableSlots", () => {
     expect(slots).toEqual(["09:00", "14:00"]);
   });
 
+  describe("per-mechanic capacity", () => {
+    const base = {
+      date: "2026-06-01",
+      windows: [{ start_time: "09:00:00", end_time: "11:00:00" }],
+      durationMinutes: 60,
+      now: EARLY_NOW,
+    };
+    const nineToTen = { start: new Date("2026-06-01T09:00:00+02:00"), end: new Date("2026-06-01T10:00:00+02:00") };
+
+    it("keeps a slot open while another mechanic is free", () => {
+      const slots = computeAvailableSlots({ ...base, capacity: 2, bookedRanges: [{ ...nineToTen, lane: 1 }] });
+      expect(slots).toEqual(["09:00", "10:00"]);
+    });
+
+    it("closes the slot once every mechanic is busy", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        capacity: 2,
+        bookedRanges: [
+          { ...nineToTen, lane: 1 },
+          { start: new Date("2026-06-01T09:30:00+02:00"), end: new Date("2026-06-01T10:30:00+02:00"), lane: 2 },
+        ],
+      });
+      // 09:00 overlaps both mechanics' jobs; at 10:00 only lane 2 is still
+      // busy (until 10:30), so one mechanic is free.
+      expect(slots).toEqual(["10:00"]);
+    });
+
+    it("counts one mechanic's back-to-back bookings as a single busy mechanic", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        windows: [{ start_time: "09:00:00", end_time: "10:00:00" }],
+        capacity: 2,
+        bookedRanges: [
+          { start: new Date("2026-06-01T09:00:00+02:00"), end: new Date("2026-06-01T09:30:00+02:00"), lane: 1 },
+          { start: new Date("2026-06-01T09:30:00+02:00"), end: new Date("2026-06-01T10:00:00+02:00"), lane: 1 },
+        ],
+      });
+      expect(slots).toEqual(["09:00"]);
+    });
+
+    it("offers nothing when the garage has no bookable mechanic", () => {
+      expect(computeAvailableSlots({ ...base, capacity: 0, bookedRanges: [] })).toEqual([]);
+    });
+  });
+
   it("returns no slots for an empty window list (e.g. a closed override day)", () => {
     const slots = computeAvailableSlots({
       date: "2026-06-01",

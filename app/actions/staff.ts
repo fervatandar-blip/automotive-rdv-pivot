@@ -168,6 +168,45 @@ export async function cancelMechanicInvite(formData: FormData) {
   revalidateLocalizedPath("/garage/staff");
 }
 
+/**
+ * Moves a person's upcoming active jobs at this garage onto whichever
+ * mechanic is free (the appointments_assign_mechanic trigger, 0037, picks
+ * one when the mechanic is cleared). Returns how many couldn't be moved
+ * because nobody else is free then -- those stay with the original person
+ * and need the owner's attention.
+ */
+async function reassignUpcomingJobs(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  garageId: string,
+  profileId: string
+) {
+  const { data: jobs } = await supabase
+    .from("appointments")
+    .select("id")
+    .eq("garage_id", garageId)
+    .eq("assigned_mechanic_id", profileId)
+    .in("status", ["pending_payment", "pending", "confirmed"])
+    .gt("end_time", new Date().toISOString());
+
+  let stranded = 0;
+  for (const job of jobs ?? []) {
+    const { error } = await supabase.rpc("assign_appointment_mechanic", {
+      target_appointment_id: job.id,
+      target_mechanic_id: null,
+    });
+    if (error) stranded += 1;
+  }
+  return { moved: (jobs?.length ?? 0) - stranded, stranded };
+}
+
+function staffUrl(lang: string, result: { moved: number; stranded: number }) {
+  const params = new URLSearchParams();
+  if (result.moved > 0) params.set("moved", String(result.moved));
+  if (result.stranded > 0) params.set("stranded", String(result.stranded));
+  const query = params.toString();
+  return `/${lang}/garage/staff${query ? `?${query}` : ""}`;
+}
+
 export async function removeMechanic(formData: FormData) {
   const lang = parseLocale(formData.get("lang"));
   const { garage } = await requireGarageOwner(lang);
@@ -182,7 +221,40 @@ export async function removeMechanic(formData: FormData) {
     .eq("garage_id", garage.id)
     .eq("profile_id", profileId);
 
+  // They're no longer one of this garage's mechanics, so their upcoming
+  // jobs must go to someone who is.
+  const result = await reassignUpcomingJobs(supabase, garage.id, profileId);
+
   revalidateLocalizedPath("/garage/staff");
+  revalidateLocalizedPath("/garage/calendar");
+  redirect(staffUrl(lang, result));
+}
+
+/** The owner's "I also work on cars" switch (garages.owner_takes_bookings). */
+export async function setOwnerTakesBookings(formData: FormData) {
+  const lang = parseLocale(formData.get("lang"));
+  const { garage } = await requireGarageOwner(lang);
+  const takesBookings = formData.get("takesBookings") === "on";
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("garages")
+    .update({ owner_takes_bookings: takesBookings })
+    .eq("id", garage.id);
+
+  if (error) {
+    console.error("[staff] could not update owner_takes_bookings:", error);
+    redirect(`/${lang}/garage/staff?error=1`);
+  }
+
+  const result = takesBookings
+    ? { moved: 0, stranded: 0 }
+    : await reassignUpcomingJobs(supabase, garage.id, garage.owner_id);
+
+  revalidateLocalizedPath("/garage/staff");
+  revalidateLocalizedPath("/garage/calendar");
+  revalidateLocalizedPath("/garages");
+  redirect(staffUrl(lang, result));
 }
 
 const ACCEPT_RESULTS = ["accepted", "not_found", "not_mechanic", "already_staff"] as const;
