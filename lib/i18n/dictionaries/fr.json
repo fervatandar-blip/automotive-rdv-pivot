@@ -186,8 +186,6 @@
     "vehicleLabel": "Véhicule",
     "noVehicleSpecified": "Aucun véhicule spécifié",
     "addVehicleFaster": "Ajoutez un véhicule pour accélérer vos prochaines réservations",
-    "booking": "Réservation de",
-    "forVehicle": "pour",
     "agreeToThe": "J'accepte les",
     "bookingTermsLink": "conditions de réservation et la politique d'annulation",
     "closedOnDate": "Ce garage est fermé à cette date.",
@@ -202,7 +200,17 @@
     "contactTitle": "Contact",
     "hoursNotPublished": "Horaires d'ouverture pas encore publiés.",
     "noContactDetails": "Aucune coordonnée publiée pour le moment.",
-    "payOnSiteNotice": "Choisir un horaire confirme votre réservation. Vous payez au garage (espèces ou carte), rien en ligne."
+    "payOnSiteNotice": "Vous payez au garage (espèces ou carte). Rien n'est débité en ligne.",
+    "selectTimeHint": "Choisissez un horaire, puis vérifiez et confirmez votre réservation.",
+    "timeNoLongerAvailable": "Cet horaire n'est plus disponible. Veuillez en choisir un autre.",
+    "reviewTitle": "Vérifiez votre réservation",
+    "reviewGarage": "Garage",
+    "reviewService": "Prestation",
+    "reviewWhen": "Quand",
+    "reviewPrice": "Prix",
+    "confirmBooking": "Confirmer la réservation",
+    "confirming": "Réservation…",
+    "changeTime": "Changer d'horaire"
   },
   "vehicles": {
     "title": "Mes véhicules",

@@ -186,8 +186,6 @@
     "vehicleLabel": "Vehicle",
     "noVehicleSpecified": "No vehicle specified",
     "addVehicleFaster": "Add a vehicle for faster booking next time",
-    "booking": "Booking",
-    "forVehicle": "for",
     "agreeToThe": "I agree to the",
     "bookingTermsLink": "booking terms and cancellation policy",
     "closedOnDate": "This garage is closed on this date.",
@@ -202,7 +200,17 @@
     "contactTitle": "Contact",
     "hoursNotPublished": "Opening hours not published yet.",
     "noContactDetails": "No contact details published yet.",
-    "payOnSiteNotice": "Picking a time confirms your booking. You pay at the garage (cash or card), nothing online."
+    "payOnSiteNotice": "You pay at the garage (cash or card). Nothing is charged online.",
+    "selectTimeHint": "Pick a time, then review and confirm your booking.",
+    "timeNoLongerAvailable": "That time is no longer available. Please pick another one.",
+    "reviewTitle": "Review your booking",
+    "reviewGarage": "Garage",
+    "reviewService": "Service",
+    "reviewWhen": "When",
+    "reviewPrice": "Price",
+    "confirmBooking": "Confirm booking",
+    "confirming": "Booking…",
+    "changeTime": "Change time"
   },
   "vehicles": {
     "title": "My vehicles",

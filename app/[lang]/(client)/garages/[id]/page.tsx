@@ -13,6 +13,7 @@ import {
   Banknote,
 } from "lucide-react";
 import { getOptionalAuthedUser } from "@/lib/dal";
+import { SubmitButton } from "@/components/submit-button";
 import { createClient } from "@/lib/supabase/server";
 import { getAvailableSlotsForDate } from "@/lib/availability";
 import { resolveLocale } from "@/lib/i18n/config";
@@ -130,6 +131,8 @@ export default async function GarageDetailPage({
     month?: string;
     error?: string;
     waitlisted?: string;
+    // The slot picked for review; nothing is booked until "Confirm booking".
+    time?: string;
   }>;
 }) {
   const { lang: rawLang, id: garageId } = await params;
@@ -148,6 +151,7 @@ export default async function GarageDetailPage({
     month: monthParam,
     error,
     waitlisted,
+    time: timeParam,
   } = await searchParams;
 
   const supabase = await createClient();
@@ -280,6 +284,22 @@ export default async function GarageDetailPage({
       alreadyOnWaitlist = Boolean(waitlistEntry);
     }
   }
+
+  // ?time= only selects a slot for review; it must still be one of today's
+  // offered slots (it may have been taken since the link was opened).
+  const selectedTime = timeParam && slots.includes(timeParam) ? timeParam : null;
+  const staleTime = Boolean(timeParam) && !selectedTime;
+  const selectedDateLabel = dateKeyToDisplayDate(selectedDate).toLocaleDateString(dateLocale, {
+    timeZone: APP_TIME_ZONE,
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const slotBaseHref = selectedService
+    ? `/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}${
+        monthParam ? `&month=${monthParam}` : ""
+      }`
+    : "";
 
   const { data: vehicles } = user
     ? await supabase
@@ -614,83 +634,149 @@ export default async function GarageDetailPage({
                 {d.availableTimes}
               </h2>
               {slots.length > 0 ? (
-                <form action={bookAppointment} className="flex flex-col gap-3">
-                  <input type="hidden" name="garageId" value={garageId} />
-                  <input
-                    type="hidden"
-                    name="serviceId"
-                    value={selectedService.id}
-                  />
-                  <input type="hidden" name="date" value={selectedDate} />
-                  <input type="hidden" name="lang" value={lang} />
-                  {vehicleRows.length > 0 ? (
-                    <div className="flex flex-col gap-1">
-                      <label htmlFor="vehicleId" className="text-sm font-medium">
-                        {d.vehicleLabel}
-                      </label>
-                      <select
-                        id="vehicleId"
-                        name="vehicleId"
-                        defaultValue={vehicleRows[0].id}
-                        className="w-full max-w-xs rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-                      >
-                        <option value="">{d.noVehicleSpecified}</option>
-                        {vehicleRows.map((vehicle) => (
-                          <option key={vehicle.id} value={vehicle.id}>
-                            {vehicleLabel(vehicle)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <Link
-                      href={`/${lang}/vehicles`}
-                      className="self-start text-sm font-medium underline"
-                    >
-                      {d.addVehicleFaster}
-                    </Link>
+                <div className="flex flex-col gap-4">
+                  {/* Step 1: pick a time. Links, not submit buttons: a click
+                      only selects (?time=), it never books. */}
+                  {!selectedTime && (
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                      {d.selectTimeHint}
+                    </p>
                   )}
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {d.booking} {selectedService.name}
-                    {vehicleRows.length > 0
-                      ? ` ${d.forVehicle} ${vehicleLabel(vehicleRows[0])}`
-                      : ""}
-                  </p>
-                  {/* Pay-on-site pilot (0040): picking a time books it
-                      outright, so say so before the click. */}
-                  <p className="flex items-start gap-2 rounded-md border border-black/[.08] bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-white/[.145] dark:bg-zinc-900/50 dark:text-zinc-300">
-                    <Banknote aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
-                    {d.payOnSiteNotice}
-                  </p>
-                  <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                    <input
-                      type="checkbox"
-                      name="termsAccepted"
-                      required
-                      className="mt-1"
-                    />
-                    <span>
-                      {d.agreeToThe}{" "}
-                      <Link href={`/${lang}/privacy`} className="underline">
-                        {d.bookingTermsLink}
-                      </Link>
-                      .
-                    </span>
-                  </label>
+                  {staleTime && (
+                    <p
+                      role="alert"
+                      className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
+                    >
+                      {d.timeNoLongerAvailable}
+                    </p>
+                  )}
                   <div className="flex flex-wrap gap-2">
-                    {slots.map((slot) => (
-                      <button
-                        key={slot}
-                        type="submit"
-                        name="startTime"
-                        value={slot}
-                        className="rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-                      >
-                        {slot}
-                      </button>
-                    ))}
+                    {slots.map((slot) => {
+                      const isSelectedSlot = slot === selectedTime;
+                      return (
+                        <Link
+                          key={slot}
+                          // Default scroll: Next scrolls to the #confirm-booking
+                          // panel (scroll={false} would suppress that).
+                          href={`${slotBaseHref}&time=${slot}#confirm-booking`}
+                          aria-current={isSelectedSlot ? "true" : undefined}
+                          className={
+                            isSelectedSlot
+                              ? "rounded-full border border-brand-600 bg-brand-600 px-4 py-2 text-sm font-medium text-white dark:border-brand-500 dark:bg-brand-500"
+                              : "rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                          }
+                        >
+                          {slot}
+                        </Link>
+                      );
+                    })}
                   </div>
-                </form>
+
+                  {/* Step 2: review and confirm. */}
+                  {selectedTime && (
+                    <form
+                      id="confirm-booking"
+                      action={bookAppointment}
+                      aria-labelledby="confirm-booking-title"
+                      className="flex scroll-mt-6 flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-5 dark:border-white/[.145] dark:bg-zinc-950"
+                    >
+                      <input type="hidden" name="garageId" value={garageId} />
+                      <input type="hidden" name="serviceId" value={selectedService.id} />
+                      <input type="hidden" name="date" value={selectedDate} />
+                      <input type="hidden" name="startTime" value={selectedTime} />
+                      <input type="hidden" name="lang" value={lang} />
+
+                      <h3
+                        id="confirm-booking-title"
+                        className="font-semibold text-black dark:text-zinc-50"
+                      >
+                        {d.reviewTitle}
+                      </h3>
+                      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+                        <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewGarage}</dt>
+                        <dd className="font-medium text-black dark:text-zinc-50">{garage.name}</dd>
+                        <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewService}</dt>
+                        <dd className="font-medium text-black dark:text-zinc-50">
+                          {selectedService.name}{" "}
+                          <span className="font-normal text-zinc-500 dark:text-zinc-400">
+                            ({selectedService.duration_minutes} {d.min})
+                          </span>
+                        </dd>
+                        <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewWhen}</dt>
+                        <dd className="font-medium text-black first-letter:uppercase dark:text-zinc-50">
+                          {selectedDateLabel} · {selectedTime}
+                        </dd>
+                        <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewPrice}</dt>
+                        <dd className="font-medium tabular-nums text-black dark:text-zinc-50">
+                          {currencyFormatter.format(Number(selectedService.price))}
+                        </dd>
+                      </dl>
+
+                      {vehicleRows.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          <label htmlFor="vehicleId" className="text-sm font-medium">
+                            {d.vehicleLabel}
+                          </label>
+                          <select
+                            id="vehicleId"
+                            name="vehicleId"
+                            defaultValue={vehicleRows[0].id}
+                            className="w-full max-w-xs rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                          >
+                            <option value="">{d.noVehicleSpecified}</option>
+                            {vehicleRows.map((vehicle) => (
+                              <option key={vehicle.id} value={vehicle.id}>
+                                {vehicleLabel(vehicle)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <Link
+                          href={`/${lang}/vehicles`}
+                          className="self-start text-sm font-medium underline"
+                        >
+                          {d.addVehicleFaster}
+                        </Link>
+                      )}
+
+                      <p className="flex items-start gap-2 rounded-md border border-black/[.08] bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-white/[.145] dark:bg-zinc-900/50 dark:text-zinc-300">
+                        <Banknote aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+                        {d.payOnSiteNotice}
+                      </p>
+                      <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                        <input
+                          type="checkbox"
+                          name="termsAccepted"
+                          required
+                          className="mt-1"
+                        />
+                        <span>
+                          {d.agreeToThe}{" "}
+                          <Link href={`/${lang}/privacy`} className="underline">
+                            {d.bookingTermsLink}
+                          </Link>
+                          .
+                        </span>
+                      </label>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <SubmitButton
+                          pendingLabel={d.confirming}
+                          className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+                        >
+                          {d.confirmBooking}
+                        </SubmitButton>
+                        <Link
+                          href={slotBaseHref}
+                          scroll={false}
+                          className="text-sm font-medium text-zinc-600 underline hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                        >
+                          {d.changeTime}
+                        </Link>
+                      </div>
+                    </form>
+                  )}
+                </div>
               ) : (
                 <div className="flex flex-col gap-3">
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
