@@ -6,14 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthedUser, requireGarageMember, requireGarageOwner } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
-import { getOrigin } from "@/lib/origin";
-import { getStripe, PLATFORM_COMMISSION_PERCENT } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { getAvailableSlotsForDate } from "@/lib/availability";
 import { dateKeyInAppZone, todayKeyInAppZone, zonedDateTimeToUtc } from "@/lib/timezone";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { BookingFormSchema, RescheduleFormSchema } from "@/lib/definitions";
 import {
   notifyAppointmentStatusChange,
+  notifyBookingConfirmed,
   notifyAppointmentRescheduled,
   notifyWaitlistSlotOpened,
   notifyRepairStageChange,
@@ -90,6 +90,22 @@ async function fetchAppointmentParties(
   return data as unknown as AppointmentWithParties | null;
 }
 
+/**
+ * Books a slot for the signed-in client. Pilot phase (0040): no online
+ * payment -- the booking is confirmed immediately and paid at the garage.
+ *
+ * Clients have no INSERT policy on appointments any more, so every check
+ * the database used to do for a client insert happens here, and the row is
+ * written with the service role:
+ *   - the garage is approved and not deleted;
+ *   - the service belongs to that garage;
+ *   - the vehicle, if any, belongs to this client;
+ *   - the slot is one the garage actually offers (opening hours, overrides,
+ *     blocks, mechanic capacity), the same check rescheduleAppointment does.
+ * client_id always comes from the session, never the form. The mechanic
+ * trigger (0037) still assigns a free mechanic under its advisory lock, so
+ * two clients racing for the last mechanic get one booking and one 23P01.
+ */
 export async function bookAppointment(formData: FormData) {
   const lang = parseLocale(formData.get("lang"));
   const user = await getAuthedUser(lang);
@@ -114,7 +130,8 @@ export async function bookAppointment(formData: FormData) {
   // Keyed by the authenticated user (booking already requires auth via
   // getAuthedUser above), not IP -- ties the limit to the account actually
   // attempting bookings rather than penalizing everyone sharing a
-  // network/NAT.
+  // network/NAT. With no payment step, this is now the main brake on
+  // someone filling a garage's agenda with bookings they won't honour.
   if (!(await checkRateLimit(`booking:${user.id}`, 10, 60 * 60 * 1000))) {
     redirect(bookingErrorUrl("rate-limited"));
   }
@@ -125,31 +142,40 @@ export async function bookAppointment(formData: FormData) {
 
   const supabase = await createClient();
 
-  const { data: service } = await supabase
-    .from("services")
-    .select("name, duration_minutes, price")
-    .eq("id", serviceId)
-    .eq("garage_id", garageId)
-    .single();
+  const [{ data: garage }, { data: service }, { data: vehicle }] = await Promise.all([
+    supabase
+      .from("garages")
+      .select("id, status, deleted_at")
+      .eq("id", garageId)
+      .maybeSingle(),
+    supabase
+      .from("services")
+      .select("duration_minutes")
+      .eq("id", serviceId)
+      .eq("garage_id", garageId)
+      .maybeSingle(),
+    vehicleId
+      ? supabase
+          .from("vehicles")
+          .select("id")
+          .eq("id", vehicleId)
+          .eq("client_id", user.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
+  if (!garage || garage.status !== "approved" || garage.deleted_at) {
+    redirect(`/${lang}/garages?error=invalid`);
+  }
   if (!service) {
     redirect(`/${lang}/garages/${garageId}?error=service`);
   }
-
-  const { data: garage } = await supabase
-    .from("garages")
-    .select("stripe_account_id, stripe_charges_enabled")
-    .eq("id", garageId)
-    .single();
-
-  if (!garage?.stripe_charges_enabled || !garage.stripe_account_id) {
-    redirect(`/${lang}/garages/${garageId}?error=not-payable`);
+  if (vehicleId && !vehicle) {
+    redirect(bookingErrorUrl("invalid"));
   }
 
-  // The slot must be one the garage actually offers for that date -- the
-  // same check rescheduleAppointment does. Without it, a hand-crafted POST
-  // could book any time (outside opening hours, on a closed day, or in the
-  // past) as long as it didn't overlap an existing booking.
+  // Without this, a hand-crafted POST could book any time (outside opening
+  // hours, on a closed day, inside a block, or in the past).
   const { slots } = await getAvailableSlotsForDate({
     supabase,
     garageId,
@@ -166,7 +192,7 @@ export async function bookAppointment(formData: FormData) {
     startDate.getTime() + service.duration_minutes * 60000
   );
 
-  const { data: appointment, error } = await supabase
+  const { data: appointment, error } = await createAdminClient()
     .from("appointments")
     .insert({
       client_id: user.id,
@@ -175,79 +201,65 @@ export async function bookAppointment(formData: FormData) {
       vehicle_id: vehicleId ?? null,
       start_time: startDate.toISOString(),
       end_time: endDate.toISOString(),
-      status: "pending_payment",
+      status: "confirmed",
+      // payment_mode is left to its 'on_site' default (0040) rather than
+      // written here, so this code can ship before the migration: until
+      // the column exists, naming it would fail every booking.
       terms_accepted_at: new Date().toISOString(),
     })
     .select("id")
     .single();
 
   if (error || !appointment) {
-    // 23P01 = exclusion_violation, thrown by the no-overlap DB constraint
-    // when another client books the same slot first.
+    // 23P01: every mechanic got booked for that time between the slot
+    // check and the insert (0037 trigger / exclusion constraint).
+    if (error?.code !== "23P01") {
+      console.error("[booking] insert failed:", error);
+    }
     redirect(bookingErrorUrl(error?.code === "23P01" ? "slot-taken" : "error"));
   }
 
-  // Client pays the full service price; the platform's cut is carved out via
-  // a Stripe Connect destination charge, so the garage automatically
-  // receives (price - commission) with no manual payout step.
-  const totalCents = Math.round(service.price * 100);
-  const commissionCents = Math.round(
-    totalCents * (PLATFORM_COMMISSION_PERCENT / 100)
-  );
-
-  let sessionUrl: string;
-  try {
-    const origin = await getOrigin();
-    const session = await getStripe().checkout.sessions.create({
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "eur",
-            product_data: { name: service.name },
-            unit_amount: totalCents,
-          },
-          quantity: 1,
-        },
-      ],
-      payment_intent_data: {
-        application_fee_amount: commissionCents,
-        transfer_data: { destination: garage.stripe_account_id },
-      },
-      metadata: { appointmentId: appointment.id },
-      success_url: `${origin}/${lang}/dashboard?booked=1`,
-      cancel_url: `${origin}${bookingErrorUrl("payment-cancelled")}`,
-      // Keeps an abandoned checkout from holding the slot for Stripe's
-      // default 24h session lifetime -- checkout.session.expired frees it.
-      expires_at: Math.floor(Date.now() / 1000) + 30 * 60,
-    });
-
-    if (!session.url) {
-      throw new Error("Stripe did not return a checkout session URL");
+  const parties = await fetchAppointmentParties(supabase, appointment.id);
+  if (parties?.client && parties.garage) {
+    try {
+      await Promise.all([
+        notifyBookingConfirmed({
+          recipient: "client",
+          recipientProfileId: parties.client_id,
+          recipientEmail: parties.client.email,
+          recipientName: parties.client.full_name,
+          otherPartyName: parties.garage.name,
+          serviceName: parties.services?.name ?? "your service",
+          startTime: parties.start_time,
+        }),
+        notifyBookingConfirmed({
+          recipient: "garage",
+          recipientProfileId: parties.garage.owner_id,
+          recipientEmail: parties.garage.email,
+          recipientName: parties.garage.name,
+          otherPartyName: parties.client.full_name,
+          serviceName: parties.services?.name ?? "the service",
+          startTime: parties.start_time,
+          recipientGarageId: parties.garage_id,
+        }),
+      ]);
+    } catch (err) {
+      // The booking stands; a failed email/push must not turn it into an
+      // error page.
+      console.error("[booking] notification failed:", err);
     }
-
-    // Goes through a SECURITY DEFINER function (not a direct table update)
-    // since appointments has no general UPDATE policy for the authenticated
-    // role -- see 0027_appointment_write_integrity.sql.
-    await supabase.rpc("set_appointment_checkout_session", {
-      target_appointment_id: appointment.id,
-      session_id: session.id,
-    });
-
-    sessionUrl = session.url;
-  } catch (err) {
-    console.error("[payments] checkout session creation failed:", err);
-    // Now backed by a real DELETE policy (0027) -- a client may delete their
-    // own still-unpaid appointment, so this no longer silently leaves the
-    // slot permanently held.
-    await supabase.from("appointments").delete().eq("id", appointment.id);
-    redirect(bookingErrorUrl("payment-error"));
   }
 
-  redirect(sessionUrl);
+  revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/garage/dashboard");
+  revalidateLocalizedPath("/garage/calendar");
+  redirect(`/${lang}/dashboard?booked=1`);
 }
 
 // Cancelling a paid appointment must not silently keep the client's money --
+// only bookings made through Stripe before the pay-on-site pilot (0040,
+// payment_mode 'online') have a payment row; for the rest this is a no-op.
+//
 // look up a succeeded payment and refund it via Stripe. Uses the service-role
 // client throughout: `payments` has no update policy for the authenticated
 // role by design (financial records are only ever written server-side), so

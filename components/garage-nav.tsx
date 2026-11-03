@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { QuickWalkInButton } from "@/components/quick-walk-in-modal";
+import { AddClientButton } from "@/components/add-client-modal";
+import { BlockTimeButton } from "@/components/block-time-modal";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
@@ -14,8 +16,6 @@ import {
   ListPlus,
   MessageSquare,
   Wrench,
-  Receipt,
-  Landmark,
   Building2,
   FileText,
   Bell,
@@ -80,13 +80,9 @@ function navGroups(lang: Locale, isOwner: boolean) {
         { href: `/${lang}/garage/services`, label: "Services & Pricing", icon: Wrench },
       ],
     },
-    {
-      label: "Finance",
-      items: [
-        { href: `/${lang}/garage/invoices`, label: "Invoices & Financials", icon: Receipt },
-        { href: `/${lang}/garage/stripe-connect`, label: "Stripe Setup", icon: Landmark },
-      ],
-    },
+    // "Finance" (Invoices & Financials, Stripe Setup) is hidden during the
+    // pay-on-site pilot (0040). The pages still exist by URL; invoices are
+    // still generated on completion and downloadable by clients.
     {
       label: "Settings & Compliance",
       items: [
@@ -122,32 +118,67 @@ export function GarageTopBar({
   lang,
   garageName,
   status,
-  walkIn,
+  statusLabels,
+  actions,
 }: {
   lang: Locale;
   garageName: string;
   status: string;
-  // The Quick walk-in button is offered from the garage area only.
-  walkIn?: Dictionary["walkIn"];
+  // Localized approval-status names (garageProfile.status*).
+  statusLabels: { approved: string; pending: string; rejected: string };
+  // Add client / Block time / Walk-in. Offered from the garage area only
+  // (the client-area layout renders this bar without them).
+  actions?: {
+    walkIn: Dictionary["walkIn"];
+    addClient: Dictionary["addClient"];
+    blockTime: Dictionary["blockTime"];
+    addClientLabel: string;
+    blockTimeLabel: string;
+    groupLabel: string;
+    today: string; // "YYYY-MM-DD" in APP_TIME_ZONE, for the block form
+  };
 }) {
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-black/[.08] bg-white px-6 py-4 dark:border-white/[.145] dark:bg-zinc-950 sm:px-8">
-      <div className="flex items-center gap-3">
-        <Link href={`/${lang}/garage/dashboard`}>
+    <header className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800/80 dark:bg-zinc-950 sm:px-8">
+      <div className="flex min-w-0 items-center gap-3">
+        <Link href={`/${lang}/garage/dashboard`} className="shrink-0">
           <AnimatedLogo size={32} />
         </Link>
-        <h1 className="text-lg font-semibold text-black dark:text-zinc-50">
+        <p className="truncate text-base font-semibold text-black dark:text-zinc-50 sm:text-lg">
           {garageName}
-        </h1>
-      </div>
-      <div className="flex items-center gap-3">
+        </p>
         <span
-          className={`hidden shrink-0 rounded-full px-2.5 py-1 text-xs font-medium sm:inline ${STATUS_BADGE[status] ?? ""}`}
+          className={`hidden shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium md:inline ${STATUS_BADGE[status] ?? ""}`}
         >
-          {status}
+          {statusLabels[status as keyof typeof statusLabels] ?? status}
         </span>
-        {walkIn && <QuickWalkInButton lang={lang} d={walkIn} />}
       </div>
+      {actions && (
+        <div className="flex shrink-0 items-center gap-2">
+          <div
+            role="group"
+            aria-label={actions.groupLabel}
+            className="flex items-center gap-0.5 rounded-full border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-800 dark:bg-zinc-900/60"
+          >
+            <AddClientButton
+              lang={lang}
+              d={actions.addClient}
+              label={actions.addClientLabel}
+              variant="ghost"
+              collapseLabel
+            />
+            <BlockTimeButton
+              lang={lang}
+              d={actions.blockTime}
+              label={actions.blockTimeLabel}
+              today={actions.today}
+              variant="ghost"
+              collapseLabel
+            />
+          </div>
+          <QuickWalkInButton lang={lang} d={actions.walkIn} />
+        </div>
+      )}
     </header>
   );
 }

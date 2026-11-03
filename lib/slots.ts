@@ -1,4 +1,4 @@
-import { zonedDateTimeToUtc } from "@/lib/timezone";
+import { minutesIntoDateInAppZone, zonedDateTimeToUtc } from "@/lib/timezone";
 
 export type AvailabilityWindow = {
   start_time: string; // "HH:MM:SS"
@@ -25,6 +25,59 @@ function minutesToTime(totalMinutes: number) {
     .padStart(2, "0");
   const minutes = (totalMinutes % 60).toString().padStart(2, "0");
   return `${hours}:${minutes}`;
+}
+
+export type BlockedRange = {
+  start: Date;
+  end: Date;
+};
+
+/**
+ * Removes garage-wide blocked time (availability_blocks, 0039) from a
+ * date's wall-clock opening windows, splitting a window around a block in
+ * its middle: 08:00-12:00 minus 10:00-10:30 -> 08:00-10:00 + 10:30-12:00.
+ * Slots are then stepped from each remaining piece's start, so the first
+ * slot after a block starts exactly when the block ends.
+ * Blocks may come from any zone-day; only the part on `date` applies.
+ */
+export function subtractBlockedRanges({
+  date,
+  windows,
+  blocks,
+}: {
+  date: string; // "YYYY-MM-DD"
+  windows: AvailabilityWindow[];
+  blocks: BlockedRange[];
+}): AvailabilityWindow[] {
+  if (blocks.length === 0) return windows;
+
+  const blocked = blocks
+    .map((block) => ({
+      start: minutesIntoDateInAppZone(block.start, date),
+      end: minutesIntoDateInAppZone(block.end, date),
+    }))
+    .filter((block) => block.end > block.start);
+
+  const result: AvailabilityWindow[] = [];
+  for (const window of windows) {
+    let pieces = [{ start: timeToMinutes(window.start_time), end: timeToMinutes(window.end_time) }];
+    for (const block of blocked) {
+      pieces = pieces.flatMap((piece) => {
+        if (block.end <= piece.start || block.start >= piece.end) return [piece];
+        return [
+          { start: piece.start, end: block.start },
+          { start: block.end, end: piece.end },
+        ].filter((part) => part.end > part.start);
+      });
+    }
+    for (const piece of pieces) {
+      result.push({
+        start_time: `${minutesToTime(piece.start)}:00`,
+        end_time: `${minutesToTime(piece.end)}:00`,
+      });
+    }
+  }
+  return result;
 }
 
 /**

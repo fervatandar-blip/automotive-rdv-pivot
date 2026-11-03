@@ -221,6 +221,87 @@ export type AvailabilityOverrideFormState =
     }
   | undefined;
 
+// Intraday block (availability_blocks, 0039). Error messages are keys
+// into dictionary.blockTime.errors so the form shows them in FR or EN.
+const WALL_CLOCK_TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export const AvailabilityBlockFormSchema = z
+  .object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { error: "dateInvalid" }),
+    startTime: z.string().regex(WALL_CLOCK_TIME, { error: "timeInvalid" }),
+    endTime: z.string().regex(WALL_CLOCK_TIME, { error: "timeInvalid" }),
+    reason: z.string().trim().max(120, { error: "reasonTooLong" }).optional(),
+  })
+  .refine((data) => data.endTime > data.startTime, {
+    error: "endBeforeStart",
+    path: ["endTime"],
+  });
+
+export type AvailabilityBlockFormState =
+  | {
+      errors?: Partial<Record<keyof z.input<typeof AvailabilityBlockFormSchema>, string[]>>;
+      // Key into dictionary.blockTime.errors.
+      message?: string;
+      created?: { date: string; startTime: string; endTime: string; overlapping: number };
+      // What was submitted, echoed back on failure: React 19 resets an
+      // action form after submit, so fields re-fill from these defaults.
+      values?: Record<string, string>;
+    }
+  | undefined;
+
+// A garage's own customer saved without booking (garage_customers, 0038),
+// optionally with one vehicle. Error messages are keys into
+// dictionary.addClient.errors.
+export const GarageCustomerFormSchema = z
+  .object({
+    name: z
+      .string({ error: "nameRequired" })
+      .trim()
+      .min(1, { error: "nameRequired" })
+      .max(120, { error: "nameTooLong" }),
+    phone: z.string().trim().max(40, { error: "phoneTooLong" }).optional(),
+    email: z
+      .email({ error: "emailInvalid" })
+      .transform((value) => value.toLowerCase())
+      .optional(),
+    plate: z.string().trim().max(20, { error: "plateTooLong" }).optional(),
+    brandId: z.uuid({ error: "brandInvalid" }).optional(),
+    model: z.string().trim().max(100, { error: "modelTooLong" }).optional(),
+    year: z
+      .string()
+      .regex(/^\d{4}$/, { error: "yearInvalid" })
+      .transform(Number)
+      .refine((year) => year >= 1900 && year <= new Date().getFullYear() + 1, {
+        error: "yearInvalid",
+      })
+      .optional(),
+    vin: z
+      .string()
+      .transform(normalizeVin)
+      .pipe(z.string().regex(VIN_PATTERN, { error: "vinInvalid" }))
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.phone && !data.email) {
+      ctx.addIssue({ code: "custom", path: ["phone"], message: "contactRequired" });
+    }
+    const hasVehicleDetail = Boolean(data.brandId || data.year || data.vin);
+    if (hasVehicleDetail && !data.plate && !data.model) {
+      ctx.addIssue({ code: "custom", path: ["plate"], message: "vehicleIdentify" });
+    }
+  });
+
+export type GarageCustomerFormState =
+  | {
+      errors?: Partial<Record<keyof z.input<typeof GarageCustomerFormSchema>, string[]>>;
+      // Key into dictionary.addClient.errors.
+      message?: string;
+      created?: { name: string };
+      // Echoed back on failure; see AvailabilityBlockFormState.values.
+      values?: Record<string, string>;
+    }
+  | undefined;
+
 export const GARAGE_DESCRIPTION_MAX_LENGTH = 1000;
 
 // Canonical values stored in garages.languages_spoken -- never localize
@@ -563,13 +644,4 @@ export const REPAIR_STAGES = [
   "ready_for_pickup",
 ] as const;
 
-export const REPAIR_STAGE_LABELS: Record<
-  (typeof REPAIR_STAGES)[number],
-  string
-> = {
-  received: "Received",
-  diagnosis: "Diagnosis",
-  in_repair: "In repair",
-  quality_check: "Quality check",
-  ready_for_pickup: "Ready for pickup",
-};
+// Display labels live in dictionary.common.repairStage (FR/EN).

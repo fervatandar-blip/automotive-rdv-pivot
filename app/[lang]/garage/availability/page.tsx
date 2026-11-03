@@ -3,8 +3,10 @@ import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import {
   deleteAvailability,
+  deleteAvailabilityBlock,
   deleteAvailabilityOverride,
 } from "@/app/actions/availability";
+import { BlockTimeButton } from "@/components/block-time-modal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -51,12 +53,34 @@ export default async function GarageAvailabilityPage({
     (availability ?? []).filter((slot) => slot.day_of_week === dayOfWeek)
   );
 
-  const { data: overrides } = await supabase
-    .from("availability_overrides")
-    .select("id, date, is_closed, start_time, end_time")
-    .eq("garage_id", garage.id)
-    .gte("date", todayKeyInAppZone())
-    .order("date", { ascending: true });
+  const todayKey = todayKeyInAppZone();
+  const [{ data: overrides }, { data: blocks }] = await Promise.all([
+    supabase
+      .from("availability_overrides")
+      .select("id, date, is_closed, start_time, end_time")
+      .eq("garage_id", garage.id)
+      .gte("date", todayKey)
+      .order("date", { ascending: true }),
+    // Garage-members-only through RLS (0039), reason included.
+    supabase
+      .from("availability_blocks")
+      .select("id, starts_at, ends_at, reason")
+      .eq("garage_id", garage.id)
+      .gt("ends_at", new Date().toISOString())
+      .order("starts_at", { ascending: true }),
+  ]);
+
+  const blockDateFormatter = new Intl.DateTimeFormat(dateLocale, {
+    timeZone: APP_TIME_ZONE,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+  const blockTimeFormatter = new Intl.DateTimeFormat(lang === "fr" ? "fr-FR" : "en-GB", {
+    timeZone: APP_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
@@ -131,6 +155,56 @@ export default async function GarageAvailabilityPage({
               );
             })}
           </div>
+        </section>
+
+        <section aria-labelledby="blocks-title" className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 id="blocks-title" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                {d.blocksTitle}
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{d.blocksDescription}</p>
+            </div>
+            <BlockTimeButton
+              lang={lang}
+              d={dictionary.blockTime}
+              label={d.blockTimeButton}
+              today={todayKey}
+            />
+          </div>
+          {blocks && blocks.length > 0 ? (
+            <ul className="divide-y divide-black/[.06] rounded-xl border border-black/[.08] bg-white dark:divide-white/[.1] dark:border-white/[.145] dark:bg-zinc-950">
+              {blocks.map((block) => {
+                const range = `${blockTimeFormatter.format(new Date(block.starts_at))}–${blockTimeFormatter.format(new Date(block.ends_at))}`;
+                const date = blockDateFormatter.format(new Date(block.starts_at));
+                return (
+                  <li key={block.id} className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-black dark:text-zinc-50">
+                        {date} · <span className="tabular-nums">{range}</span>
+                      </p>
+                      {block.reason && (
+                        <p className="truncate text-sm text-zinc-600 dark:text-zinc-400">{block.reason}</p>
+                      )}
+                    </div>
+                    <form action={deleteAvailabilityBlock}>
+                      <input type="hidden" name="id" value={block.id} />
+                      <input type="hidden" name="lang" value={lang} />
+                      <button
+                        type="submit"
+                        aria-label={`${d.delete} ${date} ${range}`}
+                        className="text-sm text-red-600 underline"
+                      >
+                        {d.delete}
+                      </button>
+                    </form>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.noUpcomingBlocks}</p>
+          )}
         </section>
 
         <AddOverrideForm dictionary={d.overrideForm} />

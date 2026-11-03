@@ -24,6 +24,7 @@ import {
 import { APP_TIME_ZONE, dateKeyInAppZone, zonedStartOfDay } from "@/lib/timezone";
 
 type D = Dictionary["garageCalendar"];
+type StatusLabels = Dictionary["common"]["appointmentStatus"];
 
 type CalendarAppointment = {
   id: string;
@@ -55,6 +56,7 @@ function AppointmentChip({
   d,
   dateLocale,
   returnTo,
+  statusLabels,
 }: {
   appointment: CalendarAppointment;
   lang: Locale;
@@ -64,8 +66,11 @@ function AppointmentChip({
   returnTo: { view: string; date: string };
   d: D;
   dateLocale: string;
+  statusLabels: StatusLabels;
 }) {
   const style = STATUS_STYLES[appointment.status] ?? DEFAULT_STATUS_STYLE;
+  const statusLabel =
+    statusLabels[appointment.status as keyof StatusLabels] ?? appointment.status;
   const canConfirm = appointment.status === "pending";
   const canComplete =
     appointment.status === "pending" || appointment.status === "confirmed";
@@ -88,7 +93,7 @@ function AppointmentChip({
       <div className="min-w-0">
         <p className={`font-medium ${style.text}`}>
           {formatTime(appointment.start_time, dateLocale)}
-          {!compact && ` · ${style.label}`}
+          {!compact && ` · ${statusLabel}`}
         </p>
         <p className="truncate text-zinc-700 dark:text-zinc-300">
           {appointment.services?.name ?? d.serviceFallback}
@@ -197,17 +202,17 @@ function AppointmentChip({
   );
 }
 
-function StatusLegend() {
+function StatusLegend({ statusLabels }: { statusLabels: StatusLabels }) {
   return (
     <div className="flex flex-wrap gap-4 text-xs text-zinc-600 dark:text-zinc-400">
-      {Object.values(STATUS_STYLES).map((style) => (
-        <div key={style.label} className="flex items-center gap-1.5">
+      {Object.entries(STATUS_STYLES).map(([status, style]) => (
+        <div key={status} className="flex items-center gap-1.5">
           <span
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: style.dot }}
             aria-hidden
           />
-          {style.label}
+          {statusLabels[status as keyof StatusLabels] ?? status}
         </div>
       ))}
     </div>
@@ -387,7 +392,7 @@ export default async function GarageCalendarPage({
           </div>
         </div>
 
-        <StatusLegend />
+        <StatusLegend statusLabels={dictionary.common.appointmentStatus} />
 
         {view === "week" ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-7">
@@ -423,6 +428,7 @@ export default async function GarageCalendarPage({
                           d={d}
                           dateLocale={dateLocale}
                           returnTo={returnTo}
+                          statusLabels={dictionary.common.appointmentStatus}
                         />
                       ))
                     ) : (
@@ -487,6 +493,7 @@ export default async function GarageCalendarPage({
                         d={d}
                         dateLocale={dateLocale}
                         returnTo={returnTo}
+                        statusLabels={dictionary.common.appointmentStatus}
                       />
                     ))}
                     {overflow > 0 && (

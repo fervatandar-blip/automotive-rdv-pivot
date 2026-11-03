@@ -9,6 +9,16 @@ import {
   type DirectoryVehicle,
 } from "./client-directory";
 
+type VehicleRow = {
+  id: string;
+  model: string | null;
+  year: number | null;
+  license_plate: string | null;
+  plate_search: string | null;
+  vin: string | null;
+  brands: { name: string } | null;
+};
+
 type AppointmentRow = {
   id: string;
   client_id: string | null;
@@ -21,16 +31,20 @@ type AppointmentRow = {
   walk_in: { id: string; full_name: string; phone: string | null; email: string | null; anonymized_at: string | null } | null;
   // Visible only for vehicles booked with this garage (vehicles RLS,
   // migration 0036); null when the appointment had no vehicle.
-  vehicle: {
-    id: string;
-    model: string | null;
-    year: number | null;
-    license_plate: string | null;
-    plate_search: string | null;
-    vin: string | null;
-    brands: { name: string } | null;
-  } | null;
+  vehicle: VehicleRow | null;
 };
+
+// The garage's own customers, including those saved with "Add client" who
+// have never booked (and vehicles added to a customer after their visits).
+type GarageCustomerRow = {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  vehicles: VehicleRow[] | null;
+};
+
+const VEHICLE_SELECT = "id, model, year, license_plate, plate_search, vin, brands(name)";
 
 export default async function GarageClientsPage({
   params,
@@ -48,14 +62,23 @@ export default async function GarageClientsPage({
   const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const supabase = await createClient();
 
-  const { data: appointments } = await supabase
-    .from("appointments")
-    .select(
-      "id, client_id, garage_customer_id, start_time, status, services(name), client:profiles!appointments_client_id_fkey(full_name, email), walk_in:garage_customers(id, full_name, phone, email, anonymized_at), vehicle:vehicles(id, model, year, license_plate, plate_search, vin, brands(name))"
-    )
-    .eq("garage_id", garage.id)
-    .neq("status", "pending_payment")
-    .order("start_time", { ascending: false });
+  const [{ data: appointments }, { data: customers }] = await Promise.all([
+    supabase
+      .from("appointments")
+      .select(
+        `id, client_id, garage_customer_id, start_time, status, services(name), client:profiles!appointments_client_id_fkey(full_name, email), walk_in:garage_customers(id, full_name, phone, email, anonymized_at), vehicle:vehicles(${VEHICLE_SELECT})`
+      )
+      .eq("garage_id", garage.id)
+      .neq("status", "pending_payment")
+      .order("start_time", { ascending: false }),
+    // Anonymized customers only matter through their history, which the
+    // appointments query above already brings in.
+    supabase
+      .from("garage_customers")
+      .select(`id, full_name, phone, email, vehicles(${VEHICLE_SELECT})`)
+      .eq("garage_id", garage.id)
+      .is("anonymized_at", null),
+  ]);
 
   const rows = (appointments ?? []) as unknown as AppointmentRow[];
   const formatter = new Intl.DateTimeFormat(dateLocale, {
@@ -65,9 +88,34 @@ export default async function GarageClientsPage({
     year: "numeric",
   });
 
+  type ClientEntry = DirectoryClient & { vehicleMap: Map<string, DirectoryVehicle> };
+
+  function toDirectoryVehicle(vehicle: VehicleRow): DirectoryVehicle {
+    return {
+      id: vehicle.id,
+      label:
+        [vehicle.brands?.name, vehicle.model, vehicle.year].filter(Boolean).join(" ") ||
+        d.vehicleFallback,
+      licensePlate: vehicle.license_plate,
+      plateSearch: vehicle.plate_search ?? "",
+      vin: vehicle.vin,
+      visits: [],
+    };
+  }
+
+  function ensureVehicle(client: ClientEntry, vehicle: VehicleRow) {
+    let entry = client.vehicleMap.get(vehicle.id);
+    if (!entry) {
+      entry = toDirectoryVehicle(vehicle);
+      client.vehicleMap.set(vehicle.id, entry);
+      client.vehicles.push(entry);
+    }
+    return entry;
+  }
+
   // One entry per client, each with the vehicles they've brought here and
   // that vehicle's visits (newest first, as the query orders them).
-  const clients = new Map<string, DirectoryClient & { vehicleMap: Map<string, DirectoryVehicle> }>();
+  const clients = new Map<string, ClientEntry>();
   for (const row of rows) {
     // Registered clients and walk-in customers live in different tables,
     // so key them by kind to keep ids from ever colliding.
@@ -102,27 +150,36 @@ export default async function GarageClientsPage({
     client.appointmentCount += 1;
 
     if (!row.vehicle) continue;
-    let vehicle = client.vehicleMap.get(row.vehicle.id);
-    if (!vehicle) {
-      vehicle = {
-        id: row.vehicle.id,
-        label:
-          [row.vehicle.brands?.name, row.vehicle.model, row.vehicle.year].filter(Boolean).join(" ") ||
-          d.vehicleFallback,
-        licensePlate: row.vehicle.license_plate,
-        plateSearch: row.vehicle.plate_search ?? "",
-        vin: row.vehicle.vin,
-        visits: [],
-      };
-      client.vehicleMap.set(row.vehicle.id, vehicle);
-      client.vehicles.push(vehicle);
-    }
-    vehicle.visits.push({
+    ensureVehicle(client, row.vehicle).visits.push({
       id: row.id,
       startTime: formatter.format(new Date(row.start_time)),
       serviceName: row.services?.name ?? d.serviceFallback,
       status: row.status,
     });
+  }
+
+  // Garage customers with no history yet, and vehicles on file that
+  // haven't been brought in for a job.
+  for (const customer of (customers ?? []) as unknown as GarageCustomerRow[]) {
+    const key = `walk_in:${customer.id}`;
+    let client = clients.get(key);
+    if (!client) {
+      client = {
+        id: key,
+        kind: "walk_in",
+        customerId: customer.id,
+        anonymized: false,
+        name: customer.full_name,
+        email: [customer.phone, customer.email].filter(Boolean).join(" · "),
+        appointmentCount: 0,
+        vehicles: [],
+        vehicleMap: new Map(),
+      };
+      clients.set(key, client);
+    }
+    for (const vehicle of customer.vehicles ?? []) {
+      ensureVehicle(client, vehicle);
+    }
   }
 
   const directory: DirectoryClient[] = [...clients.values()]
@@ -138,6 +195,8 @@ export default async function GarageClientsPage({
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const initialQuery = typeof q === "string" ? q : "";
+
   return (
     <div className="flex flex-1 flex-col gap-6 bg-zinc-50 px-4 py-10 dark:bg-black sm:px-12 sm:py-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -150,7 +209,16 @@ export default async function GarageClientsPage({
             {d.anonymized}
           </p>
         )}
-        <ClientDirectory clients={directory} d={d} lang={lang} initialQuery={typeof q === "string" ? q : ""} />
+        {/* Keyed on the query so "Open in directory" after adding a client
+            re-seeds the search even when this page is already open. */}
+        <ClientDirectory
+          key={initialQuery}
+          clients={directory}
+          d={d}
+          lang={lang}
+          initialQuery={initialQuery}
+          statusLabels={dictionary.common.appointmentStatus}
+        />
       </div>
     </div>
   );

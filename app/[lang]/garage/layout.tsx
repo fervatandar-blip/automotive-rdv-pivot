@@ -5,6 +5,7 @@ import { resolveLocale } from "@/lib/i18n/config";
 import { GarageSidebar, GarageTopBar } from "@/components/garage-nav";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { AnimatedLogo } from "@/components/animated-logo";
+import { todayKeyInAppZone } from "@/lib/timezone";
 
 // /garage/login and /garage/signup are public -- an anonymous visitor must
 // be able to reach them (see lib/supabase/proxy.ts's publicGarageRoutes,
@@ -65,6 +66,8 @@ export default async function GarageLayout({
     );
   }
 
+  const dictionary = await getDictionary(lang);
+
   return (
     <div className="flex flex-1">
       <GarageSidebar lang={lang} isOwner={isOwner} />
@@ -73,7 +76,20 @@ export default async function GarageLayout({
           lang={lang}
           garageName={garage.name}
           status={garage.status}
-          walkIn={(await getDictionary(lang)).walkIn}
+          statusLabels={{
+            approved: dictionary.garageProfile.statusApproved,
+            pending: dictionary.garageProfile.statusPending,
+            rejected: dictionary.garageProfile.statusRejected,
+          }}
+          actions={{
+            walkIn: dictionary.walkIn,
+            addClient: dictionary.addClient,
+            blockTime: dictionary.blockTime,
+            addClientLabel: dictionary.garageTopBar.addClient,
+            blockTimeLabel: dictionary.garageTopBar.blockTime,
+            groupLabel: dictionary.garageTopBar.actionsLabel,
+            today: todayKeyInAppZone(),
+          }}
         />
         <main className="flex flex-1 flex-col">{children}</main>
       </div>

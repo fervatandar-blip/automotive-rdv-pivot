@@ -5,11 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 import { requireGarageMember } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
 import {
+  AvailabilityBlockFormSchema,
+  type AvailabilityBlockFormState,
   AvailabilityFormSchema,
   type AvailabilityFormState,
   AvailabilityOverrideFormSchema,
   type AvailabilityOverrideFormState,
 } from "@/lib/definitions";
+import { zonedDateTimeToUtc } from "@/lib/timezone";
 
 function revalidateLocalizedPath(path: string) {
   for (const locale of locales) {
@@ -190,4 +193,97 @@ export async function deleteAvailabilityOverride(formData: FormData) {
     .eq("garage_id", garage.id);
 
   revalidateLocalizedPath("/garage/availability");
+}
+
+/**
+ * Blocks part of one date (availability_blocks, 0039). Wall-clock times are
+ * resolved to instants here, in the garage's zone. Overlapping blocks are
+ * refused by the exclusion constraint (23P01). Existing appointments inside
+ * the block are kept; the count is returned so the form can warn the
+ * garage to reschedule them.
+ */
+export async function createAvailabilityBlock(
+  state: AvailabilityBlockFormState,
+  formData: FormData
+): Promise<AvailabilityBlockFormState> {
+  const lang = parseLocale(formData.get("lang"));
+  const { garage, profile } = await requireGarageMember(lang);
+
+  const reason = formData.get("reason");
+  const values: Record<string, string> = {};
+  for (const field of ["date", "startTime", "endTime", "reason"]) {
+    const value = formData.get(field);
+    if (typeof value === "string") values[field] = value;
+  }
+  const validated = AvailabilityBlockFormSchema.safeParse({
+    date: formData.get("date"),
+    startTime: formData.get("startTime"),
+    endTime: formData.get("endTime"),
+    reason: typeof reason === "string" && reason.trim() ? reason : undefined,
+  });
+
+  if (!validated.success) {
+    return { errors: validated.error.flatten().fieldErrors, values };
+  }
+
+  const { date, startTime, endTime } = validated.data;
+  const startsAt = zonedDateTimeToUtc(date, startTime);
+  const endsAt = zonedDateTimeToUtc(date, endTime);
+
+  // A block that has already ended does nothing; one already under way
+  // (e.g. "the rest of this hour") is fine.
+  if (endsAt.getTime() <= Date.now()) {
+    return { errors: { endTime: ["inPast"] }, values };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("availability_blocks").insert({
+    garage_id: garage.id,
+    starts_at: startsAt.toISOString(),
+    ends_at: endsAt.toISOString(),
+    reason: validated.data.reason ?? null,
+    created_by: profile.id,
+  });
+
+  if (error) {
+    if (error.code === "23P01") {
+      return { message: "overlapsBlock", values };
+    }
+    console.error("[block-time] insert failed:", error);
+    return { message: "saveFailed", values };
+  }
+
+  const { count } = await supabase
+    .from("appointments")
+    .select("id", { count: "exact", head: true })
+    .eq("garage_id", garage.id)
+    .in("status", ["pending_payment", "pending", "confirmed"])
+    .lt("start_time", endsAt.toISOString())
+    .gt("end_time", startsAt.toISOString());
+
+  revalidateLocalizedPath("/garage/availability");
+  revalidateLocalizedPath("/garage/dashboard");
+  return {
+    created: { date, startTime, endTime, overlapping: count ?? 0 },
+  };
+}
+
+export async function deleteAvailabilityBlock(formData: FormData) {
+  const lang = parseLocale(formData.get("lang"));
+  const { garage } = await requireGarageMember(lang);
+  const id = formData.get("id");
+
+  if (typeof id !== "string" || !id) {
+    return;
+  }
+
+  const supabase = await createClient();
+  await supabase
+    .from("availability_blocks")
+    .delete()
+    .eq("id", id)
+    .eq("garage_id", garage.id);
+
+  revalidateLocalizedPath("/garage/availability");
+  revalidateLocalizedPath("/garage/dashboard");
 }

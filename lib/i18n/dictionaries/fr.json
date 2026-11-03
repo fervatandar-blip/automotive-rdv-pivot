@@ -4,7 +4,21 @@
     "logOut": "Déconnexion",
     "signUp": "Inscription",
     "backToDashboard": "Retour au tableau de bord",
-    "brand": "RDV"
+    "brand": "RDV",
+    "appointmentStatus": {
+      "pending_payment": "Paiement en attente",
+      "pending": "En attente",
+      "confirmed": "Confirmé",
+      "cancelled": "Annulé",
+      "completed": "Terminé"
+    },
+    "repairStage": {
+      "received": "Réceptionné",
+      "diagnosis": "Diagnostic",
+      "in_repair": "En réparation",
+      "quality_check": "Contrôle qualité",
+      "ready_for_pickup": "Prêt à récupérer"
+    }
   },
   "home": {
     "heroTitle": "Trouvez un garage de confiance au Luxembourg.",
@@ -144,15 +158,20 @@
     "stepVehicle": "Véhicule",
     "stepService": "Service",
     "stepDateTime": "Date et heure",
-    "weekdays": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
+    "weekdays": [
+      "Dim",
+      "Lun",
+      "Mar",
+      "Mer",
+      "Jeu",
+      "Ven",
+      "Sam"
+    ],
     "errors": {
       "invalid": "Cette demande de réservation n'était pas valide. Veuillez réessayer.",
       "service": "Ce service n'est plus disponible.",
       "slot-taken": "Ce créneau vient d'être réservé par quelqu'un d'autre. Choisissez-en un autre.",
       "error": "Une erreur s'est produite lors de la réservation de ce créneau. Veuillez réessayer.",
-      "not-payable": "Ce garage n'a pas encore terminé la configuration des paiements.",
-      "payment-cancelled": "Le paiement a été annulé. Vous n'avez pas été facturé.",
-      "payment-error": "Une erreur s'est produite lors du démarrage du paiement. Veuillez réessayer.",
       "terms": "Vous devez accepter les conditions de réservation pour continuer.",
       "rate-limited": "Trop de tentatives de réservation. Veuillez patienter puis réessayer."
     },
@@ -160,7 +179,6 @@
     "chooseService": "Choisissez un service",
     "noServicesYet": "Ce garage n'a pas encore ajouté de services.",
     "min": "min",
-    "paymentSetupNotice": "Ce garage n'a pas encore terminé la configuration des paiements ; la réservation est temporairement indisponible.",
     "chooseDate": "Choisissez une date",
     "previousMonth": "Mois précédent",
     "nextMonth": "Mois suivant",
@@ -183,7 +201,8 @@
     "aboutTitle": "À propos",
     "contactTitle": "Contact",
     "hoursNotPublished": "Horaires d'ouverture pas encore publiés.",
-    "noContactDetails": "Aucune coordonnée publiée pour le moment."
+    "noContactDetails": "Aucune coordonnée publiée pour le moment.",
+    "payOnSiteNotice": "Choisir un horaire confirme votre réservation. Vous payez au garage (espèces ou carte), rien en ligne."
   },
   "vehicles": {
     "title": "Mes véhicules",
@@ -256,7 +275,15 @@
     "availableTimes": "Créneaux disponibles",
     "closedOnDate": "Ce garage est fermé à cette date.",
     "noOpenTimes": "Aucun créneau disponible ce jour-là.",
-    "weekdays": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"]
+    "weekdays": [
+      "Dim",
+      "Lun",
+      "Mar",
+      "Mer",
+      "Jeu",
+      "Ven",
+      "Sam"
+    ]
   },
   "setPassword": {
     "recoveryTitle": "Réinitialisez votre mot de passe",
@@ -272,8 +299,6 @@
     "serviceFallback": "Service",
     "clientFallback": "Client",
     "clientLabel": "Client :",
-    "cancelled": "Annulé",
-    "completed": "Terminé",
     "repairStagePlaceholder": "Étape de réparation",
     "update": "Mettre à jour",
     "message": "Message",
@@ -299,19 +324,57 @@
     "noUpcomingAssigned": "Aucun rendez-vous à venir ne vous est assigné.",
     "pastAndCancelled": "Passés et annulés",
     "statUpcoming": "À venir",
-    "statAwaitingConfirmation": "En attente de confirmation",
     "statCompletedThisWeek": "Terminés cette semaine",
     "garageRejectedTitle": "Votre garage n'a pas été approuvé",
     "garagePendingTitle": "Votre garage est en attente d'approbation",
     "garagePendingDescription": "Vous pouvez configurer vos services et disponibilités en attendant.",
     "garageRejectedDescription": "Vérifiez votre profil et soumettez-le à nouveau pour approbation.",
     "reviewProfile": "Vérifier le profil",
-    "connectStripeTitle": "Connectez Stripe pour accepter les réservations",
-    "connectStripeDescription": "Les clients ne peuvent pas réserver de rendez-vous payants avant la configuration des paiements.",
-    "setUpPayments": "Configurer les paiements",
-    "upcomingAppointments": "Rendez-vous à venir",
     "viewFullCalendar": "Voir le calendrier complet",
-    "noUpcomingAppointments": "Aucun rendez-vous à venir."
+    "badgeAwaitingAction": "Action requise",
+    "badgeConfirmed": "Confirmé",
+    "badgeInProgress": "En cours",
+    "badgeCompleted": "Terminé",
+    "badgeCancelled": "Annulé",
+    "plateLabel": "Plaque d'immatriculation",
+    "capacityTitle": "Capacité de l'atelier aujourd'hui",
+    "capacityBooked": "{booked} réservées sur {capacity}",
+    "capacityClosed": "Fermé aujourd'hui",
+    "capacityNoMechanics": "Personne ne peut encore prendre de rendez-vous.",
+    "capacityAvailable": "Places disponibles",
+    "capacityNearlyFull": "Presque complet",
+    "capacityFull": "Complet",
+    "agendaTitle": "Agenda",
+    "agendaTabsLabel": "Filtrer les rendez-vous",
+    "tabToday": "Aujourd'hui",
+    "tabWeek": "Cette semaine",
+    "emptyToday": "Aucun rendez-vous aujourd'hui.",
+    "emptyWeek": "Aucun rendez-vous pour le reste de la semaine.",
+    "title": "Tableau de bord",
+    "kpiUpcomingHint": "Réservés à partir de maintenant",
+    "kpiCompletedHint": "Depuis lundi",
+    "glanceTitle": "Aujourd'hui en bref",
+    "glanceHours": "Horaires",
+    "glanceClosed": "Fermé",
+    "glanceNextUp": "Prochain rendez-vous",
+    "glanceNothingNext": "Plus rien aujourd'hui",
+    "glanceRemaining": "Restants",
+    "glanceDone": "Terminés aujourd'hui",
+    "teamTitle": "Équipe du jour",
+    "teamBusyUntil": "Occupé jusqu'à {time}",
+    "teamFree": "Disponible",
+    "teamFreeNext": "Disponible · prochain à {time}",
+    "teamOff": "Atelier fermé",
+    "teamOffNext": "Atelier fermé · prochain à {time}",
+    "teamEmpty": "Personne ne prend encore de rendez-vous.",
+    "teamManage": "Gérer l'équipe",
+    "teamYou": "vous",
+    "teamNote": "Tout le monde suit les horaires du garage.",
+    "statToday": "Aujourd'hui",
+    "kpiTodayHint": "{count} restant(s)",
+    "legacyPendingTitle": "{count} ancienne(s) réservation(s) à confirmer",
+    "legacyPendingDescription": "Faites avec paiement en ligne avant le paiement sur place. Les nouvelles réservations sont confirmées automatiquement.",
+    "legacyPendingAction": "Voir dans le calendrier"
   },
   "garageCalendar": {
     "backToDashboard": "Retour au tableau de bord",
@@ -329,7 +392,15 @@
     "complete": "Terminer",
     "reschedule": "Reporter",
     "cancel": "Annuler",
-    "weekdays": ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"],
+    "weekdays": [
+      "Dim",
+      "Lun",
+      "Mar",
+      "Mer",
+      "Jeu",
+      "Ven",
+      "Sam"
+    ],
     "months": [
       "janvier",
       "février",
@@ -422,7 +493,11 @@
       "endLabel": "Fin",
       "submit": "Ajouter l'exception",
       "submitPending": "Ajout en cours..."
-    }
+    },
+    "blocksTitle": "Créneaux bloqués",
+    "blocksDescription": "Blocages ponctuels pendant vos heures d'ouverture. Aucune réservation n'est possible sur ces créneaux.",
+    "noUpcomingBlocks": "Aucun créneau bloqué à venir.",
+    "blockTimeButton": "Bloquer un créneau"
   },
   "garageDocuments": {
     "backToDashboard": "Retour au tableau de bord",
@@ -607,7 +682,7 @@
   },
   "garageClients": {
     "title": "Clients",
-    "subtitle": "Toutes les personnes ayant réservé chez vous, avec leurs véhicules et chaque visite.",
+    "subtitle": "Toutes les personnes ayant réservé chez vous ou que vous avez ajoutées, avec leurs véhicules et chaque visite.",
     "appointment": "rendez-vous",
     "appointments": "rendez-vous",
     "noClientsYet": "Aucun client pour le moment.",
@@ -621,17 +696,11 @@
     "unnamedClient": "Client sans nom",
     "vehicleFallback": "Véhicule",
     "serviceFallback": "Prestation",
-    "statuses": {
-      "pending_payment": "Paiement en attente",
-      "pending": "En attente",
-      "confirmed": "Confirmé",
-      "cancelled": "Annulé",
-      "completed": "Terminé"
-    },
-    "walkInBadge": "Sans RDV",
+    "walkInBadge": "Ajouté par le garage",
     "anonymize": "Supprimer les données personnelles",
     "anonymizeConfirm": "Supprime le nom, le téléphone, l'e-mail et les plaques de ce client. Les rendez-vous et factures passés sont conservés.",
-    "anonymized": "Données du client supprimées. Ses rendez-vous et factures passés sont conservés sans données personnelles."
+    "anonymized": "Données du client supprimées. Ses rendez-vous et factures passés sont conservés sans données personnelles.",
+    "noVisitsYet": "Aucune visite"
   },
   "garageStripeConnect": {
     "backToDashboard": "Retour au tableau de bord",
@@ -945,5 +1014,74 @@
       "notGarageOwner": "Vous cherchez plutôt à réserver un service ?",
       "clientSignUpLink": "Inscrivez-vous en tant que client"
     }
+  },
+  "addClient": {
+    "title": "Ajouter un client",
+    "close": "Fermer",
+    "intro": "Enregistrez un client et son véhicule sans prendre de rendez-vous. Il apparaîtra dans votre répertoire clients et dans le formulaire sans RDV.",
+    "contactSection": "Coordonnées",
+    "nameLabel": "Nom complet",
+    "phoneLabel": "Téléphone",
+    "emailLabel": "E-mail (facultatif)",
+    "contactHint": "Un numéro de téléphone ou un e-mail est requis.",
+    "vehicleSection": "Véhicule (facultatif)",
+    "plateLabel": "Plaque d'immatriculation",
+    "brandLabel": "Marque",
+    "modelLabel": "Modèle",
+    "yearLabel": "Année",
+    "vinLabel": "VIN (17 caractères)",
+    "cancel": "Annuler",
+    "submit": "Enregistrer le client",
+    "submitting": "Enregistrement…",
+    "created": "{name} a été ajouté à vos clients.",
+    "openDirectory": "Voir dans le répertoire",
+    "addAnother": "Ajouter un autre",
+    "errors": {
+      "nameRequired": "Saisissez le nom du client.",
+      "nameTooLong": "Le nom doit faire moins de 120 caractères.",
+      "phoneTooLong": "Le numéro doit faire moins de 40 caractères.",
+      "emailInvalid": "Saisissez un e-mail valide.",
+      "contactRequired": "Ajoutez un téléphone ou un e-mail pour pouvoir le contacter.",
+      "plateTooLong": "La plaque doit faire moins de 20 caractères.",
+      "brandInvalid": "Choisissez une marque dans la liste.",
+      "modelTooLong": "Le modèle doit faire moins de 100 caractères.",
+      "yearInvalid": "Saisissez une année à 4 chiffres.",
+      "vinInvalid": "Un VIN comporte 17 lettres et chiffres (sans I, O ni Q).",
+      "vehicleIdentify": "Saisissez au moins la plaque ou le modèle.",
+      "plateExists": "Un véhicule avec cette plaque figure déjà dans votre répertoire.",
+      "vinExists": "Un véhicule avec ce VIN figure déjà dans votre répertoire.",
+      "saveFailed": "Impossible d'enregistrer le client. Veuillez réessayer."
+    }
+  },
+  "blockTime": {
+    "title": "Bloquer un créneau",
+    "close": "Fermer",
+    "intro": "Aucune nouvelle réservation ne sera proposée sur ce créneau. Les rendez-vous existants sont conservés.",
+    "dateLabel": "Date",
+    "startLabel": "De",
+    "endLabel": "À",
+    "reasonLabel": "Motif (facultatif, visible uniquement par votre équipe)",
+    "reasonPlaceholder": "ex. Réunion d'équipe",
+    "cancel": "Annuler",
+    "submit": "Bloquer",
+    "submitting": "Blocage…",
+    "created": "Créneau {range} bloqué le {date}.",
+    "overlapWarning": "{count} rendez-vous existant(s) tombe(nt) sur ce créneau. Ils ne sont pas annulés ; reportez-les si nécessaire.",
+    "openCalendar": "Ouvrir le calendrier",
+    "blockAnother": "Bloquer un autre créneau",
+    "errors": {
+      "dateInvalid": "Choisissez une date valide.",
+      "timeInvalid": "Saisissez une heure valide.",
+      "endBeforeStart": "L'heure de fin doit être après l'heure de début.",
+      "reasonTooLong": "Le motif doit faire moins de 120 caractères.",
+      "inPast": "Ce créneau est déjà passé.",
+      "overlapsBlock": "Ce créneau chevauche une période déjà bloquée.",
+      "saveFailed": "Impossible de bloquer ce créneau. Veuillez réessayer."
+    }
+  },
+  "garageTopBar": {
+    "actionsLabel": "Actions rapides",
+    "addClient": "Ajouter un client",
+    "blockTime": "Bloquer un créneau"
   }
 }

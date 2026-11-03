@@ -86,6 +86,20 @@ export function dateKeyInAppZone(instant: Date): string {
   return `${p.year}-${String(p.month).padStart(2, "0")}-${String(p.day).padStart(2, "0")}`;
 }
 
+/**
+ * Where `instant` falls on `dateKey`'s wall clock in APP_TIME_ZONE, in
+ * minutes since midnight, clamped to the day: 0 if it's on an earlier date,
+ * 1440 if on a later one. Used to lay instants (blocks, bookings) over
+ * wall-clock opening windows.
+ */
+export function minutesIntoDateInAppZone(instant: Date, dateKey: string): number {
+  const instantKey = dateKeyInAppZone(instant);
+  if (instantKey < dateKey) return 0;
+  if (instantKey > dateKey) return 24 * 60;
+  const p = zonedParts(instant);
+  return p.hour * 60 + p.minute;
+}
+
 /** Today's date ("YYYY-MM-DD") in APP_TIME_ZONE. */
 export function todayKeyInAppZone(now: Date = new Date()): string {
   return dateKeyInAppZone(now);

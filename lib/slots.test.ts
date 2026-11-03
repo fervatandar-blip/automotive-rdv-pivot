@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeAvailableSlots } from "./slots";
+import { computeAvailableSlots, subtractBlockedRanges } from "./slots";
 
 // All instants below carry explicit offsets: windows and `date` are
 // Europe/Luxembourg wall-clock values, and 2026-06-01 is in CEST (UTC+2).
@@ -258,5 +258,78 @@ describe("computeAvailableSlots", () => {
     });
 
     expect(slots).toEqual([]);
+  });
+});
+
+describe("subtractBlockedRanges", () => {
+  const day = [{ start_time: "08:00:00", end_time: "12:00:00" }];
+
+  it("leaves windows untouched when there are no blocks", () => {
+    expect(subtractBlockedRanges({ date: "2026-06-01", windows: day, blocks: [] })).toBe(day);
+  });
+
+  it("splits a window around a block in its middle (CEST instants)", () => {
+    const windows = subtractBlockedRanges({
+      date: "2026-06-01",
+      windows: day,
+      blocks: [{ start: new Date("2026-06-01T10:00:00+02:00"), end: new Date("2026-06-01T10:30:00+02:00") }],
+    });
+    expect(windows).toEqual([
+      { start_time: "08:00:00", end_time: "10:00:00" },
+      { start_time: "10:30:00", end_time: "12:00:00" },
+    ]);
+  });
+
+  it("trims a block overlapping a window edge and drops a fully blocked window", () => {
+    const windows = subtractBlockedRanges({
+      date: "2026-06-01",
+      windows: [
+        { start_time: "08:00:00", end_time: "12:00:00" },
+        { start_time: "13:00:00", end_time: "14:00:00" },
+      ],
+      blocks: [
+        { start: new Date("2026-06-01T07:00:00+02:00"), end: new Date("2026-06-01T09:00:00+02:00") },
+        { start: new Date("2026-06-01T12:30:00+02:00"), end: new Date("2026-06-01T14:30:00+02:00") },
+      ],
+    });
+    expect(windows).toEqual([{ start_time: "09:00:00", end_time: "12:00:00" }]);
+  });
+
+  it("reads block instants on the Luxembourg wall clock in winter (CET), not UTC", () => {
+    const windows = subtractBlockedRanges({
+      date: "2026-11-03",
+      windows: [{ start_time: "13:00:00", end_time: "17:00:00" }],
+      blocks: [{ start: new Date("2026-11-03T13:00:00Z"), end: new Date("2026-11-03T14:00:00Z") }],
+    });
+    // 13:00Z-14:00Z is 14:00-15:00 in CET.
+    expect(windows).toEqual([
+      { start_time: "13:00:00", end_time: "14:00:00" },
+      { start_time: "15:00:00", end_time: "17:00:00" },
+    ]);
+  });
+
+  it("applies only the part of a multi-day block that falls on the date", () => {
+    const windows = subtractBlockedRanges({
+      date: "2026-06-01",
+      windows: day,
+      blocks: [{ start: new Date("2026-05-31T22:00:00+02:00"), end: new Date("2026-06-01T09:00:00+02:00") }],
+    });
+    expect(windows).toEqual([{ start_time: "09:00:00", end_time: "12:00:00" }]);
+  });
+
+  it("re-anchors slots at the end of a block", () => {
+    const windows = subtractBlockedRanges({
+      date: "2026-06-01",
+      windows: [{ start_time: "13:00:00", end_time: "18:00:00" }],
+      blocks: [{ start: new Date("2026-06-01T14:00:00+02:00"), end: new Date("2026-06-01T15:00:00+02:00") }],
+    });
+    const slots = computeAvailableSlots({
+      date: "2026-06-01",
+      windows,
+      durationMinutes: 60,
+      bookedRanges: [],
+      now: EARLY_NOW,
+    });
+    expect(slots).toEqual(["13:00", "15:00", "16:00", "17:00"]);
   });
 });

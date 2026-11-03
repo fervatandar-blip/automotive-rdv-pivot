@@ -7,6 +7,7 @@ import {
   getGarageMembership,
 } from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { ClientSidebar, ClientMobileNav } from "@/components/client-nav";
 import { ClientPageTitle } from "@/components/client-page-title";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
@@ -64,6 +65,7 @@ export default async function ClientLayout({
     const membership = await getGarageMembership(lang);
 
     if (membership?.garage.platform_terms_accepted_at) {
+      const { garageProfile } = await getDictionary(lang);
       return (
         <div className="flex flex-1">
           <GarageSidebar lang={lang} isOwner={membership.isOwner} />
@@ -72,6 +74,11 @@ export default async function ClientLayout({
               lang={lang}
               garageName={membership.garage.name}
               status={membership.garage.status}
+              statusLabels={{
+                approved: garageProfile.statusApproved,
+                pending: garageProfile.statusPending,
+                rejected: garageProfile.statusRejected,
+              }}
             />
             <main className="flex flex-1 flex-col">{children}</main>
           </div>

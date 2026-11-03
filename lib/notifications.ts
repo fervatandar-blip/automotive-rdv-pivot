@@ -3,6 +3,21 @@ import { sendPushToProfile } from "@/lib/push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
 
+/**
+ * Names and service titles are user-controlled (a profile's full_name, a
+ * garage's service name) and go into HTML email bodies, so they're escaped:
+ * otherwise "<a href=...>" in a name renders as a link in someone else's
+ * inbox, sent from RDV's domain.
+ */
+export function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 type GarageNotificationColumn = "notify_new_booking" | "notify_cancellation";
 
 // Service-role read regardless of caller context (a session-bound server
@@ -75,7 +90,7 @@ export async function notifyAppointmentStatusChange({
     await sendEmail({
       to: recipientEmail,
       subject: copy.subject,
-      html: `<p>Hi ${recipientName},</p><p>Your <strong>${serviceName}</strong> appointment with ${otherPartyName} on ${when} has been ${copy.verb}.</p>`,
+      html: `<p>Hi ${escapeHtml(recipientName)},</p><p>Your <strong>${escapeHtml(serviceName)}</strong> appointment with ${escapeHtml(otherPartyName)} on ${when} has been ${copy.verb}.</p>`,
     });
   }
 
@@ -127,7 +142,7 @@ export async function notifyRepairStageChange({
     await sendEmail({
       to: recipientEmail,
       subject: copy.subject,
-      html: `<p>Hi ${recipientName},</p><p>Your <strong>${serviceName}</strong> service with ${otherPartyName} is now <strong>${copy.label}</strong>.</p>`,
+      html: `<p>Hi ${escapeHtml(recipientName)},</p><p>Your <strong>${escapeHtml(serviceName)}</strong> service with ${escapeHtml(otherPartyName)} is now <strong>${copy.label}</strong>.</p>`,
     });
   }
 
@@ -172,7 +187,7 @@ export async function notifyBookingReceived({
       await sendEmail({
         to: recipientEmail,
         subject: "Your booking request was received",
-        html: `<p>Hi ${recipientName},</p><p>We've received your <strong>${serviceName}</strong> booking with ${otherPartyName} on ${when}. You'll hear from us as soon as it's confirmed.</p>`,
+        html: `<p>Hi ${escapeHtml(recipientName)},</p><p>We've received your <strong>${escapeHtml(serviceName)}</strong> booking with ${escapeHtml(otherPartyName)} on ${when}. You'll hear from us as soon as it's confirmed.</p>`,
       });
     }
     await sendPushToProfile({
@@ -191,7 +206,7 @@ export async function notifyBookingReceived({
     await sendEmail({
       to: recipientEmail,
       subject: "New booking request",
-      html: `<p>Hi ${recipientName},</p><p>You have a new <strong>${serviceName}</strong> booking request from ${otherPartyName} on ${when}. Confirm it from your dashboard.</p>`,
+      html: `<p>Hi ${escapeHtml(recipientName)},</p><p>You have a new <strong>${escapeHtml(serviceName)}</strong> booking request from ${escapeHtml(otherPartyName)} on ${when}. Confirm it from your dashboard.</p>`,
     });
   }
   if (notificationAllowed) {
@@ -201,6 +216,76 @@ export async function notifyBookingReceived({
       body: `${serviceName} from ${otherPartyName} on ${when}.`,
     });
   }
+}
+
+/**
+ * A client's online booking, confirmed on the spot and paid at the garage
+ * (pay-on-site pilot, 0040). Same recipients and garage opt-out
+ * (notify_new_booking) as notifyBookingReceived, which remains for bookings
+ * still coming through Stripe Checkout from before the pilot.
+ */
+export async function notifyBookingConfirmed({
+  recipient,
+  recipientProfileId,
+  recipientEmail,
+  recipientName,
+  otherPartyName,
+  serviceName,
+  startTime,
+  recipientGarageId,
+}: {
+  recipient: "client" | "garage";
+  recipientProfileId: string;
+  recipientEmail: string | null;
+  recipientName: string;
+  otherPartyName: string;
+  serviceName: string;
+  startTime: string;
+  // Required in practice when recipient === "garage".
+  recipientGarageId?: string;
+}) {
+  const when = new Date(startTime).toLocaleString(undefined, {
+    timeZone: APP_TIME_ZONE,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  if (recipient === "client") {
+    if (recipientEmail) {
+      await sendEmail({
+        to: recipientEmail,
+        subject: "Your booking is confirmed",
+        html: `<p>Hi ${escapeHtml(recipientName)},</p><p>Your <strong>${escapeHtml(serviceName)}</strong> appointment with ${escapeHtml(otherPartyName)} on ${when} is confirmed. You'll pay at the garage (cash or card).</p>`,
+      });
+    }
+    await sendPushToProfile({
+      profileId: recipientProfileId,
+      title: "Booking confirmed",
+      body: `${serviceName} with ${otherPartyName} on ${when}. Pay at the garage.`,
+    });
+    return;
+  }
+
+  const notificationAllowed =
+    !recipientGarageId ||
+    (await isGarageNotificationEnabled(recipientGarageId, "notify_new_booking"));
+  if (!notificationAllowed) return;
+
+  if (recipientEmail) {
+    await sendEmail({
+      to: recipientEmail,
+      subject: "New booking",
+      html: `<p>Hi ${escapeHtml(recipientName)},</p><p>${escapeHtml(otherPartyName)} booked <strong>${escapeHtml(serviceName)}</strong> on ${when}. It's already in your agenda; payment is taken at the garage.</p>`,
+    });
+  }
+  await sendPushToProfile({
+    profileId: recipientProfileId,
+    title: "New booking",
+    body: `${serviceName} from ${otherPartyName} on ${when}.`,
+  });
 }
 
 export async function notifyAppointmentRescheduled({
@@ -231,7 +316,7 @@ export async function notifyAppointmentRescheduled({
     await sendEmail({
       to: recipientEmail,
       subject: "Your appointment was rescheduled",
-      html: `<p>Hi ${recipientName},</p><p>Your <strong>${serviceName}</strong> appointment with ${otherPartyName} has been moved to ${when}.</p>`,
+      html: `<p>Hi ${escapeHtml(recipientName)},</p><p>Your <strong>${escapeHtml(serviceName)}</strong> appointment with ${escapeHtml(otherPartyName)} has been moved to ${when}.</p>`,
     });
   }
 
@@ -267,7 +352,7 @@ export async function notifyWaitlistSlotOpened({
   await sendEmail({
     to: recipientEmail,
     subject: "A slot may have opened up",
-    html: `<p>Hi ${recipientName},</p><p>A booking for <strong>${serviceName}</strong> at ${garageName} on ${when} was just cancelled. If you're still interested, book now -- it's first come, first served.</p>`,
+    html: `<p>Hi ${escapeHtml(recipientName)},</p><p>A booking for <strong>${escapeHtml(serviceName)}</strong> at ${escapeHtml(garageName)} on ${when} was just cancelled. If you're still interested, book now -- it's first come, first served.</p>`,
   });
 
   await sendPushToProfile({

@@ -4,7 +4,21 @@
     "logOut": "Log out",
     "signUp": "Sign up",
     "backToDashboard": "Back to dashboard",
-    "brand": "RDV"
+    "brand": "RDV",
+    "appointmentStatus": {
+      "pending_payment": "Awaiting payment",
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "cancelled": "Cancelled",
+      "completed": "Completed"
+    },
+    "repairStage": {
+      "received": "Received",
+      "diagnosis": "Diagnosis",
+      "in_repair": "In repair",
+      "quality_check": "Quality check",
+      "ready_for_pickup": "Ready for pickup"
+    }
   },
   "home": {
     "heroTitle": "Find a trusted garage in Luxembourg.",
@@ -144,15 +158,20 @@
     "stepVehicle": "Vehicle",
     "stepService": "Service",
     "stepDateTime": "Date & Time",
-    "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "weekdays": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
     "errors": {
       "invalid": "That booking request wasn't valid. Please try again.",
       "service": "That service is no longer available.",
       "slot-taken": "That time was just booked by someone else. Pick another.",
       "error": "Something went wrong booking that slot. Please try again.",
-      "not-payable": "This garage hasn't finished payment setup yet.",
-      "payment-cancelled": "Checkout was cancelled. You haven't been charged.",
-      "payment-error": "Something went wrong starting checkout. Please try again.",
       "terms": "You must agree to the booking terms to continue.",
       "rate-limited": "Too many booking attempts. Please wait a bit and try again."
     },
@@ -160,7 +179,6 @@
     "chooseService": "Choose a service",
     "noServicesYet": "This garage hasn't added any services yet.",
     "min": "min",
-    "paymentSetupNotice": "This garage hasn't finished payment setup yet, so booking is temporarily unavailable.",
     "chooseDate": "Choose a date",
     "previousMonth": "Previous month",
     "nextMonth": "Next month",
@@ -183,7 +201,8 @@
     "aboutTitle": "About",
     "contactTitle": "Contact",
     "hoursNotPublished": "Opening hours not published yet.",
-    "noContactDetails": "No contact details published yet."
+    "noContactDetails": "No contact details published yet.",
+    "payOnSiteNotice": "Picking a time confirms your booking. You pay at the garage (cash or card), nothing online."
   },
   "vehicles": {
     "title": "My vehicles",
@@ -256,7 +275,15 @@
     "availableTimes": "Available times",
     "closedOnDate": "This garage is closed on this date.",
     "noOpenTimes": "No open times on this day.",
-    "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    "weekdays": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ]
   },
   "setPassword": {
     "recoveryTitle": "Reset your password",
@@ -272,8 +299,6 @@
     "serviceFallback": "Service",
     "clientFallback": "Client",
     "clientLabel": "Client:",
-    "cancelled": "Cancelled",
-    "completed": "Completed",
     "repairStagePlaceholder": "Repair stage",
     "update": "Update",
     "message": "Message",
@@ -299,19 +324,57 @@
     "noUpcomingAssigned": "No upcoming appointments assigned to you.",
     "pastAndCancelled": "Past & cancelled",
     "statUpcoming": "Upcoming",
-    "statAwaitingConfirmation": "Awaiting confirmation",
     "statCompletedThisWeek": "Completed this week",
     "garageRejectedTitle": "Your garage was not approved",
     "garagePendingTitle": "Your garage is pending approval",
     "garagePendingDescription": "You can still set up services and availability while you wait.",
     "garageRejectedDescription": "Review your profile and resubmit for approval.",
     "reviewProfile": "Review profile",
-    "connectStripeTitle": "Connect Stripe to accept bookings",
-    "connectStripeDescription": "Clients can't book paid appointments until payments are set up.",
-    "setUpPayments": "Set up payments",
-    "upcomingAppointments": "Upcoming appointments",
     "viewFullCalendar": "View full calendar",
-    "noUpcomingAppointments": "No upcoming appointments."
+    "badgeAwaitingAction": "Awaiting action",
+    "badgeConfirmed": "Confirmed",
+    "badgeInProgress": "In progress",
+    "badgeCompleted": "Completed",
+    "badgeCancelled": "Cancelled",
+    "plateLabel": "License plate",
+    "capacityTitle": "Today's shop capacity",
+    "capacityBooked": "{booked} booked of {capacity}",
+    "capacityClosed": "Closed today",
+    "capacityNoMechanics": "No one can take bookings yet.",
+    "capacityAvailable": "Space available",
+    "capacityNearlyFull": "Nearly full",
+    "capacityFull": "Fully booked",
+    "agendaTitle": "Agenda",
+    "agendaTabsLabel": "Filter appointments",
+    "tabToday": "Today",
+    "tabWeek": "This week",
+    "emptyToday": "No appointments today.",
+    "emptyWeek": "No appointments for the rest of this week.",
+    "title": "Dashboard",
+    "kpiUpcomingHint": "Booked from now on",
+    "kpiCompletedHint": "Since Monday",
+    "glanceTitle": "Today at a glance",
+    "glanceHours": "Opening hours",
+    "glanceClosed": "Closed",
+    "glanceNextUp": "Next up",
+    "glanceNothingNext": "Nothing else today",
+    "glanceRemaining": "Still to do",
+    "glanceDone": "Completed today",
+    "teamTitle": "Team today",
+    "teamBusyUntil": "On a job until {time}",
+    "teamFree": "Available",
+    "teamFreeNext": "Available · next at {time}",
+    "teamOff": "Shop closed",
+    "teamOffNext": "Shop closed · next at {time}",
+    "teamEmpty": "No one takes bookings yet.",
+    "teamManage": "Manage team",
+    "teamYou": "you",
+    "teamNote": "Everyone follows the garage's opening hours.",
+    "statToday": "Today",
+    "kpiTodayHint": "{count} still to do",
+    "legacyPendingTitle": "{count} older booking(s) still need confirmation",
+    "legacyPendingDescription": "Made with online payment before pay-on-site. New bookings are confirmed automatically.",
+    "legacyPendingAction": "Review in calendar"
   },
   "garageCalendar": {
     "backToDashboard": "Back to dashboard",
@@ -329,7 +392,15 @@
     "complete": "Complete",
     "reschedule": "Reschedule",
     "cancel": "Cancel",
-    "weekdays": ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    "weekdays": [
+      "Sun",
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat"
+    ],
     "months": [
       "January",
       "February",
@@ -422,7 +493,11 @@
       "endLabel": "End",
       "submit": "Add override",
       "submitPending": "Adding..."
-    }
+    },
+    "blocksTitle": "Blocked time slots",
+    "blocksDescription": "One-off blocks inside your opening hours. Nothing can be booked during them.",
+    "noUpcomingBlocks": "No upcoming blocked time.",
+    "blockTimeButton": "Block time slot"
   },
   "garageDocuments": {
     "backToDashboard": "Back to dashboard",
@@ -607,7 +682,7 @@
   },
   "garageClients": {
     "title": "Clients",
-    "subtitle": "Everyone who has booked with you, with the vehicles they brought and each visit.",
+    "subtitle": "Everyone who has booked with you or that you've added, with their vehicles and each visit.",
     "appointment": "appointment",
     "appointments": "appointments",
     "noClientsYet": "No clients yet.",
@@ -621,17 +696,11 @@
     "unnamedClient": "Unnamed client",
     "vehicleFallback": "Vehicle",
     "serviceFallback": "Service",
-    "statuses": {
-      "pending_payment": "Awaiting payment",
-      "pending": "Pending",
-      "confirmed": "Confirmed",
-      "cancelled": "Cancelled",
-      "completed": "Completed"
-    },
-    "walkInBadge": "Walk-in",
+    "walkInBadge": "Added by garage",
     "anonymize": "Delete personal data",
     "anonymizeConfirm": "Removes this walk-in customer's name, phone, email and plates. Past jobs and invoices are kept.",
-    "anonymized": "Customer data deleted. Their past jobs and invoices are kept without personal details."
+    "anonymized": "Customer data deleted. Their past jobs and invoices are kept without personal details.",
+    "noVisitsYet": "No visits yet"
   },
   "garageStripeConnect": {
     "backToDashboard": "Back to dashboard",
@@ -945,5 +1014,74 @@
       "notGarageOwner": "Looking to book a service instead?",
       "clientSignUpLink": "Sign up as a client"
     }
+  },
+  "addClient": {
+    "title": "Add a client",
+    "close": "Close",
+    "intro": "Save a customer and their vehicle without booking a job. They'll appear in your client directory and in the walk-in form.",
+    "contactSection": "Contact",
+    "nameLabel": "Full name",
+    "phoneLabel": "Phone",
+    "emailLabel": "Email (optional)",
+    "contactHint": "A phone number or an email is required.",
+    "vehicleSection": "Vehicle (optional)",
+    "plateLabel": "License plate",
+    "brandLabel": "Make",
+    "modelLabel": "Model",
+    "yearLabel": "Year",
+    "vinLabel": "VIN (17 characters)",
+    "cancel": "Cancel",
+    "submit": "Save client",
+    "submitting": "Saving…",
+    "created": "{name} has been added to your clients.",
+    "openDirectory": "Open in directory",
+    "addAnother": "Add another",
+    "errors": {
+      "nameRequired": "Enter the client's name.",
+      "nameTooLong": "Keep the name under 120 characters.",
+      "phoneTooLong": "Keep the phone number under 40 characters.",
+      "emailInvalid": "Enter a valid email.",
+      "contactRequired": "Add a phone number or an email so you can reach them.",
+      "plateTooLong": "Keep the plate under 20 characters.",
+      "brandInvalid": "Choose a make from the list.",
+      "modelTooLong": "Keep the model under 100 characters.",
+      "yearInvalid": "Enter a 4-digit year.",
+      "vinInvalid": "A VIN is 17 letters and digits (no I, O or Q).",
+      "vehicleIdentify": "Enter at least the plate or the model.",
+      "plateExists": "A vehicle with this plate is already in your directory.",
+      "vinExists": "A vehicle with this VIN is already in your directory.",
+      "saveFailed": "Could not save the client. Please try again."
+    }
+  },
+  "blockTime": {
+    "title": "Block a time slot",
+    "close": "Close",
+    "intro": "No new bookings will be offered during this time. Existing appointments are kept.",
+    "dateLabel": "Date",
+    "startLabel": "From",
+    "endLabel": "To",
+    "reasonLabel": "Reason (optional, only visible to your team)",
+    "reasonPlaceholder": "e.g. Staff meeting",
+    "cancel": "Cancel",
+    "submit": "Block time",
+    "submitting": "Blocking…",
+    "created": "Blocked {range} on {date}.",
+    "overlapWarning": "{count} existing appointment(s) fall in this time. They are not cancelled; reschedule them if needed.",
+    "openCalendar": "Open calendar",
+    "blockAnother": "Block another",
+    "errors": {
+      "dateInvalid": "Choose a valid date.",
+      "timeInvalid": "Enter a valid time.",
+      "endBeforeStart": "The end time must be after the start time.",
+      "reasonTooLong": "Keep the reason under 120 characters.",
+      "inPast": "That time has already passed.",
+      "overlapsBlock": "This overlaps time that is already blocked.",
+      "saveFailed": "Could not block this time. Please try again."
+    }
+  },
+  "garageTopBar": {
+    "actionsLabel": "Quick actions",
+    "addClient": "Add client",
+    "blockTime": "Block time"
   }
 }

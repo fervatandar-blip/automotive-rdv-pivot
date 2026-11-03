@@ -8,6 +8,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { anonymizeGarageCustomer } from "@/app/actions/walk-ins";
 
 type D = Dictionary["garageClients"];
+type StatusLabels = Dictionary["common"]["appointmentStatus"];
 
 export type DirectoryVisit = {
   id: string;
@@ -57,11 +58,13 @@ export function ClientDirectory({
   d,
   lang,
   initialQuery,
+  statusLabels,
 }: {
   clients: DirectoryClient[];
   d: D;
   lang: Locale;
   initialQuery: string;
+  statusLabels: StatusLabels;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const deferredQuery = useDeferredValue(query);
@@ -198,23 +201,27 @@ export function ClientDirectory({
                                 <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">VIN {vehicle.vin}</span>
                               )}
                               <span className="ml-auto text-xs text-zinc-500 dark:text-zinc-400">
-                                {d.visitCount.replace("{count}", String(vehicle.visits.length))}
+                                {vehicle.visits.length > 0
+                                  ? d.visitCount.replace("{count}", String(vehicle.visits.length))
+                                  : d.noVisitsYet}
                               </span>
                             </summary>
-                            <ol className="mt-2 flex flex-col gap-1 border-t border-black/[.06] pt-2 dark:border-white/[.1]">
-                              {vehicle.visits.map((visit) => (
-                                <li key={visit.id} className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                                  <span className="text-zinc-600 dark:text-zinc-400">
-                                    {visit.startTime} · {visit.serviceName}
-                                  </span>
-                                  <span
-                                    className={`rounded-full px-2 py-0.5 font-medium ${STATUS_STYLES[visit.status] ?? STATUS_STYLES.completed}`}
-                                  >
-                                    {d.statuses[visit.status as keyof typeof d.statuses] ?? visit.status}
-                                  </span>
-                                </li>
-                              ))}
-                            </ol>
+                            {vehicle.visits.length > 0 && (
+                              <ol className="mt-2 flex flex-col gap-1 border-t border-black/[.06] pt-2 dark:border-white/[.1]">
+                                {vehicle.visits.map((visit) => (
+                                  <li key={visit.id} className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                                    <span className="text-zinc-600 dark:text-zinc-400">
+                                      {visit.startTime} · {visit.serviceName}
+                                    </span>
+                                    <span
+                                      className={`rounded-full px-2 py-0.5 font-medium ${STATUS_STYLES[visit.status] ?? STATUS_STYLES.completed}`}
+                                    >
+                                      {statusLabels[visit.status as keyof StatusLabels] ?? visit.status}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ol>
+                            )}
                           </details>
                         </li>
                       );

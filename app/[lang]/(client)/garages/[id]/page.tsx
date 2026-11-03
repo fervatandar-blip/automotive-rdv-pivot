@@ -10,6 +10,7 @@ import {
   Phone,
   Siren,
   Truck,
+  Banknote,
 } from "lucide-react";
 import { getOptionalAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -154,7 +155,7 @@ export default async function GarageDetailPage({
   const { data: garage } = await supabase
     .from("garages")
     .select(
-      "id, name, description, address, city, phone, email, website, latitude, longitude, stripe_charges_enabled, ev_capable, mobile_service, emergency_service, pricing_category, languages_spoken, garage_brands(brands(name)), garage_specialties(specialties(name))"
+      "id, name, description, address, city, phone, email, website, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, languages_spoken, garage_brands(brands(name)), garage_specialties(specialties(name))"
     )
     .eq("id", garageId)
     .eq("status", "approved")
@@ -529,13 +530,7 @@ export default async function GarageDetailPage({
           </div>
         </div>
 
-        {selectedService && !garage.stripe_charges_enabled && (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
-            {d.paymentSetupNotice}
-          </p>
-        )}
-
-        {selectedService && garage.stripe_charges_enabled && (
+        {selectedService && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
@@ -660,6 +655,12 @@ export default async function GarageDetailPage({
                     {vehicleRows.length > 0
                       ? ` ${d.forVehicle} ${vehicleLabel(vehicleRows[0])}`
                       : ""}
+                  </p>
+                  {/* Pay-on-site pilot (0040): picking a time books it
+                      outright, so say so before the click. */}
+                  <p className="flex items-start gap-2 rounded-md border border-black/[.08] bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-white/[.145] dark:bg-zinc-900/50 dark:text-zinc-300">
+                    <Banknote aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+                    {d.payOnSiteNotice}
                   </p>
                   <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
                     <input

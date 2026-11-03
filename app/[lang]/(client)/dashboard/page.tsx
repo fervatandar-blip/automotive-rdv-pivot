@@ -12,7 +12,7 @@ import { leaveWaitlist } from "@/app/actions/waitlist";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { EmptyStateCard } from "@/components/empty-state-card";
-import { REPAIR_STAGES, REPAIR_STAGE_LABELS } from "@/lib/definitions";
+import { REPAIR_STAGES } from "@/lib/definitions";
 import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
 
 type Appointment = {
@@ -77,13 +77,16 @@ function RepairStageIndicator({
   );
 }
 
-function repairStageSteps(currentStage: string | null) {
+function repairStageSteps(
+  currentStage: string | null,
+  stageLabels: Dictionary["common"]["repairStage"]
+) {
   const currentIndex = currentStage
     ? REPAIR_STAGES.indexOf(currentStage as (typeof REPAIR_STAGES)[number])
     : -1;
 
   return REPAIR_STAGES.map((stage, index) => ({
-    label: REPAIR_STAGE_LABELS[stage],
+    label: stageLabels[stage],
     status: (index < currentIndex
       ? "complete"
       : index === currentIndex
@@ -227,7 +230,7 @@ function AppointmentCard({
           {cancellable && appointment.repair_stage && (
             <div className="mt-4 max-w-xs">
               <RepairStageIndicator
-                steps={repairStageSteps(appointment.repair_stage)}
+                steps={repairStageSteps(appointment.repair_stage, dictionary.common.repairStage)}
               />
             </div>
           )}

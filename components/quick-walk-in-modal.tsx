@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useMemo, useRef, useState, useTransition } from "react";
+import { useActionState, useId, useMemo, useRef, useState, useTransition } from "react";
 import { Check, Plus, Search, X } from "lucide-react";
 import { createWalkIn, getWalkInOptions, type WalkInOptions } from "@/app/actions/walk-ins";
 import type { Locale } from "@/lib/i18n/config";
@@ -20,9 +20,11 @@ function FieldError({ messages }: { messages?: string[] }) {
 /**
  * "+ Walk-in" button and its modal, for the garage top bar. Options are
  * fetched when the modal opens rather than on every garage page render.
+ * Ids come from useId so the modal can't collide with another on the page.
  */
 export function QuickWalkInButton({ lang, d }: { lang: Locale; d: D }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
   const [options, setOptions] = useState<WalkInOptions | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [loading, startLoading] = useTransition();
@@ -59,13 +61,13 @@ export function QuickWalkInButton({ lang, d }: { lang: Locale; d: D }) {
 
       <dialog
         ref={dialogRef}
-        aria-labelledby="walk-in-title"
+        aria-labelledby={titleId}
         onClose={() => setFormKey((key) => key + 1)}
         className="m-auto w-[min(100%-2rem,36rem)] rounded-2xl border border-black/[.08] bg-white p-0 text-black shadow-xl backdrop:bg-black/40 dark:border-white/[.145] dark:bg-zinc-950 dark:text-zinc-50"
       >
         <div className="flex max-h-[85vh] flex-col">
           <div className="flex items-center justify-between border-b border-black/[.08] px-5 py-4 dark:border-white/[.145]">
-            <h2 id="walk-in-title" className="text-lg font-semibold">
+            <h2 id={titleId} className="text-lg font-semibold">
               {d.title}
             </h2>
             <button type="button" onClick={close} aria-label={d.close} className="rounded-full p-1.5 hover:bg-black/[.04] dark:hover:bg-white/[.06]">
@@ -115,6 +117,9 @@ function WalkInForm({
   onAnother: () => void;
 }) {
   const [state, action, pending] = useActionState(createWalkIn, undefined);
+  // Two walk-in buttons can share a page (top bar + dashboard), and each
+  // keeps its form mounted after closing, so field ids must be per-instance.
+  const fieldId = useId();
   const [query, setQuery] = useState("");
   const [isNewCustomer, setIsNewCustomer] = useState(options.customers.length === 0);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -217,18 +222,18 @@ function WalkInForm({
         {isNewCustomer ? (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1 sm:col-span-2">
-              <label htmlFor="walkin-name" className="sr-only">{d.nameLabel}</label>
-              <input id="walkin-name" name="newName" placeholder={d.nameLabel} autoComplete="off" className={inputClass} />
+              <label htmlFor={`${fieldId}-name`} className="sr-only">{d.nameLabel}</label>
+              <input id={`${fieldId}-name`} name="newName" placeholder={d.nameLabel} autoComplete="off" className={inputClass} />
               <FieldError messages={errors.newName} />
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="walkin-phone" className="sr-only">{d.phoneLabel}</label>
-              <input id="walkin-phone" name="newPhone" type="tel" placeholder={d.phoneLabel} autoComplete="off" className={inputClass} />
+              <label htmlFor={`${fieldId}-phone`} className="sr-only">{d.phoneLabel}</label>
+              <input id={`${fieldId}-phone`} name="newPhone" type="tel" placeholder={d.phoneLabel} autoComplete="off" className={inputClass} />
               <FieldError messages={errors.newPhone} />
             </div>
             <div className="flex flex-col gap-1">
-              <label htmlFor="walkin-email" className="sr-only">{d.emailLabel}</label>
-              <input id="walkin-email" name="newEmail" type="email" placeholder={d.emailOptional} autoComplete="off" className={inputClass} />
+              <label htmlFor={`${fieldId}-email`} className="sr-only">{d.emailLabel}</label>
+              <input id={`${fieldId}-email`} name="newEmail" type="email" placeholder={d.emailOptional} autoComplete="off" className={inputClass} />
               <FieldError messages={errors.newEmail} />
             </div>
           </div>
@@ -302,13 +307,13 @@ function WalkInForm({
           {vehicleChoice === "new" && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
-                <label htmlFor="walkin-plate" className="sr-only">{d.plateLabel}</label>
-                <input id="walkin-plate" name="plate" placeholder={d.plateLabel} autoCapitalize="characters" className={`${inputClass} font-mono uppercase`} />
+                <label htmlFor={`${fieldId}-plate`} className="sr-only">{d.plateLabel}</label>
+                <input id={`${fieldId}-plate`} name="plate" placeholder={d.plateLabel} autoCapitalize="characters" className={`${inputClass} font-mono uppercase`} />
                 <FieldError messages={errors.plate} />
               </div>
               <div className="flex flex-col gap-1">
-                <label htmlFor="walkin-brand" className="sr-only">{d.brandLabel}</label>
-                <select id="walkin-brand" name="brandId" defaultValue="" className={inputClass}>
+                <label htmlFor={`${fieldId}-brand`} className="sr-only">{d.brandLabel}</label>
+                <select id={`${fieldId}-brand`} name="brandId" defaultValue="" className={inputClass}>
                   <option value="">{d.brandLabel}</option>
                   {options.brands.map((brand) => (
                     <option key={brand.id} value={brand.id}>{brand.name}</option>
@@ -316,12 +321,12 @@ function WalkInForm({
                 </select>
               </div>
               <div className="flex flex-col gap-1">
-                <label htmlFor="walkin-model" className="sr-only">{d.modelLabel}</label>
-                <input id="walkin-model" name="model" placeholder={d.modelLabel} className={inputClass} />
+                <label htmlFor={`${fieldId}-model`} className="sr-only">{d.modelLabel}</label>
+                <input id={`${fieldId}-model`} name="model" placeholder={d.modelLabel} className={inputClass} />
               </div>
               <div className="flex flex-col gap-1">
-                <label htmlFor="walkin-vin" className="sr-only">{d.vinLabel}</label>
-                <input id="walkin-vin" name="vin" placeholder={d.vinLabel} maxLength={24} spellCheck={false} className={`${inputClass} font-mono uppercase`} />
+                <label htmlFor={`${fieldId}-vin`} className="sr-only">{d.vinLabel}</label>
+                <input id={`${fieldId}-vin`} name="vin" placeholder={d.vinLabel} maxLength={24} spellCheck={false} className={`${inputClass} font-mono uppercase`} />
                 <FieldError messages={errors.vin} />
               </div>
             </div>
@@ -333,8 +338,8 @@ function WalkInForm({
       {/* 3. Service & mechanic */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
-          <label htmlFor="walkin-service" className={labelClass}>{d.serviceLabel}</label>
-          <select id="walkin-service" name="serviceId" required defaultValue="" className={inputClass}>
+          <label htmlFor={`${fieldId}-service`} className={labelClass}>{d.serviceLabel}</label>
+          <select id={`${fieldId}-service`} name="serviceId" required defaultValue="" className={inputClass}>
             <option value="" disabled>{d.chooseService}</option>
             {options.services.map((service) => (
               <option key={service.id} value={service.id}>
@@ -345,8 +350,8 @@ function WalkInForm({
           <FieldError messages={errors.serviceId} />
         </div>
         <div className="flex flex-col gap-1">
-          <label htmlFor="walkin-mechanic" className={labelClass}>{d.mechanicLabel}</label>
-          <select id="walkin-mechanic" name="mechanicId" defaultValue="" className={inputClass}>
+          <label htmlFor={`${fieldId}-mechanic`} className={labelClass}>{d.mechanicLabel}</label>
+          <select id={`${fieldId}-mechanic`} name="mechanicId" defaultValue="" className={inputClass}>
             <option value="">{d.autoAssign}</option>
             {options.mechanics.map((mechanic) => (
               <option key={mechanic.id} value={mechanic.id}>
