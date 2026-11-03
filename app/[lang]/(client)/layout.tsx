@@ -65,10 +65,10 @@ export default async function ClientLayout({
     const membership = await getGarageMembership(lang);
 
     if (membership?.garage.platform_terms_accepted_at) {
-      const { garageProfile } = await getDictionary(lang);
+      const { garageProfile, garageNav } = await getDictionary(lang);
       return (
         <div className="flex flex-1">
-          <GarageSidebar lang={lang} isOwner={membership.isOwner} />
+          <GarageSidebar lang={lang} isOwner={membership.isOwner} labels={garageNav} />
           <div className="flex flex-1 flex-col">
             <GarageTopBar
               lang={lang}

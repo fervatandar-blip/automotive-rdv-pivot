@@ -144,82 +144,8 @@ export type ServiceFormState =
     }
   | undefined;
 
-const TIME_OF_DAY = /^([01]\d|2[0-3]):[0-5]\d$/;
-
-/**
- * One weekly opening window, applied to one or more weekdays at once (so a
- * Mon-Fri morning shift is one submission). A split shift is simply two
- * windows on the same days, e.g. 08:00-12:00 and 13:30-18:00; the gap
- * between them is never bookable (lib/slots.ts walks windows separately).
- */
-export const AvailabilityFormSchema = z
-  .object({
-    days: z
-      .array(z.coerce.number().int().min(0).max(6))
-      .min(1, { error: "Choose at least one day." })
-      .transform((days) => [...new Set(days)].sort()),
-    startTime: z.string().regex(TIME_OF_DAY, { error: "Enter a valid start time." }),
-    endTime: z.string().regex(TIME_OF_DAY, { error: "Enter a valid end time." }),
-  })
-  .refine((data) => data.endTime > data.startTime, {
-    error: "End time must be after start time.",
-    path: ["endTime"],
-  });
-
-export type AvailabilityFormState =
-  | {
-      errors?: {
-        days?: string[];
-        startTime?: string[];
-        endTime?: string[];
-      };
-      message?: string;
-      // Weekdays (0 = Sunday) that already had an overlapping window, so
-      // nothing was added for them.
-      conflictDays?: number[];
-      added?: number;
-    }
-  | undefined;
-
-export const AvailabilityOverrideFormSchema = z
-  .object({
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { error: "Invalid date." }),
-    isClosed: z.boolean(),
-    startTime: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/, { error: "Enter a valid start time." })
-      .optional(),
-    endTime: z
-      .string()
-      .regex(/^\d{2}:\d{2}$/, { error: "Enter a valid end time." })
-      .optional(),
-  })
-  .refine((data) => data.isClosed || (data.startTime && data.endTime), {
-    error: "Enter a start and end time, or mark the date as closed.",
-    path: ["endTime"],
-  })
-  .refine(
-    (data) =>
-      data.isClosed ||
-      !data.startTime ||
-      !data.endTime ||
-      data.endTime > data.startTime,
-    {
-      error: "End time must be after start time.",
-      path: ["endTime"],
-    }
-  );
-
-export type AvailabilityOverrideFormState =
-  | {
-      errors?: {
-        date?: string[];
-        startTime?: string[];
-        endTime?: string[];
-      };
-      message?: string;
-    }
-  | undefined;
+// Weekly opening hours are validated by windowsFromWeekForm
+// (lib/opening-hours.ts), the Working hours form's single source of rules.
 
 // Intraday block (availability_blocks, 0039). Error messages are keys
 // into dictionary.blockTime.errors so the form shows them in FR or EN.

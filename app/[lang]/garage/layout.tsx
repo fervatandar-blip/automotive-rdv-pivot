@@ -70,7 +70,7 @@ export default async function GarageLayout({
 
   return (
     <div className="flex flex-1">
-      <GarageSidebar lang={lang} isOwner={isOwner} />
+      <GarageSidebar lang={lang} isOwner={isOwner} labels={dictionary.garageNav} />
       <div className="flex flex-1 flex-col">
         <GarageTopBar
           lang={lang}

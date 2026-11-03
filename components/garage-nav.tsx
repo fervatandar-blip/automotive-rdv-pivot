@@ -12,9 +12,7 @@ import {
   LayoutDashboard,
   Calendar,
   Users,
-  Star,
   Clock,
-  ListPlus,
   MessageSquare,
   Wrench,
   Building2,
@@ -61,44 +59,43 @@ function setCollapsed(value: boolean) {
   for (const listener of collapseListeners) listener();
 }
 
-function navGroups(lang: Locale, isOwner: boolean) {
+type NavLabels = Dictionary["garageNav"];
+
+/**
+ * The garage portal menu. Operations is the day-to-day trio; everything
+ * you set up once lives under Settings. Pages taken out of the menu
+ * (Reviews, Waitlist, and Finance during the pay-on-site pilot, 0040)
+ * still work by URL -- the waitlist keeps notifying clients on
+ * cancellations regardless.
+ */
+function navGroups(lang: Locale, isOwner: boolean, t: NavLabels) {
   return [
     {
-      label: "Operations",
+      label: t.operations,
       items: [
-        { href: `/${lang}/garage/dashboard`, label: "Dashboard", icon: LayoutDashboard },
-        { href: `/${lang}/garage/calendar`, label: "Calendar & Agenda", icon: Calendar },
-        { href: `/${lang}/garage/clients`, label: "Client Directory", icon: Users },
-        { href: `/${lang}/garage/reviews`, label: "Reviews", icon: Star },
-        { href: `/${lang}/garage/availability`, label: "Availability", icon: Clock },
-        { href: `/${lang}/garage/waitlist`, label: "Waitlist", icon: ListPlus },
+        { href: `/${lang}/garage/dashboard`, label: t.dashboard, icon: LayoutDashboard },
+        { href: `/${lang}/garage/calendar`, label: t.calendar, icon: Calendar },
+        { href: `/${lang}/garage/clients`, label: t.clients, icon: Users },
       ],
     },
     {
-      label: "Communication & Services",
+      label: t.communication,
       items: [
-        { href: `/${lang}/garage/messages`, label: "Messages", icon: MessageSquare },
-        { href: `/${lang}/garage/services`, label: "Services & Pricing", icon: Wrench },
+        { href: `/${lang}/garage/messages`, label: t.messages, icon: MessageSquare },
+        { href: `/${lang}/garage/services`, label: t.services, icon: Wrench },
       ],
     },
-    // "Finance" (Invoices & Financials, Stripe Setup) is hidden during the
-    // pay-on-site pilot (0040). The pages still exist by URL; invoices are
-    // still generated on completion and downloadable by clients.
     {
-      label: "Settings & Compliance",
+      label: t.settings,
       items: [
-        { href: `/${lang}/garage/profile`, label: "Garage Profile", icon: Building2 },
-        { href: `/${lang}/garage/documents`, label: "Verification & KYC", icon: FileText },
-        // Owner-only: the staff page itself gates on requireGarageOwner, so
-        // showing this to a mecanicien would just be a dead-end link that
-        // redirects them away. Previously only reachable via Account ->
-        // Team access, not from the main portal nav at all for the role
-        // that actually needs it day-to-day.
-        ...(isOwner
-          ? [{ href: `/${lang}/garage/staff`, label: "Staff", icon: UserCog }]
-          : []),
-        { href: `/${lang}/garage/notifications`, label: "Notifications", icon: Bell },
-        { href: `/${lang}/account`, label: "Account Settings", icon: User },
+        { href: `/${lang}/garage/profile`, label: t.profile, icon: Building2 },
+        { href: `/${lang}/garage/availability`, label: t.hours, icon: Clock },
+        { href: `/${lang}/garage/documents`, label: t.verification, icon: FileText },
+        // Owner-only: the staff page gates on requireGarageOwner, so a
+        // mecanicien would only hit a redirect.
+        ...(isOwner ? [{ href: `/${lang}/garage/staff`, label: t.staff, icon: UserCog }] : []),
+        { href: `/${lang}/garage/notifications`, label: t.notifications, icon: Bell },
+        { href: `/${lang}/account`, label: t.account, icon: User },
       ],
     },
   ];
@@ -230,12 +227,14 @@ function SidebarLocaleToggle({
 export function GarageSidebar({
   lang,
   isOwner,
+  labels,
 }: {
   lang: Locale;
   isOwner: boolean;
+  labels: NavLabels;
 }) {
   const pathname = usePathname();
-  const groups = navGroups(lang, isOwner);
+  const groups = navGroups(lang, isOwner, labels);
 
   // Server always renders expanded; the real preference (if any) is only
   // known client-side, so it's resolved after mount to avoid a hydration
@@ -278,7 +277,7 @@ export function GarageSidebar({
         <button
           type="button"
           onClick={toggleCollapsed}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? labels.expand : labels.collapse}
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/[.06] hover:text-zinc-50"
         >
           {collapsed ? (
@@ -335,13 +334,13 @@ export function GarageSidebar({
           <input type="hidden" name="lang" value={lang} />
           <button
             type="submit"
-            title={collapsed ? "Log out" : undefined}
+            title={collapsed ? labels.logOut : undefined}
             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/[.06] hover:text-zinc-50 ${
               collapsed ? "w-full justify-center" : "w-full"
             }`}
           >
             <LogOut className="h-5 w-5 shrink-0" strokeWidth={1.5} />
-            {!collapsed && "Log out"}
+            {!collapsed && labels.logOut}
           </button>
         </form>
       </div>

@@ -1,34 +1,59 @@
-import Link from "next/link";
+import type { ReactNode } from "react";
 import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import {
-  deleteAvailability,
   deleteAvailabilityBlock,
   deleteAvailabilityOverride,
+  removeClosedDates,
 } from "@/app/actions/availability";
 import { BlockTimeButton } from "@/components/block-time-modal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { LanguageSwitcher } from "@/components/language-switcher";
-import { AddAvailabilityForm } from "./add-availability-form";
-import { AddOverrideForm } from "./add-override-form";
 import { APP_TIME_ZONE, dateKeyToDisplayDate, todayKeyInAppZone } from "@/lib/timezone";
-import { WEEK_ORDER } from "@/lib/opening-hours";
+import { groupConsecutiveDates, weekFormFromWindows } from "@/lib/opening-hours";
+import { ClosedDatesForm } from "./closed-dates-form";
+import { WeeklyHoursForm } from "./weekly-hours-form";
 
-function formatTime(time: string) {
-  return time.slice(0, 5);
+function Panel({
+  id,
+  title,
+  description,
+  action,
+  children,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section
+      aria-labelledby={id}
+      className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-200 px-4 py-4 sm:px-5 dark:border-zinc-800">
+        <div>
+          <h2 id={id} className="text-base font-semibold text-black dark:text-zinc-50">
+            {title}
+          </h2>
+          <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
 }
 
-function formatOverrideDate(date: string, dateLocale: string) {
-  return dateKeyToDisplayDate(date).toLocaleDateString(dateLocale, {
-    timeZone: APP_TIME_ZONE,
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+const REMOVE_BUTTON =
+  "rounded-full px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
 
+/**
+ * Working hours & availability: the weekly schedule (with lunch breaks),
+ * holidays / closed dates, and intraday blocked slots -- everything that
+ * decides when clients can book (lib/availability.ts).
+ */
 export default async function GarageAvailabilityPage({
   params,
 }: {
@@ -39,22 +64,15 @@ export default async function GarageAvailabilityPage({
   const { garage } = await requireGarageMember(lang);
   const dictionary = await getDictionary(lang);
   const d = dictionary.garageAvailability;
-  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-GB";
   const supabase = await createClient();
-
-  const { data: availability } = await supabase
-    .from("availability")
-    .select("id, day_of_week, start_time, end_time")
-    .eq("garage_id", garage.id)
-    .order("day_of_week", { ascending: true })
-    .order("start_time", { ascending: true });
-
-  const byDay = d.days.map((_: string, dayOfWeek: number) =>
-    (availability ?? []).filter((slot) => slot.day_of_week === dayOfWeek)
-  );
-
   const todayKey = todayKeyInAppZone();
-  const [{ data: overrides }, { data: blocks }] = await Promise.all([
+
+  const [{ data: availability }, { data: overrides }, { data: blocks }] = await Promise.all([
+    supabase
+      .from("availability")
+      .select("day_of_week, start_time, end_time")
+      .eq("garage_id", garage.id),
     supabase
       .from("availability_overrides")
       .select("id, date, is_closed, start_time, end_time")
@@ -70,132 +88,125 @@ export default async function GarageAvailabilityPage({
       .order("starts_at", { ascending: true }),
   ]);
 
-  const blockDateFormatter = new Intl.DateTimeFormat(dateLocale, {
+  const closures = groupConsecutiveDates(
+    (overrides ?? []).filter((override) => override.is_closed).map((override) => override.date as string)
+  );
+  // One-off "special hours" days from before the form only offered
+  // closures; still listed so they can be seen and removed.
+  const specialHours = (overrides ?? []).filter((override) => !override.is_closed);
+
+  const dayFormatter = new Intl.DateTimeFormat(dateLocale, {
     timeZone: APP_TIME_ZONE,
     weekday: "short",
     day: "numeric",
     month: "short",
+    year: "numeric",
   });
-  const blockTimeFormatter = new Intl.DateTimeFormat(lang === "fr" ? "fr-FR" : "en-GB", {
+  const formatDay = (date: string) => dayFormatter.format(dateKeyToDisplayDate(date));
+  const timeFormatter = new Intl.DateTimeFormat(dateLocale, {
     timeZone: APP_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
   });
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-            {garage.name} &mdash; {d.availabilitySuffix}
-          </h1>
-          <div className="flex items-center gap-4 text-sm font-medium">
-            <div className="flex gap-4 underline">
-              <Link href={`/${lang}/garage/calendar`}>{d.calendar}</Link>
-              <Link href={`/${lang}/garage/services`}>
-                {d.manageServices}
-              </Link>
-            </div>
-            <LanguageSwitcher lang={lang} />
-          </div>
-        </div>
+    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-8 sm:py-10">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <header>
+          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">{d.title}</h1>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{d.subtitle}</p>
+        </header>
 
-        <AddAvailabilityForm dictionary={d.addForm} days={d.days} />
+        <Panel id="weekly-hours" title={d.weeklyTitle} description={d.weeklyDescription}>
+          <WeeklyHoursForm lang={lang} d={d} initialDays={weekFormFromWindows(availability ?? [])} />
+        </Panel>
 
-        <section aria-labelledby="weekly-hours-title" className="flex flex-col gap-3">
-          <h2 id="weekly-hours-title" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            {d.weeklyScheduleTitle}
-          </h2>
-          <div className="divide-y divide-black/[.06] rounded-xl border border-black/[.08] bg-white dark:divide-white/[.1] dark:border-white/[.145] dark:bg-zinc-950">
-            {WEEK_ORDER.map((dayOfWeek) => {
-              const windows = byDay[dayOfWeek];
-              return (
-                <div
-                  key={dayOfWeek}
-                  className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:gap-6 sm:px-6"
-                >
-                  <h3 className="w-28 shrink-0 pt-0.5 text-sm font-semibold text-black dark:text-zinc-50">
-                    {d.days[dayOfWeek]}
-                  </h3>
-                  {windows.length === 0 ? (
-                    <p className="pt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{d.closed}</p>
-                  ) : (
-                    <ul className="flex flex-1 flex-col gap-1.5">
-                      {windows.map((slot, index) => (
-                        <li key={slot.id} className="flex flex-col gap-1.5">
-                          {index > 0 && (
-                            <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                              {d.breakLabel.replace(
-                                "{range}",
-                                `${formatTime(windows[index - 1].end_time)}–${formatTime(slot.start_time)}`
-                              )}
-                            </span>
-                          )}
-                          <div className="flex items-center justify-between gap-3 text-sm">
-                            <span className="font-medium tabular-nums text-black dark:text-zinc-50">
-                              {formatTime(slot.start_time)}–{formatTime(slot.end_time)}
-                            </span>
-                            <form action={deleteAvailability}>
-                              <input type="hidden" name="id" value={slot.id} />
-                              <input type="hidden" name="lang" value={lang} />
-                              <button
-                                type="submit"
-                                aria-label={`${d.delete} ${d.days[dayOfWeek]} ${formatTime(slot.start_time)}–${formatTime(slot.end_time)}`}
-                                className="text-sm text-red-600 underline"
-                              >
-                                {d.delete}
-                              </button>
-                            </form>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              );
-            })}
+        <Panel id="closed-dates" title={d.closedTitle} description={d.closedDescription}>
+          <div className="flex flex-col gap-5 px-4 py-4 sm:px-5">
+            <ClosedDatesForm lang={lang} d={d} today={todayKey} />
+            {closures.length > 0 || specialHours.length > 0 ? (
+              <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+                {closures.map((run) => {
+                  const days =
+                    Math.round(
+                      (dateKeyToDisplayDate(run.to).getTime() - dateKeyToDisplayDate(run.from).getTime()) / 86_400_000
+                    ) + 1;
+                  const label = run.from === run.to ? formatDay(run.from) : `${formatDay(run.from)} – ${formatDay(run.to)}`;
+                  return (
+                    <li key={run.from} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                      <span className="min-w-0">
+                        <span className="font-medium text-black first-letter:uppercase dark:text-zinc-50">{label}</span>
+                        <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
+                          {d.closedDays.replace("{count}", String(days))}
+                        </span>
+                      </span>
+                      <form action={removeClosedDates}>
+                        <input type="hidden" name="lang" value={lang} />
+                        <input type="hidden" name="from" value={run.from} />
+                        <input type="hidden" name="to" value={run.to} />
+                        <button type="submit" aria-label={`${d.reopen} ${label}`} className={REMOVE_BUTTON}>
+                          {d.reopen}
+                        </button>
+                      </form>
+                    </li>
+                  );
+                })}
+                {specialHours.map((override) => (
+                  <li key={override.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                    <span>
+                      <span className="font-medium text-black first-letter:uppercase dark:text-zinc-50">
+                        {formatDay(override.date)}
+                      </span>
+                      <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        {d.specialHours
+                          .replace("{from}", String(override.start_time).slice(0, 5))
+                          .replace("{to}", String(override.end_time).slice(0, 5))}
+                      </span>
+                    </span>
+                    <form action={deleteAvailabilityOverride}>
+                      <input type="hidden" name="lang" value={lang} />
+                      <input type="hidden" name="id" value={override.id} />
+                      <button type="submit" className={REMOVE_BUTTON}>
+                        {d.remove}
+                      </button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.noClosures}</p>
+            )}
           </div>
-        </section>
+        </Panel>
 
-        <section aria-labelledby="blocks-title" className="flex flex-col gap-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 id="blocks-title" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                {d.blocksTitle}
-              </h2>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{d.blocksDescription}</p>
-            </div>
-            <BlockTimeButton
-              lang={lang}
-              d={dictionary.blockTime}
-              label={d.blockTimeButton}
-              today={todayKey}
-            />
-          </div>
+        <Panel
+          id="blocked-slots"
+          title={d.blocksTitle}
+          description={d.blocksDescription}
+          action={
+            <BlockTimeButton lang={lang} d={dictionary.blockTime} label={d.blockTimeButton} today={todayKey} />
+          }
+        >
           {blocks && blocks.length > 0 ? (
-            <ul className="divide-y divide-black/[.06] rounded-xl border border-black/[.08] bg-white dark:divide-white/[.1] dark:border-white/[.145] dark:bg-zinc-950">
+            <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {blocks.map((block) => {
-                const range = `${blockTimeFormatter.format(new Date(block.starts_at))}–${blockTimeFormatter.format(new Date(block.ends_at))}`;
-                const date = blockDateFormatter.format(new Date(block.starts_at));
+                const range = `${timeFormatter.format(new Date(block.starts_at))}–${timeFormatter.format(new Date(block.ends_at))}`;
+                const date = dayFormatter.format(new Date(block.starts_at));
                 return (
-                  <li key={block.id} className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-black dark:text-zinc-50">
+                  <li key={block.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
+                    <span className="min-w-0">
+                      <span className="font-medium text-black first-letter:uppercase dark:text-zinc-50">
                         {date} · <span className="tabular-nums">{range}</span>
-                      </p>
+                      </span>
                       {block.reason && (
-                        <p className="truncate text-sm text-zinc-600 dark:text-zinc-400">{block.reason}</p>
+                        <span className="ml-2 truncate text-xs text-zinc-500 dark:text-zinc-400">{block.reason}</span>
                       )}
-                    </div>
+                    </span>
                     <form action={deleteAvailabilityBlock}>
                       <input type="hidden" name="id" value={block.id} />
                       <input type="hidden" name="lang" value={lang} />
-                      <button
-                        type="submit"
-                        aria-label={`${d.delete} ${date} ${range}`}
-                        className="text-sm text-red-600 underline"
-                      >
-                        {d.delete}
+                      <button type="submit" aria-label={`${d.remove} ${date} ${range}`} className={REMOVE_BUTTON}>
+                        {d.remove}
                       </button>
                     </form>
                   </li>
@@ -203,47 +214,9 @@ export default async function GarageAvailabilityPage({
               })}
             </ul>
           ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.noUpcomingBlocks}</p>
+            <p className="px-4 py-4 text-sm text-zinc-500 sm:px-5 dark:text-zinc-400">{d.noUpcomingBlocks}</p>
           )}
-        </section>
-
-        <AddOverrideForm dictionary={d.overrideForm} />
-
-        <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-            {d.upcomingOverrides}
-          </h2>
-          {overrides && overrides.length > 0 ? (
-            overrides.map((override) => (
-              <div
-                key={override.id}
-                className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
-              >
-                <div>
-                  <p className="font-medium text-black dark:text-zinc-50">
-                    {formatOverrideDate(override.date, dateLocale)}
-                  </p>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {override.is_closed
-                      ? d.closedAllDay
-                      : `${formatTime(override.start_time)} – ${formatTime(override.end_time)}`}
-                  </p>
-                </div>
-                <form action={deleteAvailabilityOverride}>
-                  <input type="hidden" name="id" value={override.id} />
-                  <input type="hidden" name="lang" value={lang} />
-                  <button type="submit" className="text-red-600 underline">
-                    {d.delete}
-                  </button>
-                </form>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {d.noUpcomingOverrides}
-            </p>
-          )}
-        </div>
+        </Panel>
       </div>
     </div>
   );
