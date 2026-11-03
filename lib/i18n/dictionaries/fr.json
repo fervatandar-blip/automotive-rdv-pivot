@@ -428,7 +428,25 @@
     "newAppointmentWith": "Nouveau rendez-vous, {day} à {time} avec {mechanic}",
     "together": "Ensemble",
     "byMechanic": "Par mécanicien",
-    "dayLayout": "Colonnes du jour"
+    "dayLayout": "Colonnes du jour",
+    "moveConfirm": "Déplacer « {job} » au {when} ?",
+    "moveConfirmWith": "Déplacer « {job} » au {when} avec {mechanic} ?",
+    "moveNotify": "Le client recevra un e-mail avec le nouvel horaire.",
+    "moveAction": "Déplacer",
+    "moving": "Déplacement…",
+    "moveCancel": "Ne pas déplacer",
+    "moved": "Déplacé au {when}.",
+    "movedNowWith": "Désormais avec {mechanic}.",
+    "moveErrors": {
+      "invalid": "Ce déplacement n'est pas valide. Veuillez réessayer.",
+      "not-movable": "Ce travail ne peut plus être déplacé. Il a peut-être été terminé ou annulé.",
+      "past": "Cet horaire est déjà passé.",
+      "crosses-midnight": "Le travail dépasserait minuit. Choisissez un horaire plus tôt.",
+      "mechanic-busy": "Ce mécanicien a déjà un travail à cet horaire.",
+      "no-mechanic": "Tous les mécaniciens sont occupés à cet horaire.",
+      "owner-only": "Seul le propriétaire peut confier un travail à un autre mécanicien.",
+      "error": "Impossible de déplacer le travail. Veuillez réessayer."
+    }
   },
   "garageServices": {
     "servicesSuffix": "services",

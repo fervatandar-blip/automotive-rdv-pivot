@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   closedIntervals,
+  dropStartMinutes,
+  minutesToTime,
   groupByMechanic,
   parseDayLayout,
   hourRange,
@@ -166,5 +168,30 @@ describe("parseDayLayout", () => {
     expect(parseDayLayout("together", 3)).toBe("together");
     expect(parseDayLayout("mechanic", 1)).toBe("mechanic");
     expect(parseDayLayout("mechanic", 0)).toBe("together");
+  });
+});
+
+describe("dropStartMinutes", () => {
+  const base = { rangeStartMin: 8 * 60, hourPx: 64, durationMin: 60 };
+
+  it("converts the block's top edge to minutes from the grid's first hour", () => {
+    // 128px below an 08:00 start at 64px/hour = 10:00.
+    expect(dropStartMinutes({ ...base, blockTopPx: 128 })).toBe(600);
+  });
+
+  it("snaps to the nearest quarter hour", () => {
+    // 10:07 -> 10:00, 10:08 -> 10:15
+    expect(dropStartMinutes({ ...base, blockTopPx: 128 + (7 / 60) * 64 })).toBe(600);
+    expect(dropStartMinutes({ ...base, blockTopPx: 128 + (8 / 60) * 64 })).toBe(615);
+  });
+
+  it("keeps the whole job inside the day", () => {
+    expect(dropStartMinutes({ ...base, rangeStartMin: 0, blockTopPx: -40 })).toBe(0);
+    expect(dropStartMinutes({ ...base, rangeStartMin: 0, blockTopPx: 24 * 64 })).toBe(23 * 60);
+  });
+
+  it("formats minutes as HH:MM", () => {
+    expect(minutesToTime(615)).toBe("10:15");
+    expect(minutesToTime(0)).toBe("00:00");
   });
 });

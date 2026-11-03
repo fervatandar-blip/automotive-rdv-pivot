@@ -854,3 +854,139 @@ export async function assignMechanic(formData: FormData) {
   }
   redirect(calendarUrl(error ? (error.code === "23P01" ? "mechanic-busy" : "assign-failed") : undefined));
 }
+
+export type MoveAppointmentInput = {
+  lang: string;
+  id: string;
+  date: string; // "YYYY-MM-DD", garage zone
+  time: string; // "HH:MM", garage zone
+  // Pin the job to this mechanic (per-mechanic day view). Omitted: time
+  // only, and the 0037 trigger keeps or reassigns the mechanic.
+  mechanicId?: string;
+};
+
+export type MoveAppointmentResult =
+  | { ok: true; mechanicName: string | null; mechanicChanged: boolean }
+  | {
+      ok: false;
+      // Key into dictionary.garageCalendar.moveErrors.
+      error:
+        | "invalid"
+        | "not-movable"
+        | "past"
+        | "crosses-midnight"
+        | "mechanic-busy"
+        | "no-mechanic"
+        | "owner-only"
+        | "error";
+    };
+
+// A job dragged a few minutes into the past (e.g. "it actually started at
+// 10:00") is fine; anything earlier is almost certainly a mis-drop.
+const MOVE_PAST_TOLERANCE_MS = 15 * 60 * 1000;
+
+/**
+ * Drag-and-drop rescheduling from the garage calendar. Called directly from
+ * the client (not a form), so it returns a result instead of redirecting.
+ * The job keeps its current length. Atomic time + mechanic change through
+ * move_appointment (0041); opening hours are deliberately not enforced for
+ * staff, same as walk-ins.
+ */
+export async function moveAppointment(
+  input: MoveAppointmentInput
+): Promise<MoveAppointmentResult> {
+  const lang = parseLocale(input.lang);
+  await requireGarageMember(lang);
+
+  if (
+    !UUID_PATTERN.test(input.id) ||
+    !isDateKey(input.date) ||
+    !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.time) ||
+    (input.mechanicId !== undefined && !UUID_PATTERN.test(input.mechanicId))
+  ) {
+    return { ok: false, error: "invalid" };
+  }
+
+  const supabase = await createClient();
+  const { data: appointment } = await supabase
+    .from("appointments")
+    .select(PARTIES_SELECT + ", end_time, status, assigned_mechanic_id")
+    .eq("id", input.id)
+    .maybeSingle();
+
+  const current = appointment as unknown as
+    | (AppointmentWithParties & { end_time: string; status: string; assigned_mechanic_id: string | null })
+    | null;
+  if (!current || !["pending", "confirmed"].includes(current.status)) {
+    return { ok: false, error: "not-movable" };
+  }
+
+  const durationMs =
+    new Date(current.end_time).getTime() - new Date(current.start_time).getTime();
+  const newStart = zonedDateTimeToUtc(input.date, input.time);
+  const newEnd = new Date(newStart.getTime() + durationMs);
+
+  if (newStart.getTime() < Date.now() - MOVE_PAST_TOLERANCE_MS) {
+    return { ok: false, error: "past" };
+  }
+  if (dateKeyInAppZone(new Date(newEnd.getTime() - 1)) !== input.date) {
+    return { ok: false, error: "crosses-midnight" };
+  }
+
+  const { data: holder, error } = await supabase.rpc("move_appointment", {
+    target_appointment_id: input.id,
+    new_start: newStart.toISOString(),
+    new_end: newEnd.toISOString(),
+    target_mechanic_id: input.mechanicId ?? null,
+  });
+
+  if (error) {
+    if (error.code === "42501") return { ok: false, error: "owner-only" };
+    if (error.code === "23P01") {
+      return {
+        ok: false,
+        error: error.message.includes("no_mechanic_available") ? "no-mechanic" : "mechanic-busy",
+      };
+    }
+    console.error("[calendar] move_appointment failed:", error);
+    return { ok: false, error: "error" };
+  }
+  if (!holder) {
+    return { ok: false, error: "not-movable" };
+  }
+
+  const timeChanged = newStart.getTime() !== new Date(current.start_time).getTime();
+  // Registered clients hear about a new time; walk-in customers have no
+  // account to notify, and a mechanic swap alone isn't the client's news.
+  if (timeChanged && current.client && current.client_id) {
+    try {
+      await notifyAppointmentRescheduled({
+        recipientProfileId: current.client_id,
+        recipientEmail: current.client.email,
+        recipientName: current.client.full_name,
+        otherPartyName: current.garage?.name ?? "the garage",
+        serviceName: current.services?.name ?? "your service",
+        startTime: newStart.toISOString(),
+      });
+    } catch (err) {
+      // The move stands; a failed email must not undo or hide it.
+      console.error("[calendar] reschedule notification failed:", err);
+    }
+  }
+
+  const { data: mechanic } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", holder as string)
+    .maybeSingle();
+
+  revalidateLocalizedPath("/garage/calendar");
+  revalidateLocalizedPath("/garage/dashboard");
+  revalidateLocalizedPath("/dashboard");
+
+  return {
+    ok: true,
+    mechanicName: (mechanic?.full_name as string | undefined) ?? null,
+    mechanicChanged: holder !== current.assigned_mechanic_id,
+  };
+}

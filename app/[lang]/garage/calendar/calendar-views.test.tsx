@@ -124,6 +124,21 @@ describe("TimeGrid", () => {
   });
 });
 
+describe("TimeGrid drag metadata", () => {
+  it("makes open jobs draggable and leaves finished ones alone", () => {
+    const html = renderDay([
+      appointment("open", "2026-11-04T09:00:00Z", "2026-11-04T10:30:00Z"),
+      appointment("done", "2026-11-04T12:00:00Z", "2026-11-04T13:00:00Z", { status: "completed" }),
+    ]);
+    expect(html).toContain('data-drag-appt="open"');
+    expect(html).toContain('data-drag-duration="90"');
+    expect(html).toContain('data-drag-notify="1"');
+    expect(html).not.toContain('data-drag-appt="done"');
+    expect(html).toContain("data-grid-scroll");
+    expect(html).toContain('data-range-start="480"');
+  });
+});
+
 describe("TimeGrid by mechanic", () => {
   it("renders a column per mechanic whose slots preset that mechanic", () => {
     const html = renderColumns([
@@ -147,6 +162,7 @@ describe("TimeGrid by mechanic", () => {
     expect(html).toContain("1 job(s)");
     expect(html).toContain(">MW<");
     expect(html.match(/data-slot-mechanic="m2"/g)).toHaveLength(20);
+    expect(html).toContain('data-col-mechanic="m2" data-col-mechanic-name="Lea Muller"');
     expect(html).toContain("New appointment, Wed 4 Nov at 10:00 with Lea Muller");
     // The job sits only in Marc's column.
     // (Counting the visible name; the hover title repeats it.)

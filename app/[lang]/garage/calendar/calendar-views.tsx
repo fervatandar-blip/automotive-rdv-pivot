@@ -162,7 +162,12 @@ export function TimeGrid({
   const gridColumns = `3.5rem repeat(${columns.length}, minmax(${columns.length > 1 ? "7.5rem" : "0"}, 1fr))`;
 
   return (
-    <div className="max-h-[calc(100dvh-14rem)] min-h-[24rem] overflow-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <div
+      data-grid-scroll
+      data-range-start={rangeStartMin}
+      data-hour-px={HOUR_PX}
+      className="max-h-[calc(100dvh-14rem)] min-h-[24rem] overflow-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+    >
       <div className="grid" style={{ gridTemplateColumns: gridColumns }}>
         {/* Header row */}
         <div className="sticky left-0 top-0 z-30 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900" />
@@ -270,6 +275,10 @@ export function TimeGrid({
           return (
             <div
               key={column.key}
+              data-grid-column
+              data-col-date={date}
+              data-col-mechanic={column.mechanicId}
+              data-col-mechanic-name={mechanicName ?? undefined}
               className="relative border-l border-zinc-200 dark:border-zinc-800"
               style={{ height }}
             >
@@ -350,13 +359,30 @@ export function TimeGrid({
                 const service = event.services?.name ?? d.serviceFallback;
                 const client = customerName(event, d);
                 const range = `${formatTime.format(new Date(event.start_time))}–${formatTime.format(new Date(event.end_time))}`;
+                // Open jobs can be dragged to a new time (CalendarDragLayer).
+                const movable = event.status === "pending" || event.status === "confirmed";
+                const durationMin = Math.round(
+                  (new Date(event.end_time).getTime() - new Date(event.start_time).getTime()) / 60000
+                );
                 return (
                   <Link
                     key={event.id}
                     href={hrefForAppointment(event.id)}
                     scroll={false}
+                    draggable={false}
+                    {...(movable
+                      ? {
+                          "data-drag-appt": event.id,
+                          "data-drag-duration": durationMin,
+                          "data-drag-mechanic": event.assigned_mechanic_id ?? "",
+                          "data-drag-label": `${service} · ${client}`,
+                          "data-drag-notify": event.profiles ? "1" : "0",
+                        }
+                      : {})}
                     title={`${range} · ${client} · ${service}${plate ? ` · ${plate}` : ""}`}
-                    className={`absolute z-10 flex flex-col gap-0.5 overflow-hidden rounded-md border-l-4 px-1.5 py-1 text-left shadow-sm ring-1 ring-black/5 transition-colors dark:ring-white/5 ${
+                    className={`absolute z-10 flex select-none flex-col gap-0.5 overflow-hidden rounded-md border-l-4 px-1.5 py-1 text-left shadow-sm ring-1 ring-black/5 transition-colors dark:ring-white/5 ${
+                      movable ? "cursor-grab active:cursor-grabbing" : ""
+                    } ${
                       EVENT_STYLES[event.status] ?? EVENT_STYLES.pending
                     } ${selectedId === event.id ? "ring-2 ring-brand-600 dark:ring-brand-400" : ""}`}
                     style={{

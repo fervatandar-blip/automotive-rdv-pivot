@@ -1,22 +1,9 @@
-import { sendEmail } from "@/lib/email";
+// escapeHtml: names and service titles are user-controlled and go into
+// HTML email bodies.
+import { escapeHtml, sendEmail } from "@/lib/email";
 import { sendPushToProfile } from "@/lib/push";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
-
-/**
- * Names and service titles are user-controlled (a profile's full_name, a
- * garage's service name) and go into HTML email bodies, so they're escaped:
- * otherwise "<a href=...>" in a name renders as a link in someone else's
- * inbox, sent from RDV's domain.
- */
-export function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
 
 type GarageNotificationColumn = "notify_new_booking" | "notify_cancellation";
 

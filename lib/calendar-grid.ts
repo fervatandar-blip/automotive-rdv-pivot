@@ -202,3 +202,30 @@ export function parseDayLayout(value: unknown, mechanicCount: number): DayLayout
   if (value === "mechanic" || value === "together") return value;
   return mechanicCount >= 2 ? "mechanic" : "together";
 }
+
+/**
+ * Where a dragged job lands: the top edge of the block (pointer position in
+ * the column minus where the block was grabbed), converted to minutes,
+ * snapped to `snapMinutes` and kept inside the day so the job still fits.
+ */
+export function dropStartMinutes({
+  blockTopPx,
+  rangeStartMin,
+  hourPx,
+  durationMin,
+  snapMinutes = 15,
+}: {
+  blockTopPx: number; // block's top edge relative to the column's top
+  rangeStartMin: number;
+  hourPx: number;
+  durationMin: number;
+  snapMinutes?: number;
+}) {
+  const raw = rangeStartMin + (blockTopPx / hourPx) * 60;
+  const snapped = Math.round(raw / snapMinutes) * snapMinutes;
+  return Math.min(Math.max(snapped, 0), 24 * 60 - durationMin);
+}
+
+export function minutesToTime(minutes: number) {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}

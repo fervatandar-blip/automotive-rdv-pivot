@@ -47,6 +47,7 @@ import {
   type GridColumn,
 } from "./calendar-views";
 import { DrawerShell } from "./drawer-shell";
+import { CalendarDragLayer } from "./drag-layer";
 import { SlotBookingSurface } from "./slot-booking";
 
 type D = Dictionary["garageCalendar"];
@@ -356,19 +357,22 @@ export default async function GarageCalendarPage({
 
       {isGrid && (
         <SlotBookingSurface lang={lang} d={dictionary.walkIn}>
-          <TimeGrid
-            columns={columns}
-            schedule={schedule}
-            startHour={startHour}
-            endHour={endHour}
-            todayKey={todayKey}
-            now={now}
-            lang={lang}
-            dateLocale={dateLocale}
-            d={d}
-            hrefForAppointment={hrefForAppointment}
-            selectedId={selectedId}
-          />
+          {/* Drag to reschedule; owners may also drop into another mechanic's column. */}
+          <CalendarDragLayer lang={lang} d={d} canReassign={isOwner}>
+            <TimeGrid
+              columns={columns}
+              schedule={schedule}
+              startHour={startHour}
+              endHour={endHour}
+              todayKey={todayKey}
+              now={now}
+              lang={lang}
+              dateLocale={dateLocale}
+              d={d}
+              hrefForAppointment={hrefForAppointment}
+              selectedId={selectedId}
+            />
+          </CalendarDragLayer>
         </SlotBookingSurface>
       )}
       {view === "month" && (

@@ -428,7 +428,25 @@
     "newAppointmentWith": "New appointment, {day} at {time} with {mechanic}",
     "together": "Together",
     "byMechanic": "By mechanic",
-    "dayLayout": "Day columns"
+    "dayLayout": "Day columns",
+    "moveConfirm": "Move “{job}” to {when}?",
+    "moveConfirmWith": "Move “{job}” to {when} with {mechanic}?",
+    "moveNotify": "The client will get an email with the new time.",
+    "moveAction": "Move",
+    "moving": "Moving…",
+    "moveCancel": "Don't move",
+    "moved": "Moved to {when}.",
+    "movedNowWith": "Now with {mechanic}.",
+    "moveErrors": {
+      "invalid": "That move wasn't valid. Please try again.",
+      "not-movable": "This job can't be moved any more. It may have been completed or cancelled.",
+      "past": "That time has already passed.",
+      "crosses-midnight": "The job would run past midnight. Pick an earlier time.",
+      "mechanic-busy": "That mechanic already has a job then.",
+      "no-mechanic": "Every mechanic is busy then.",
+      "owner-only": "Only the owner can give a job to another mechanic.",
+      "error": "Couldn't move the job. Please try again."
+    }
   },
   "garageServices": {
     "servicesSuffix": "services",
