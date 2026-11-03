@@ -422,7 +422,13 @@
     "reassign": "Assigner un mécanicien",
     "repairStageLabel": "Étape de réparation",
     "repairStagePlaceholder": "Choisir une étape",
-    "update": "Mettre à jour"
+    "update": "Mettre à jour",
+    "you": "vous",
+    "jobCount": "{count} intervention(s)",
+    "newAppointmentWith": "Nouveau rendez-vous, {day} à {time} avec {mechanic}",
+    "together": "Ensemble",
+    "byMechanic": "Par mécanicien",
+    "dayLayout": "Colonnes du jour"
   },
   "garageServices": {
     "servicesSuffix": "services",

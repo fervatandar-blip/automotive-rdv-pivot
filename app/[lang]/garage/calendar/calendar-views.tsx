@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Ban, CalendarX2 } from "lucide-react";
 import type { DaySchedule } from "@/lib/availability";
 import {
@@ -83,7 +84,36 @@ function PlateChip({ plate }: { plate: string }) {
 }
 
 /**
- * Day and week views: an hourly grid, one column per day, appointments
+ * One column of the time grid: a day (week view, day view "together") or a
+ * mechanic on one day (day view "by mechanic"), with the appointments that
+ * belong in it.
+ */
+export type GridColumn = {
+  key: string;
+  date: string;
+  appointments: CalendarAppointment[];
+  // Slots in this column preset this mechanic in the booking modal.
+  mechanicId?: string;
+  header:
+    | { kind: "date"; href: string | null }
+    | { kind: "mechanic"; name: string; isYou: boolean; count: number }
+    | { kind: "unassigned"; count: number };
+};
+
+function initials(name: string) {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "?"
+  );
+}
+
+/**
+ * Day and week views: an hourly grid, one column per day (or per mechanic
+ * in the day view), appointments
  * positioned by start/end and laid out side by side when they overlap
  * (parallel mechanics). Closed hours and blocks are shaded; every future
  * half-hour is a button that opens the new-appointment modal (see
@@ -91,8 +121,7 @@ function PlateChip({ plate }: { plate: string }) {
  * header (top) and the hour axis (left) sticky.
  */
 export function TimeGrid({
-  dates,
-  appointments,
+  columns,
   schedule,
   startHour,
   endHour,
@@ -102,11 +131,9 @@ export function TimeGrid({
   dateLocale,
   d,
   hrefForAppointment,
-  hrefForDay,
   selectedId,
 }: {
-  dates: string[];
-  appointments: CalendarAppointment[];
+  columns: GridColumn[];
   schedule: Map<string, DaySchedule>;
   startHour: number;
   endHour: number;
@@ -116,7 +143,6 @@ export function TimeGrid({
   dateLocale: string;
   d: D;
   hrefForAppointment: (id: string) => string;
-  hrefForDay: ((date: string) => string) | null;
   selectedId: string | null;
 }) {
   const rangeStartMin = startHour * 60;
@@ -133,47 +159,73 @@ export function TimeGrid({
   });
   const nowMin = minutesIntoDateInAppZone(now, todayKey);
   const hours = Array.from({ length: endHour - startHour }, (_, index) => startHour + index);
-  const gridColumns = `3.5rem repeat(${dates.length}, minmax(${dates.length > 1 ? "7.5rem" : "0"}, 1fr))`;
+  const gridColumns = `3.5rem repeat(${columns.length}, minmax(${columns.length > 1 ? "7.5rem" : "0"}, 1fr))`;
 
   return (
     <div className="max-h-[calc(100dvh-14rem)] min-h-[24rem] overflow-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
       <div className="grid" style={{ gridTemplateColumns: gridColumns }}>
         {/* Header row */}
         <div className="sticky left-0 top-0 z-30 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900" />
-        {dates.map((date) => {
-          const display = dateKeyToDisplayDate(date);
-          const isToday = date === todayKey;
-          const content = (
-            <>
-              <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                {weekday.format(display)}
-              </span>
-              <span
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-base font-semibold tabular-nums ${
-                  isToday
-                    ? "bg-brand-600 text-white dark:bg-brand-500"
-                    : "text-black dark:text-zinc-50"
-                }`}
-              >
-                {Number(date.slice(8))}
-              </span>
-            </>
-          );
+        {columns.map((column) => {
+          const { header } = column;
+          const isToday = column.date === todayKey;
+          let content: ReactNode;
+          if (header.kind === "date") {
+            content = (
+              <>
+                <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  {weekday.format(dateKeyToDisplayDate(column.date))}
+                </span>
+                <span
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-base font-semibold tabular-nums ${
+                    isToday ? "bg-brand-600 text-white dark:bg-brand-500" : "text-black dark:text-zinc-50"
+                  }`}
+                >
+                  {Number(column.date.slice(8))}
+                </span>
+              </>
+            );
+          } else {
+            const name = header.kind === "mechanic" ? header.name : d.unassigned;
+            content = (
+              <>
+                <span
+                  aria-hidden
+                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
+                    header.kind === "mechanic"
+                      ? "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                      : "border border-dashed border-zinc-300 text-zinc-400 dark:border-zinc-700 dark:text-zinc-500"
+                  }`}
+                >
+                  {header.kind === "mechanic" ? initials(header.name) : "?"}
+                </span>
+                <span className="w-full truncate px-1 text-center text-xs font-medium text-black dark:text-zinc-50">
+                  {name}
+                  {header.kind === "mechanic" && header.isYou && (
+                    <span className="font-normal text-zinc-500 dark:text-zinc-400"> ({d.you})</span>
+                  )}
+                </span>
+                <span className="text-[11px] tabular-nums text-zinc-500 dark:text-zinc-400">
+                  {d.jobCount.replace("{count}", String(header.count))}
+                </span>
+              </>
+            );
+          }
           return (
             <div
-              key={date}
+              key={column.key}
               className="sticky top-0 z-20 border-b border-l border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
             >
-              {hrefForDay ? (
+              {header.kind === "date" && header.href ? (
                 <Link
-                  href={hrefForDay(date)}
+                  href={header.href}
                   aria-current={isToday ? "date" : undefined}
                   className="flex flex-col items-center gap-0.5 py-2 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
                 >
                   {content}
                 </Link>
               ) : (
-                <div className="flex flex-col items-center gap-0.5 py-2">{content}</div>
+                <div className="flex min-w-0 flex-col items-center gap-0.5 py-2">{content}</div>
               )}
             </div>
           );
@@ -192,14 +244,16 @@ export function TimeGrid({
           ))}
         </div>
 
-        {/* Day columns */}
-        {dates.map((date) => {
+        {/* Columns */}
+        {columns.map((column) => {
+          const { date } = column;
           const day = schedule.get(date);
+          const mechanicName = column.header.kind === "mechanic" ? column.header.name : null;
           // Clipping to the day (0..1440) leaves an empty span for anything
           // that doesn't touch this date, so one filter covers same-day,
           // overnight and multi-day jobs alike.
           const dayEvents = layoutDayEvents(
-            appointments
+            column.appointments
               .map((appointment) => ({ ...appointment, ...minutesOnDate(appointment, date) }))
               .filter((event) => event.endMin > event.startMin)
           );
@@ -215,7 +269,7 @@ export function TimeGrid({
 
           return (
             <div
-              key={date}
+              key={column.key}
               className="relative border-l border-zinc-200 dark:border-zinc-800"
               style={{ height }}
             >
@@ -246,15 +300,18 @@ export function TimeGrid({
               {/* Bookable half-hours (past ones aren't offered) */}
               {slots.map((start) => {
                 const label = minutesLabel(start);
+                const ariaLabel = (mechanicName ? d.newAppointmentWith : d.newAppointmentAt)
+                  .replace("{day}", slotDay.format(dateKeyToDisplayDate(date)))
+                  .replace("{time}", label)
+                  .replace("{mechanic}", mechanicName ?? "");
                 return (
                   <button
                     key={start}
                     type="button"
                     data-slot-date={date}
                     data-slot-time={label}
-                    aria-label={d.newAppointmentAt
-                      .replace("{day}", slotDay.format(dateKeyToDisplayDate(date)))
-                      .replace("{time}", label)}
+                    data-slot-mechanic={column.mechanicId}
+                    aria-label={ariaLabel}
                     className="group absolute inset-x-0 z-0 flex items-start px-1.5 pt-0.5 text-left transition-colors hover:bg-brand-500/[.06] focus-visible:bg-brand-500/[.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600/50 dark:hover:bg-zinc-800/60"
                     style={{ top: yFor(start), height: (SLOT_MINUTES / 60) * HOUR_PX }}
                   >

@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import en from "@/lib/i18n/dictionaries/en.json";
 import type { DaySchedule } from "@/lib/availability";
-import { AppointmentList, MonthGrid, TimeGrid, type CalendarAppointment } from "./calendar-views";
+import {
+  AppointmentList,
+  MonthGrid,
+  TimeGrid,
+  type CalendarAppointment,
+  type GridColumn,
+} from "./calendar-views";
 
 const d = en.garageCalendar;
 const DAY = "2026-11-04"; // Wednesday, CET (UTC+1)
@@ -44,11 +50,14 @@ const schedule = new Map<string, DaySchedule>([
   ],
 ]);
 
-function renderDay(appointments: CalendarAppointment[]) {
+function dayColumn(appointments: CalendarAppointment[]): GridColumn[] {
+  return [{ key: DAY, date: DAY, appointments, header: { kind: "date", href: null } }];
+}
+
+function renderColumns(columns: GridColumn[]) {
   return renderToStaticMarkup(
     <TimeGrid
-      dates={[DAY]}
-      appointments={appointments}
+      columns={columns}
       schedule={schedule}
       startHour={8}
       endHour={18}
@@ -58,11 +67,12 @@ function renderDay(appointments: CalendarAppointment[]) {
       dateLocale="en-GB"
       d={d}
       hrefForAppointment={(id) => `/en/garage/calendar?appt=${id}`}
-      hrefForDay={null}
       selectedId={null}
     />
   );
 }
+
+const renderDay = (appointments: CalendarAppointment[]) => renderColumns(dayColumn(appointments));
 
 describe("TimeGrid", () => {
   it("positions an appointment by its Luxembourg wall-clock time (64px per hour from 08:00)", () => {
@@ -97,8 +107,7 @@ describe("TimeGrid", () => {
   it("offers no slots on a past day", () => {
     const html = renderToStaticMarkup(
       <TimeGrid
-        dates={[DAY]}
-        appointments={[]}
+        columns={dayColumn([])}
         schedule={schedule}
         startHour={8}
         endHour={18}
@@ -108,11 +117,53 @@ describe("TimeGrid", () => {
         dateLocale="en-GB"
         d={d}
         hrefForAppointment={(id) => id}
-        hrefForDay={null}
         selectedId={null}
       />
     );
     expect(html).not.toContain("data-slot-date");
+  });
+});
+
+describe("TimeGrid by mechanic", () => {
+  it("renders a column per mechanic whose slots preset that mechanic", () => {
+    const html = renderColumns([
+      {
+        key: "mechanic:m1",
+        date: DAY,
+        mechanicId: "m1",
+        appointments: [appointment("a", "2026-11-04T09:00:00Z", "2026-11-04T10:00:00Z", { assigned_mechanic_id: "m1" })],
+        header: { kind: "mechanic", name: "Marc Weber", isYou: true, count: 1 },
+      },
+      {
+        key: "mechanic:m2",
+        date: DAY,
+        mechanicId: "m2",
+        appointments: [],
+        header: { kind: "mechanic", name: "Lea Muller", isYou: false, count: 0 },
+      },
+    ]);
+    expect(html).toContain("Marc Weber");
+    expect(html).toContain("(you)");
+    expect(html).toContain("1 job(s)");
+    expect(html).toContain(">MW<");
+    expect(html.match(/data-slot-mechanic="m2"/g)).toHaveLength(20);
+    expect(html).toContain("New appointment, Wed 4 Nov at 10:00 with Lea Muller");
+    // The job sits only in Marc's column.
+    // (Counting the visible name; the hover title repeats it.)
+    expect(html.match(/>Ana Costa</g)).toHaveLength(1);
+  });
+
+  it("labels the unassigned column and gives its slots no mechanic", () => {
+    const html = renderColumns([
+      {
+        key: "unassigned",
+        date: DAY,
+        appointments: [appointment("a", "2026-11-04T09:00:00Z", "2026-11-04T10:00:00Z")],
+        header: { kind: "unassigned", count: 1 },
+      },
+    ]);
+    expect(html).toContain("Unassigned");
+    expect(html).not.toContain("data-slot-mechanic");
   });
 });
 

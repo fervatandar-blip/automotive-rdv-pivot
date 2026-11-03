@@ -7,7 +7,7 @@ import type { Dictionary } from "@/lib/i18n/get-dictionary";
 
 /**
  * Makes the server-rendered time grid's empty slots bookable. Each slot is a
- * real <button data-slot-date data-slot-time> (keyboard and screen-reader
+ * real <button data-slot-date data-slot-time [data-slot-mechanic]> (keyboard and screen-reader
  * reachable); one delegated click handler opens a single shared
  * new-appointment modal preset to that date and time, instead of mounting a
  * dialog per slot.
@@ -28,7 +28,9 @@ export function SlotBookingSurface({
     const date = slot?.dataset.slotDate;
     const time = slot?.dataset.slotTime;
     if (!date || !time) return;
-    modalRef.current?.open({ date, time });
+    // Set on slots in the per-mechanic day view's columns.
+    const mechanicId = slot?.dataset.slotMechanic || undefined;
+    modalRef.current?.open({ date, time, mechanicId });
   }
 
   return (

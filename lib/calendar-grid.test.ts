@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   closedIntervals,
+  groupByMechanic,
+  parseDayLayout,
   hourRange,
   layoutDayEvents,
   minutesOnDate,
@@ -131,5 +133,38 @@ describe("closedIntervals", () => {
     expect(closedIntervals({ windows: [], rangeStartMin: 480, rangeEndMin: 1080 })).toEqual([
       { start: 480, end: 1080 },
     ]);
+  });
+});
+
+describe("groupByMechanic", () => {
+  const job = (id: string, mechanic: string | null) => ({ id, assigned_mechanic_id: mechanic });
+
+  it("groups by mechanic in the given order and keeps empty columns", () => {
+    const { byMechanic, unassigned } = groupByMechanic(
+      [job("a", "m2"), job("b", "m1"), job("c", "m2")],
+      ["m1", "m2", "m3"]
+    );
+    expect([...byMechanic.keys()]).toEqual(["m1", "m2", "m3"]);
+    expect(byMechanic.get("m2")?.map((item) => item.id)).toEqual(["a", "c"]);
+    expect(byMechanic.get("m3")).toEqual([]);
+    expect(unassigned).toEqual([]);
+  });
+
+  it("collects unassigned jobs and jobs held by someone no longer on the team", () => {
+    const { unassigned } = groupByMechanic([job("a", null), job("b", "left-the-team"), job("c", "m1")], ["m1"]);
+    expect(unassigned.map((item) => item.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("parseDayLayout", () => {
+  it("defaults to per-mechanic columns from two mechanics up", () => {
+    expect(parseDayLayout(undefined, 1)).toBe("together");
+    expect(parseDayLayout(undefined, 2)).toBe("mechanic");
+  });
+
+  it("honours an explicit choice, except with no mechanics at all", () => {
+    expect(parseDayLayout("together", 3)).toBe("together");
+    expect(parseDayLayout("mechanic", 1)).toBe("mechanic");
+    expect(parseDayLayout("mechanic", 0)).toBe("together");
   });
 });

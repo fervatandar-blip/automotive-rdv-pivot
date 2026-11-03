@@ -172,3 +172,33 @@ export function closedIntervals({
   if (cursor < rangeEndMin) closed.push({ start: cursor, end: rangeEndMin });
   return closed.filter((interval) => interval.end > interval.start);
 }
+
+/**
+ * Splits appointments into one group per mechanic, in the order given, plus
+ * the ones no current mechanic holds: unassigned, or assigned to someone who
+ * has since left the team. Those must stay visible somewhere, so they get
+ * their own group rather than being dropped.
+ */
+export function groupByMechanic<T extends { assigned_mechanic_id: string | null }>(
+  items: T[],
+  mechanicIds: string[]
+) {
+  const known = new Set(mechanicIds);
+  return {
+    byMechanic: new Map(
+      mechanicIds.map((id) => [id, items.filter((item) => item.assigned_mechanic_id === id)])
+    ),
+    unassigned: items.filter(
+      (item) => !item.assigned_mechanic_id || !known.has(item.assigned_mechanic_id)
+    ),
+  };
+}
+
+export type DayLayout = "mechanic" | "together";
+
+/** By mechanic is the useful default once there's more than one. */
+export function parseDayLayout(value: unknown, mechanicCount: number): DayLayout {
+  if (mechanicCount === 0) return "together";
+  if (value === "mechanic" || value === "together") return value;
+  return mechanicCount >= 2 ? "mechanic" : "together";
+}

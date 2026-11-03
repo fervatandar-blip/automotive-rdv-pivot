@@ -822,6 +822,8 @@ export async function assignMechanic(formData: FormData) {
     if (isDateKey(returnDate)) params.set("date", returnDate);
     if (typeof id === "string" && UUID_PATTERN.test(id)) params.set("appt", id);
     if (formData.get("returnCancelled") === "1") params.set("cancelled", "1");
+    const returnBy = formData.get("returnBy");
+    if (returnBy === "mechanic" || returnBy === "together") params.set("by", returnBy);
     if (error) params.set("error", error);
     return `/${lang}/garage/calendar?${params}`;
   };

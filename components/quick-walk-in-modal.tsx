@@ -27,8 +27,11 @@ function FieldError({ messages }: { messages?: string[] }) {
   return messages?.length ? <p className="text-sm text-red-600">{messages[0]}</p> : null;
 }
 
-/** A date/time to start the form on, e.g. from a click on a calendar slot. */
-export type WalkInPreset = { date: string; time: string };
+/**
+ * Where to start the form, e.g. from a click on a calendar slot: the date
+ * and time, and in the per-mechanic day view, that column's mechanic.
+ */
+export type WalkInPreset = { date: string; time: string; mechanicId?: string };
 
 export type WalkInModalHandle = { open: (preset?: WalkInPreset) => void };
 
@@ -415,7 +418,16 @@ function WalkInForm({
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor={`${fieldId}-mechanic`} className={labelClass}>{d.mechanicLabel}</label>
-          <select id={`${fieldId}-mechanic`} name="mechanicId" defaultValue="" className={inputClass}>
+          <select
+            id={`${fieldId}-mechanic`}
+            name="mechanicId"
+            defaultValue={
+              preset?.mechanicId && options.mechanics.some((mechanic) => mechanic.id === preset.mechanicId)
+                ? preset.mechanicId
+                : ""
+            }
+            className={inputClass}
+          >
             <option value="">{d.autoAssign}</option>
             {options.mechanics.map((mechanic) => (
               <option key={mechanic.id} value={mechanic.id}>

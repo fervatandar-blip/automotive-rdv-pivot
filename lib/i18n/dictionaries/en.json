@@ -422,7 +422,13 @@
     "reassign": "Assign mechanic",
     "repairStageLabel": "Repair stage",
     "repairStagePlaceholder": "Choose a stage",
-    "update": "Update"
+    "update": "Update",
+    "you": "you",
+    "jobCount": "{count} job(s)",
+    "newAppointmentWith": "New appointment, {day} at {time} with {mechanic}",
+    "together": "Together",
+    "byMechanic": "By mechanic",
+    "dayLayout": "Day columns"
   },
   "garageServices": {
     "servicesSuffix": "services",

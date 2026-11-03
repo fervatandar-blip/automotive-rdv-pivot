@@ -12,14 +12,17 @@ import {
 import { getScheduleForDates } from "@/lib/availability";
 import {
   CALENDAR_VIEWS,
+  groupByMechanic,
   hourRange,
   isDateKey,
   minutesOnDate,
   monthGridDates,
   navigationTargets,
   parseCalendarView,
+  parseDayLayout,
   weekDates,
   type CalendarView,
+  type DayLayout,
 } from "@/lib/calendar-grid";
 import { REPAIR_STAGES } from "@/lib/definitions";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
@@ -41,6 +44,7 @@ import {
   customerName,
   timeFormatter,
   type CalendarAppointment,
+  type GridColumn,
 } from "./calendar-views";
 import { DrawerShell } from "./drawer-shell";
 import { SlotBookingSurface } from "./slot-booking";
@@ -58,11 +62,18 @@ const CONTROL =
 const DRAWER_BUTTON =
   "inline-flex items-center justify-center rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
 
-type CalendarState = { view: CalendarView; date: string; cancelled: boolean };
+type CalendarState = {
+  view: CalendarView;
+  date: string;
+  cancelled: boolean;
+  // Day view columns: one per mechanic, or all jobs together.
+  by: DayLayout;
+};
 
 function calendarHref(lang: Locale, state: CalendarState, extra: { appt?: string } = {}) {
   const params = new URLSearchParams({ view: state.view, date: state.date });
   if (state.cancelled) params.set("cancelled", "1");
+  params.set("by", state.by);
   if (extra.appt) params.set("appt", extra.appt);
   return `/${lang}/garage/calendar?${params}`;
 }
@@ -104,11 +115,12 @@ export default async function GarageCalendarPage({
     error?: string;
     appt?: string;
     cancelled?: string;
+    by?: string;
   }>;
 }) {
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
-  const { garage, isOwner } = await requireGarageMember(lang);
+  const { garage, isOwner, profile } = await requireGarageMember(lang);
   const dictionary = await getDictionary(lang);
   const d = dictionary.garageCalendar;
   const statusLabels = dictionary.common.appointmentStatus;
@@ -122,7 +134,9 @@ export default async function GarageCalendarPage({
   // Cancelled jobs are hidden on the grids by default (they'd take room
   // beside live ones); the list always shows them.
   const showCancelled = query.cancelled === "1";
-  const state: CalendarState = { view, date: anchor, cancelled: showCancelled };
+  // `by` is settled once the mechanics are known (its default depends on
+  // how many there are); "together" is a safe placeholder until then.
+  const state: CalendarState = { view, date: anchor, cancelled: showCancelled, by: "together" };
   const selectedId = query.appt && UUID_PATTERN.test(query.appt) ? query.appt : null;
 
   const dates =
@@ -176,6 +190,7 @@ export default async function GarageCalendarPage({
       .filter((mechanic): mechanic is Mechanic => mechanic !== null),
   ];
   const mechanicNames = new Map(mechanics.map((mechanic) => [mechanic.id, mechanic.full_name]));
+  state.by = parseDayLayout(query.by, mechanics.length);
 
   const { startHour, endHour } = hourRange({
     windows: isGrid ? [...schedule.values()].flatMap((day) => day.windows) : [],
@@ -192,6 +207,52 @@ export default async function GarageCalendarPage({
   const title = heading(view, dates, anchor, dateLocale);
   const hrefForAppointment = (id: string) => calendarHref(lang, state, { appt: id });
   const hrefForDay = (date: string) => calendarHref(lang, { ...state, view: "day", date });
+  let columns: GridColumn[];
+  if (view === "day" && state.by === "mechanic") {
+    const { byMechanic, unassigned } = groupByMechanic(
+      appointments,
+      mechanics.map((mechanic) => mechanic.id)
+    );
+    columns = [
+      ...mechanics.map((mechanic) => {
+        const own = byMechanic.get(mechanic.id) ?? [];
+        return {
+          key: `mechanic:${mechanic.id}`,
+          date: anchor,
+          appointments: own,
+          mechanicId: mechanic.id,
+          header: {
+            kind: "mechanic" as const,
+            name: mechanic.full_name,
+            isYou: mechanic.id === profile.id,
+            count: own.filter((appointment) => appointment.status !== "cancelled").length,
+          },
+        };
+      }),
+      // Only when something needs it: jobs nobody on the team holds.
+      ...(unassigned.length > 0
+        ? [
+            {
+              key: "unassigned",
+              date: anchor,
+              appointments: unassigned,
+              header: {
+                kind: "unassigned" as const,
+                count: unassigned.filter((appointment) => appointment.status !== "cancelled").length,
+              },
+            },
+          ]
+        : []),
+    ];
+  } else {
+    columns = dates.map((date) => ({
+      key: date,
+      date,
+      appointments,
+      header: { kind: "date" as const, href: view === "week" ? hrefForDay(date) : null },
+    }));
+  }
+
   const viewLabels: Record<CalendarView, string> = {
     day: d.day,
     week: d.week,
@@ -225,6 +286,27 @@ export default async function GarageCalendarPage({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {view === "day" && mechanics.length > 0 && (
+            <nav
+              aria-label={d.dayLayout}
+              className="inline-flex rounded-lg border border-zinc-200 bg-zinc-100/80 p-0.5 dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              {(["together", "mechanic"] as const).map((option) => (
+                <Link
+                  key={option}
+                  href={calendarHref(lang, { ...state, by: option })}
+                  aria-current={state.by === option ? "page" : undefined}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    state.by === option
+                      ? "bg-white text-black shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
+                      : "text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                  }`}
+                >
+                  {option === "mechanic" ? d.byMechanic : d.together}
+                </Link>
+              ))}
+            </nav>
+          )}
           {view !== "list" && (
             <Link
               href={calendarHref(lang, { ...state, cancelled: !showCancelled })}
@@ -275,8 +357,7 @@ export default async function GarageCalendarPage({
       {isGrid && (
         <SlotBookingSurface lang={lang} d={dictionary.walkIn}>
           <TimeGrid
-            dates={dates}
-            appointments={appointments}
+            columns={columns}
             schedule={schedule}
             startHour={startHour}
             endHour={endHour}
@@ -286,7 +367,6 @@ export default async function GarageCalendarPage({
             dateLocale={dateLocale}
             d={d}
             hrefForAppointment={hrefForAppointment}
-            hrefForDay={view === "week" ? hrefForDay : null}
             selectedId={selectedId}
           />
         </SlotBookingSurface>
@@ -451,6 +531,7 @@ function AppointmentDrawer({
             <input type="hidden" name="returnView" value={state.view} />
             <input type="hidden" name="returnDate" value={state.date} />
             {state.cancelled && <input type="hidden" name="returnCancelled" value="1" />}
+            <input type="hidden" name="returnBy" value={state.by} />
             <label htmlFor="drawer-mechanic" className="text-sm font-medium">
               {d.reassign}
             </label>
