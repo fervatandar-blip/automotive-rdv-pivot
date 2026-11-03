@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   FREQUENT_MIN_VISITS,
   clientMatches,
+  directoryStats,
   parseDirectoryFilter,
   parseDirectorySort,
   visibleClients,
@@ -18,6 +19,8 @@ function client(overrides: Partial<DirectoryClient> & { name: string }): Directo
     phone: null,
     phoneDigits: "",
     isVip: false,
+    hasNotes: false,
+    activeThisMonth: false,
     appointmentCount: 0,
     visitCount: 0,
     lastVisit: null,
@@ -113,5 +116,18 @@ describe("visibleClients", () => {
   it("falls back to safe defaults for unknown URL values", () => {
     expect(parseDirectoryFilter("vip")).toBe("all");
     expect(parseDirectorySort("newest")).toBe("last-visit");
+  });
+});
+
+describe("directoryStats", () => {
+  it("counts live clients, those active this month and VIPs, never anonymized ones", () => {
+    expect(
+      directoryStats([
+        client({ name: "A", isVip: true, activeThisMonth: true }),
+        client({ name: "B", activeThisMonth: true }),
+        client({ name: "C" }),
+        client({ name: "Deleted customer", anonymized: true, isVip: true, activeThisMonth: true }),
+      ])
+    ).toEqual({ total: 3, activeThisMonth: 2, vip: 1 });
   });
 });

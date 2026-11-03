@@ -742,8 +742,6 @@
     "sortAlphabetical": "Alphabetical",
     "sortAppointments": "Most appointments",
     "vip": "VIP",
-    "newBooking": "New booking",
-    "details": "Details",
     "lastVisit": "Last visit {date}",
     "nextVisit": "Next {date}",
     "rdvClientBadge": "RDV client",
@@ -787,7 +785,21 @@
       "notesTooLong": "Keep notes under 2000 characters.",
       "preferredTimeTooLong": "Keep it under 80 characters.",
       "saveFailed": "Couldn't save. Please try again."
-    }
+    },
+    "kpiTotal": "Total clients",
+    "kpiActiveThisMonth": "Active this month",
+    "kpiVip": "VIP clients",
+    "colClient": "Client",
+    "colTags": "Tags",
+    "colVehicles": "Vehicles",
+    "colActivity": "Activity",
+    "colActions": "Actions",
+    "notesBadge": "Notes",
+    "book": "Book",
+    "viewProfile": "View profile",
+    "visitsCount": "{count} visit(s)",
+    "moreVehicles": "+{count} more",
+    "noVehiclesShort": "No vehicle"
   },
   "garageStripeConnect": {
     "backToDashboard": "Back to dashboard",

@@ -742,8 +742,6 @@
     "sortAlphabetical": "Alphabétique",
     "sortAppointments": "Plus de rendez-vous",
     "vip": "VIP",
-    "newBooking": "Nouveau RDV",
-    "details": "Détails",
     "lastVisit": "Dernière visite le {date}",
     "nextVisit": "Prochain le {date}",
     "rdvClientBadge": "Client RDV",
@@ -787,7 +785,21 @@
       "notesTooLong": "Les notes doivent faire moins de 2000 caractères.",
       "preferredTimeTooLong": "Moins de 80 caractères, s'il vous plaît.",
       "saveFailed": "Impossible d'enregistrer. Veuillez réessayer."
-    }
+    },
+    "kpiTotal": "Clients au total",
+    "kpiActiveThisMonth": "Actifs ce mois-ci",
+    "kpiVip": "Clients VIP",
+    "colClient": "Client",
+    "colTags": "Étiquettes",
+    "colVehicles": "Véhicules",
+    "colActivity": "Activité",
+    "colActions": "Actions",
+    "notesBadge": "Notes",
+    "book": "Réserver",
+    "viewProfile": "Voir la fiche",
+    "visitsCount": "{count} visite(s)",
+    "moreVehicles": "+{count} autre(s)",
+    "noVehiclesShort": "Aucun véhicule"
   },
   "garageStripeConnect": {
     "backToDashboard": "Retour au tableau de bord",

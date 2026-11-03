@@ -2,14 +2,16 @@ import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { APP_TIME_ZONE } from "@/lib/timezone";
+import { APP_TIME_ZONE, todayKeyInAppZone, zonedStartOfDay } from "@/lib/timezone";
 import {
+  directoryStats,
   parseDirectoryFilter,
   parseDirectorySort,
   type DirectoryClient,
   type DirectoryVehicle,
 } from "@/lib/client-directory";
 import { ClientDirectory } from "./client-directory";
+import { DirectoryStats } from "./directory-stats";
 import { ClientDrawer, type ClientNotes, type TimelineEntry } from "./client-drawer";
 
 type VehicleRow = {
@@ -76,6 +78,13 @@ export default async function GarageClientsPage({
   const supabase = await createClient();
   // Request time, for last/next visit (same pattern as the dashboard).
   const now = new Date().getTime();
+  // This calendar month in the garage's zone, for "Active this month".
+  const monthKey = todayKeyInAppZone().slice(0, 7);
+  const monthStart = zonedStartOfDay(`${monthKey}-01`).getTime();
+  const [monthYear, monthNumber] = monthKey.split("-").map(Number);
+  const nextMonthStart = zonedStartOfDay(
+    monthNumber === 12 ? `${monthYear + 1}-01-01` : `${monthYear}-${String(monthNumber + 1).padStart(2, "0")}-01`
+  ).getTime();
 
   const [{ data: appointments }, { data: customers }, { data: notesData }] = await Promise.all([
     supabase
@@ -158,6 +167,8 @@ export default async function GarageClientsPage({
       phone: shownPhone,
       phoneDigits: (shownPhone ?? "").replace(/\D/g, ""),
       isVip: notes?.is_vip ?? false,
+      hasNotes: Boolean(notes?.notes || notes?.preferred_contact_time),
+      activeThisMonth: false,
       appointmentCount: 0,
       visitCount: 0,
       lastVisit: null,
@@ -197,6 +208,9 @@ export default async function GarageClientsPage({
       client.visitCount += 1;
       if (!client.lastVisit || row.start_time > client.lastVisit) client.lastVisit = row.start_time;
     }
+    if (row.status !== "cancelled" && startMs >= monthStart && startMs < nextMonthStart) {
+      client.activeThisMonth = true;
+    }
     if ((row.status === "pending" || row.status === "confirmed") && startMs > now) {
       if (!client.nextVisit || row.start_time < client.nextVisit) client.nextVisit = row.start_time;
     }
@@ -234,6 +248,8 @@ export default async function GarageClientsPage({
     phone: entry.phone,
     phoneDigits: entry.phoneDigits,
     isVip: entry.isVip,
+    hasNotes: entry.hasNotes,
+    activeThisMonth: entry.activeThisMonth,
     appointmentCount: entry.appointmentCount,
     visitCount: entry.visitCount,
     lastVisit: entry.lastVisit,
@@ -351,11 +367,12 @@ export default async function GarageClientsPage({
 
   return (
     <div className="flex flex-1 flex-col gap-6 bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-8 sm:py-10">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">{d.title}</h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{d.subtitle}</p>
         </div>
+        <DirectoryStats stats={directoryStats(directory)} d={d} />
         {query.anonymized === "1" && (
           <p
             role="status"

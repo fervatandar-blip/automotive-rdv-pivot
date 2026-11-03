@@ -36,6 +36,10 @@ export type DirectoryClient = {
   // Digits of the phone, for search.
   phoneDigits: string;
   isVip: boolean;
+  // The garage has notes or a preferred contact time for them (0042).
+  hasNotes: boolean;
+  // Had or has a non-cancelled appointment this calendar month (garage zone).
+  activeThisMonth: boolean;
   // Every appointment here except unfinished checkouts.
   appointmentCount: number;
   // Non-cancelled appointments that have already started.
@@ -110,6 +114,16 @@ export function sortDirectory(clients: DirectoryClient[], sort: DirectorySort, l
     if (b.lastVisit) return 1;
     return byName(a, b);
   });
+}
+
+/** The KPI strip above the directory. */
+export function directoryStats(clients: DirectoryClient[]) {
+  const live = clients.filter((client) => !client.anonymized);
+  return {
+    total: live.length,
+    activeThisMonth: live.filter((client) => client.activeThisMonth).length,
+    vip: live.filter((client) => client.isVip).length,
+  };
 }
 
 /** The visible list: search, then filter, then sort. */
