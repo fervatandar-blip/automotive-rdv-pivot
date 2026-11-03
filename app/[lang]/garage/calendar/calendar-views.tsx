@@ -364,6 +364,13 @@ export function TimeGrid({
                 const durationMin = Math.round(
                   (new Date(event.end_time).getTime() - new Date(event.start_time).getTime()) / 60000
                 );
+                // Only a job drawn whole in this column can be resized from
+                // its bottom edge (an overnight job's visible bottom isn't
+                // its real end).
+                const resizable =
+                  movable &&
+                  dateKeyInAppZone(new Date(event.start_time)) === date &&
+                  dateKeyInAppZone(new Date(new Date(event.end_time).getTime() - 1)) === date;
                 return (
                   <Link
                     key={event.id}
@@ -373,6 +380,7 @@ export function TimeGrid({
                     {...(movable
                       ? {
                           "data-drag-appt": event.id,
+                          "data-drag-start": event.startMin,
                           "data-drag-duration": durationMin,
                           "data-drag-mechanic": event.assigned_mechanic_id ?? "",
                           "data-drag-label": `${service} · ${client}`,
@@ -380,7 +388,7 @@ export function TimeGrid({
                         }
                       : {})}
                     title={`${range} · ${client} · ${service}${plate ? ` · ${plate}` : ""}`}
-                    className={`absolute z-10 flex select-none flex-col gap-0.5 overflow-hidden rounded-md border-l-4 px-1.5 py-1 text-left shadow-sm ring-1 ring-black/5 transition-colors dark:ring-white/5 ${
+                    className={`group/block absolute z-10 flex select-none flex-col gap-0.5 overflow-hidden rounded-md border-l-4 px-1.5 py-1 text-left shadow-sm ring-1 ring-black/5 transition-colors dark:ring-white/5 ${
                       movable ? "cursor-grab active:cursor-grabbing" : ""
                     } ${
                       EVENT_STYLES[event.status] ?? EVENT_STYLES.pending
@@ -400,6 +408,16 @@ export function TimeGrid({
                       <span className="flex min-w-0 items-center gap-1 text-[11px] leading-tight opacity-80">
                         {plate && <PlateChip plate={plate} />}
                         <span className="truncate">{service}</span>
+                      </span>
+                    )}
+                    {resizable && (
+                      <span
+                        data-resize-handle
+                        aria-hidden
+                        title={d.resizeHandle}
+                        className="absolute inset-x-0 bottom-0 flex h-2.5 cursor-ns-resize items-end justify-center pb-0.5"
+                      >
+                        <span className="h-0.5 w-6 rounded-full bg-current opacity-0 transition-opacity group-hover/block:opacity-40" />
                       </span>
                     )}
                   </Link>

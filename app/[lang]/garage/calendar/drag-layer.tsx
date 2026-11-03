@@ -12,7 +12,8 @@ import {
 import { createPortal } from "react-dom";
 import { MoveRight } from "lucide-react";
 import { moveAppointment, type MoveAppointmentResult } from "@/app/actions/appointments";
-import { dropStartMinutes, minutesToTime } from "@/lib/calendar-grid";
+import { dropStartMinutes, minutesToTime, resizeEndMinutes } from "@/lib/calendar-grid";
+import { formatMinutes } from "@/lib/dashboard";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
@@ -23,18 +24,25 @@ type MoveError = Extract<MoveAppointmentResult, { ok: false }>["error"];
 type Target = {
   date: string;
   startMin: number;
+  durationMin: number;
   // Set when dropped in a mechanic's column (per-mechanic day view).
   mechanicId?: string;
   mechanicName?: string;
   valid: boolean;
 };
 
+type Mode = "move" | "resize";
+
 type Drag = {
+  mode: Mode;
   pointerId: number;
   block: HTMLElement;
+  // The block's own column: a resize never leaves it.
+  column: HTMLElement;
   scroller: HTMLElement;
   startX: number;
   startY: number;
+  // Pointer offset from the block's top (move) or bottom (resize) edge.
   grabOffsetY: number;
   active: boolean;
   id: string;
@@ -53,6 +61,7 @@ type Drag = {
 type Ghost = { left: number; top: number; width: number; height: number; text: string; valid: boolean };
 
 type Pending = {
+  mode: Mode;
   id: string;
   durationMin: number;
   mechanicId: string;
@@ -63,14 +72,24 @@ type Pending = {
 
 const noopSubscribe = () => () => {};
 
+/** Page-wide cursor while dragging (the pointer may leave the block). */
+function setPageCursor(cursor: "" | "grabbing" | "ns-resize") {
+  document.body.style.cursor = cursor;
+}
+
 const DRAG_THRESHOLD_PX = 5;
 const AUTOSCROLL_EDGE_PX = 48;
 const AUTOSCROLL_STEP_PX = 14;
 
 /**
- * Drag-and-drop rescheduling for the server-rendered time grid. Blocks
- * carry data-drag-* attributes (only open jobs do); columns carry their date
- * and, in the per-mechanic day view, their mechanic.
+ * Drag-and-drop rescheduling and resizing for the server-rendered time
+ * grid. Blocks carry data-drag-* attributes (only open jobs do) and, when
+ * drawn whole, a [data-resize-handle] on their bottom edge; columns carry
+ * their date and, in the per-mechanic day view, their mechanic.
+ *
+ * - Dragging the block moves it (length kept); dragging the handle changes
+ *   the end time (start kept, 15-minute snap, at least 15 minutes, same
+ *   mechanic -- see moveAppointment).
  *
  * - Mouse and pen only. On touch, a drag would fight scrolling the grid;
  *   the appointment panel's Reschedule button covers phones (and keyboards).
@@ -117,7 +136,7 @@ export function CalendarDragLayer({
       dimmedRef.current.style.opacity = "";
       dimmedRef.current = null;
     }
-    document.body.style.cursor = "";
+    setPageCursor("");
   }
 
   function reset() {
@@ -164,18 +183,19 @@ export function CalendarDragLayer({
     const scroller = block?.closest<HTMLElement>("[data-grid-scroll]");
     if (!block || !column || !scroller) return;
 
-    const { rangeStart, hourPx } = geometry(scroller);
     const blockRect = block.getBoundingClientRect();
-    const columnRect = column.getBoundingClientRect();
     const durationMin = Number(block.dataset.dragDuration);
+    const mode: Mode = (event.target as HTMLElement).closest("[data-resize-handle]") ? "resize" : "move";
 
     dragRef.current = {
+      mode,
       pointerId: event.pointerId,
       block,
+      column,
       scroller,
       startX: event.clientX,
       startY: event.clientY,
-      grabOffsetY: event.clientY - blockRect.top,
+      grabOffsetY: mode === "resize" ? blockRect.bottom - event.clientY : event.clientY - blockRect.top,
       active: false,
       id: block.dataset.dragAppt!,
       durationMin,
@@ -183,14 +203,8 @@ export function CalendarDragLayer({
       label: block.dataset.dragLabel ?? "",
       notify: block.dataset.dragNotify === "1",
       originDate: column.dataset.colDate!,
-      originStartMin: dropStartMinutes({
-        // The block is drawn 1px below its true start (inset).
-        blockTopPx: blockRect.top - columnRect.top - 1,
-        rangeStartMin: rangeStart,
-        hourPx,
-        durationMin,
-        snapMinutes: 5,
-      }),
+      // The job's exact start on this column's day, from the grid.
+      originStartMin: Number(block.dataset.dragStart),
       target: null,
       detach: () => {
         window.removeEventListener("pointermove", move);
@@ -219,9 +233,14 @@ export function CalendarDragLayer({
       drag.active = true;
       drag.block.style.opacity = "0.35";
       dimmedRef.current = drag.block;
-      document.body.style.cursor = "grabbing";
+      setPageCursor(drag.mode === "resize" ? "ns-resize" : "grabbing");
     }
     event.preventDefault();
+
+    if (drag.mode === "resize") {
+      handleResize(drag, event);
+      return;
+    }
 
     // Scroll the grid when dragging near its edges.
     const scrollRect = drag.scroller.getBoundingClientRect();
@@ -248,6 +267,7 @@ export function CalendarDragLayer({
     drag.target = {
       date: column.dataset.colDate!,
       startMin,
+      durationMin: drag.durationMin,
       mechanicId: columnMechanic,
       mechanicName: column.dataset.colMechanicName,
       valid,
@@ -259,6 +279,32 @@ export function CalendarDragLayer({
       height: Math.max((drag.durationMin / 60) * hourPx, 22),
       text: `${minutesToTime(startMin)}–${minutesToTime(startMin + drag.durationMin)}`,
       valid,
+    });
+  }
+
+  function handleResize(drag: Drag, event: globalThis.PointerEvent) {
+    const scrollRect = drag.scroller.getBoundingClientRect();
+    if (event.clientY < scrollRect.top + AUTOSCROLL_EDGE_PX) drag.scroller.scrollBy(0, -AUTOSCROLL_STEP_PX);
+    else if (event.clientY > scrollRect.bottom - AUTOSCROLL_EDGE_PX) drag.scroller.scrollBy(0, AUTOSCROLL_STEP_PX);
+
+    const { rangeStart, hourPx } = geometry(drag.scroller);
+    const columnRect = drag.column.getBoundingClientRect();
+    const endMin = resizeEndMinutes({
+      blockBottomPx: event.clientY + drag.grabOffsetY - columnRect.top,
+      rangeStartMin: rangeStart,
+      hourPx,
+      startMin: drag.originStartMin,
+    });
+    const durationMin = endMin - drag.originStartMin;
+
+    drag.target = { date: drag.originDate, startMin: drag.originStartMin, durationMin, valid: true };
+    setGhost({
+      left: columnRect.left + 2,
+      width: columnRect.width - 4,
+      top: columnRect.top + ((drag.originStartMin - rangeStart) / 60) * hourPx,
+      height: Math.max((durationMin / 60) * hourPx, 22),
+      text: `${minutesToTime(drag.originStartMin)}–${minutesToTime(endMin)} · ${formatMinutes(durationMin)}`,
+      valid: true,
     });
   }
 
@@ -287,6 +333,7 @@ export function CalendarDragLayer({
       !target ||
       (target.date === drag.originDate &&
         target.startMin === drag.originStartMin &&
+        target.durationMin === drag.durationMin &&
         (!target.mechanicId || target.mechanicId === drag.mechanicId));
     if (!target || !target.valid || unchanged) {
       if (target && !target.valid) setToast(d.moveErrors["owner-only"]);
@@ -294,11 +341,13 @@ export function CalendarDragLayer({
       return;
     }
     setPending({
+      mode: drag.mode,
       id: drag.id,
       durationMin: drag.durationMin,
       mechanicId: drag.mechanicId,
       label: drag.label,
-      notify: drag.notify,
+      // A resize keeps the start time, so there's nothing to tell the client.
+      notify: drag.notify && drag.mode === "move" && target.startMin !== drag.originStartMin,
       target,
     });
   }
@@ -312,10 +361,17 @@ export function CalendarDragLayer({
         id: pending.id,
         date: target.date,
         time: minutesToTime(target.startMin),
-        mechanicId: target.mechanicId,
+        ...(pending.mode === "resize"
+          ? { durationMinutes: target.durationMin }
+          : { mechanicId: target.mechanicId }),
       });
       if (!result.ok) {
         setError(result.error);
+        return;
+      }
+      if (pending.mode === "resize") {
+        reset();
+        setToast(d.resized.replace("{range}", rangeLabel(target)));
         return;
       }
       const when = `${formatDay(target.date)} ${minutesToTime(target.startMin)}`;
@@ -328,17 +384,23 @@ export function CalendarDragLayer({
     });
   }
 
+  function rangeLabel(target: Target) {
+    return `${minutesToTime(target.startMin)}–${minutesToTime(target.startMin + target.durationMin)} (${formatMinutes(target.durationMin)})`;
+  }
+
   const pendingWhen = pending
     ? `${formatDay(pending.target.date)} ${minutesToTime(pending.target.startMin)}`
     : "";
-  const pendingText = pending
-    ? (pending.target.mechanicName && pending.target.mechanicId !== pending.mechanicId
-        ? d.moveConfirmWith.replace("{mechanic}", pending.target.mechanicName)
-        : d.moveConfirm
-      )
-        .replace("{job}", pending.label)
-        .replace("{when}", pendingWhen)
-    : "";
+  const pendingText = !pending
+    ? ""
+    : pending.mode === "resize"
+      ? d.resizeConfirm.replace("{job}", pending.label).replace("{range}", rangeLabel(pending.target))
+      : (pending.target.mechanicName && pending.target.mechanicId !== pending.mechanicId
+          ? d.moveConfirmWith.replace("{mechanic}", pending.target.mechanicName)
+          : d.moveConfirm
+        )
+          .replace("{job}", pending.label)
+          .replace("{when}", pendingWhen);
 
   return (
     <div onPointerDown={onPointerDown} className="contents">

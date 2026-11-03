@@ -229,3 +229,29 @@ export function dropStartMinutes({
 export function minutesToTime(minutes: number) {
   return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
+
+/** Shortest job a resize can produce, in minutes. */
+export const MIN_JOB_MINUTES = 15;
+
+/**
+ * Where a resized job ends: the block's bottom edge (pointer position plus
+ * where on the handle it was grabbed), in minutes, snapped, at least
+ * MIN_JOB_MINUTES after the start and no later than midnight.
+ */
+export function resizeEndMinutes({
+  blockBottomPx,
+  rangeStartMin,
+  hourPx,
+  startMin,
+  snapMinutes = 15,
+}: {
+  blockBottomPx: number; // block's bottom edge relative to the column's top
+  rangeStartMin: number;
+  hourPx: number;
+  startMin: number;
+  snapMinutes?: number;
+}) {
+  const raw = rangeStartMin + (blockBottomPx / hourPx) * 60;
+  const snapped = Math.round(raw / snapMinutes) * snapMinutes;
+  return Math.min(Math.max(snapped, startMin + MIN_JOB_MINUTES), 24 * 60);
+}

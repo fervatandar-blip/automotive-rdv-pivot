@@ -20,7 +20,7 @@ import {
 } from "@/lib/notifications";
 import { renderInvoicePdf } from "@/lib/invoice-pdf";
 import { REPAIR_STAGES } from "@/lib/definitions";
-import { isDateKey, parseCalendarView } from "@/lib/calendar-grid";
+import { MIN_JOB_MINUTES, isDateKey, parseCalendarView } from "@/lib/calendar-grid";
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -863,6 +863,8 @@ export type MoveAppointmentInput = {
   // Pin the job to this mechanic (per-mechanic day view). Omitted: time
   // only, and the 0037 trigger keeps or reassigns the mechanic.
   mechanicId?: string;
+  // Resize: the job's new length. Omitted: the length is kept (a move).
+  durationMinutes?: number;
 };
 
 export type MoveAppointmentResult =
@@ -886,9 +888,9 @@ export type MoveAppointmentResult =
 const MOVE_PAST_TOLERANCE_MS = 15 * 60 * 1000;
 
 /**
- * Drag-and-drop rescheduling from the garage calendar. Called directly from
- * the client (not a form), so it returns a result instead of redirecting.
- * The job keeps its current length. Atomic time + mechanic change through
+ * Drag-and-drop rescheduling and resizing from the garage calendar. Called
+ * directly from the client (not a form), so it returns a result instead of
+ * redirecting. A move keeps the job's length; a resize sets a new one. Atomic time + mechanic change through
  * move_appointment (0041); opening hours are deliberately not enforced for
  * staff, same as walk-ins.
  */
@@ -902,7 +904,11 @@ export async function moveAppointment(
     !UUID_PATTERN.test(input.id) ||
     !isDateKey(input.date) ||
     !/^([01]\d|2[0-3]):[0-5]\d$/.test(input.time) ||
-    (input.mechanicId !== undefined && !UUID_PATTERN.test(input.mechanicId))
+    (input.mechanicId !== undefined && !UUID_PATTERN.test(input.mechanicId)) ||
+    (input.durationMinutes !== undefined &&
+      (!Number.isInteger(input.durationMinutes) ||
+        input.durationMinutes < MIN_JOB_MINUTES ||
+        input.durationMinutes % 5 !== 0))
   ) {
     return { ok: false, error: "invalid" };
   }
@@ -922,7 +928,9 @@ export async function moveAppointment(
   }
 
   const durationMs =
-    new Date(current.end_time).getTime() - new Date(current.start_time).getTime();
+    input.durationMinutes !== undefined
+      ? input.durationMinutes * 60_000
+      : new Date(current.end_time).getTime() - new Date(current.start_time).getTime();
   const newStart = zonedDateTimeToUtc(input.date, input.time);
   const newEnd = new Date(newStart.getTime() + durationMs);
 
@@ -933,11 +941,19 @@ export async function moveAppointment(
     return { ok: false, error: "crosses-midnight" };
   }
 
+  // A resize keeps the job with its mechanic: if the longer job doesn't fit
+  // their day, refuse rather than let the 0037 trigger quietly hand it to
+  // someone else (pinning the current mechanic is never an owner-only
+  // reassignment in move_appointment).
+  const pinnedMechanic =
+    input.mechanicId ??
+    (input.durationMinutes !== undefined ? current.assigned_mechanic_id ?? undefined : undefined);
+
   const { data: holder, error } = await supabase.rpc("move_appointment", {
     target_appointment_id: input.id,
     new_start: newStart.toISOString(),
     new_end: newEnd.toISOString(),
-    target_mechanic_id: input.mechanicId ?? null,
+    target_mechanic_id: pinnedMechanic ?? null,
   });
 
   if (error) {

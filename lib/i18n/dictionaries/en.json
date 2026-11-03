@@ -446,7 +446,10 @@
       "no-mechanic": "Every mechanic is busy then.",
       "owner-only": "Only the owner can give a job to another mechanic.",
       "error": "Couldn't move the job. Please try again."
-    }
+    },
+    "resizeConfirm": "Change “{job}” to {range}?",
+    "resized": "Now {range}.",
+    "resizeHandle": "Drag to change the length"
   },
   "garageServices": {
     "servicesSuffix": "services",

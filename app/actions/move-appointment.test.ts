@@ -106,6 +106,33 @@ describe("moveAppointment", () => {
     expect(notifyAppointmentRescheduled).not.toHaveBeenCalled();
   });
 
+  it("resizes by pinning the current mechanic, without emailing the client", async () => {
+    const result = await moveAppointment({
+      lang: "en",
+      id: ID,
+      date: DATE,
+      time: "10:00",
+      durationMinutes: 120,
+    });
+    expect(result).toMatchObject({ ok: true, mechanicChanged: false });
+    expect(rpcCalls[0].args).toEqual({
+      target_appointment_id: ID,
+      new_start: "2030-11-06T09:00:00.000Z",
+      new_end: "2030-11-06T11:00:00.000Z",
+      target_mechanic_id: MECH_A,
+    });
+    // Same start time: nothing the client needs to hear about.
+    expect(notifyAppointmentRescheduled).not.toHaveBeenCalled();
+  });
+
+  it("rejects a resize below the minimum or off the 5-minute grid", async () => {
+    for (const durationMinutes of [10, 47, 0]) {
+      expect(
+        await moveAppointment({ lang: "en", id: ID, date: DATE, time: "10:00", durationMinutes })
+      ).toEqual({ ok: false, error: "invalid" });
+    }
+  });
+
   it("refuses completed or cancelled jobs without calling the database function", async () => {
     appointmentRow = { ...appointmentRow, status: "completed" };
     expect(await moveAppointment({ lang: "en", id: ID, date: DATE, time: "14:00" })).toEqual({

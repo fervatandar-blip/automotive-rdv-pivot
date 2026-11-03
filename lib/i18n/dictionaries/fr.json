@@ -446,7 +446,10 @@
       "no-mechanic": "Tous les mécaniciens sont occupés à cet horaire.",
       "owner-only": "Seul le propriétaire peut confier un travail à un autre mécanicien.",
       "error": "Impossible de déplacer le travail. Veuillez réessayer."
-    }
+    },
+    "resizeConfirm": "Passer « {job} » à {range} ?",
+    "resized": "Désormais {range}.",
+    "resizeHandle": "Faites glisser pour changer la durée"
   },
   "garageServices": {
     "servicesSuffix": "services",

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  MIN_JOB_MINUTES,
+  resizeEndMinutes,
   closedIntervals,
   dropStartMinutes,
   minutesToTime,
@@ -193,5 +195,23 @@ describe("dropStartMinutes", () => {
   it("formats minutes as HH:MM", () => {
     expect(minutesToTime(615)).toBe("10:15");
     expect(minutesToTime(0)).toBe("00:00");
+  });
+});
+
+describe("resizeEndMinutes", () => {
+  const base = { rangeStartMin: 8 * 60, hourPx: 64, startMin: 10 * 60 };
+
+  it("converts the bottom edge to an end time, snapped to 15 minutes", () => {
+    // 11:30 is 3.5 hours below 08:00 = 224px; 11:37 still snaps to 11:30.
+    expect(resizeEndMinutes({ ...base, blockBottomPx: 224 })).toBe(690);
+    expect(resizeEndMinutes({ ...base, blockBottomPx: 224 + (7 / 60) * 64 })).toBe(690);
+  });
+
+  it("never makes a job shorter than the minimum", () => {
+    expect(resizeEndMinutes({ ...base, blockBottomPx: 0 })).toBe(600 + MIN_JOB_MINUTES);
+  });
+
+  it("never runs past midnight", () => {
+    expect(resizeEndMinutes({ ...base, blockBottomPx: 20 * 64 })).toBe(24 * 60);
   });
 });

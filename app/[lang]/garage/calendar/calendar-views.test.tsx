@@ -136,6 +136,23 @@ describe("TimeGrid drag metadata", () => {
     expect(html).not.toContain('data-drag-appt="done"');
     expect(html).toContain("data-grid-scroll");
     expect(html).toContain('data-range-start="480"');
+    // Exact start on this day: 09:00Z = 10:00 CET = 600 minutes.
+    expect(html).toContain('data-drag-start="600"');
+  });
+
+  it("gives whole same-day open jobs a resize handle, not overnight or finished ones", () => {
+    const sameDay = renderDay([appointment("open", "2026-11-04T09:00:00Z", "2026-11-04T10:30:00Z")]);
+    expect(sameDay.match(/data-resize-handle/g)).toHaveLength(1);
+    expect(sameDay).toContain("Drag to change the length");
+
+    const overnight = renderDay([appointment("night", "2026-11-03T20:00:00Z", "2026-11-04T09:00:00Z")]);
+    expect(overnight).toContain('data-drag-appt="night"');
+    expect(overnight).not.toContain("data-resize-handle");
+
+    const done = renderDay([
+      appointment("done", "2026-11-04T09:00:00Z", "2026-11-04T10:00:00Z", { status: "completed" }),
+    ]);
+    expect(done).not.toContain("data-resize-handle");
   });
 });
 
