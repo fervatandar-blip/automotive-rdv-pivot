@@ -4,10 +4,13 @@ import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import {
-  ClientDirectory,
+  parseDirectoryFilter,
+  parseDirectorySort,
   type DirectoryClient,
   type DirectoryVehicle,
-} from "./client-directory";
+} from "@/lib/client-directory";
+import { ClientDirectory } from "./client-directory";
+import { ClientDrawer, type ClientNotes, type TimelineEntry } from "./client-drawer";
 
 type VehicleRow = {
   id: string;
@@ -44,25 +47,37 @@ type GarageCustomerRow = {
   vehicles: VehicleRow[] | null;
 };
 
+type NotesRow = ClientNotes & { client_id: string | null; garage_customer_id: string | null };
+
 const VEHICLE_SELECT = "id, model, year, license_plate, plate_search, vin, brands(name)";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function GarageClientsPage({
   params,
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ q?: string; anonymized?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    anonymized?: string;
+    filter?: string;
+    sort?: string;
+    client?: string;
+    edit?: string;
+  }>;
 }) {
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
-  const { q, anonymized } = await searchParams;
+  const query = await searchParams;
   const { garage } = await requireGarageMember(lang);
   const dictionary = await getDictionary(lang);
   const d = dictionary.garageClients;
-  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-GB";
   const supabase = await createClient();
+  // Request time, for last/next visit (same pattern as the dashboard).
+  const now = new Date().getTime();
 
-  const [{ data: appointments }, { data: customers }] = await Promise.all([
+  const [{ data: appointments }, { data: customers }, { data: notesData }] = await Promise.all([
     supabase
       .from("appointments")
       .select(
@@ -78,10 +93,19 @@ export default async function GarageClientsPage({
       .select(`id, full_name, phone, email, vehicles(${VEHICLE_SELECT})`)
       .eq("garage_id", garage.id)
       .is("anonymized_at", null),
+    supabase
+      .from("garage_client_notes")
+      .select("client_id, garage_customer_id, notes, is_vip, preferred_contact_time, phone, updated_at")
+      .eq("garage_id", garage.id),
   ]);
 
+  const notesByKey = new Map<string, NotesRow>();
+  for (const row of (notesData ?? []) as NotesRow[]) {
+    notesByKey.set(row.client_id ? `client:${row.client_id}` : `walk_in:${row.garage_customer_id}`, row);
+  }
+
   const rows = (appointments ?? []) as unknown as AppointmentRow[];
-  const formatter = new Intl.DateTimeFormat(dateLocale, {
+  const visitFormatter = new Intl.DateTimeFormat(dateLocale, {
     timeZone: APP_TIME_ZONE,
     day: "numeric",
     month: "short",
@@ -94,8 +118,7 @@ export default async function GarageClientsPage({
     return {
       id: vehicle.id,
       label:
-        [vehicle.brands?.name, vehicle.model, vehicle.year].filter(Boolean).join(" ") ||
-        d.vehicleFallback,
+        [vehicle.brands?.name, vehicle.model, vehicle.year].filter(Boolean).join(" ") || d.vehicleFallback,
       licensePlate: vehicle.license_plate,
       plateSearch: vehicle.plate_search ?? "",
       vin: vehicle.vin,
@@ -113,8 +136,39 @@ export default async function GarageClientsPage({
     return entry;
   }
 
-  // One entry per client, each with the vehicles they've brought here and
-  // that vehicle's visits (newest first, as the query orders them).
+  function newEntry(
+    key: string,
+    kind: DirectoryClient["kind"],
+    subjectId: string,
+    name: string,
+    email: string | null,
+    phone: string | null,
+    anonymized: boolean
+  ): ClientEntry {
+    const notes = notesByKey.get(key);
+    // A registered client's phone is the one the garage noted (0042).
+    const shownPhone = kind === "client" ? notes?.phone ?? null : phone;
+    return {
+      id: key,
+      kind,
+      subjectId,
+      anonymized,
+      name,
+      email,
+      phone: shownPhone,
+      phoneDigits: (shownPhone ?? "").replace(/\D/g, ""),
+      isVip: notes?.is_vip ?? false,
+      appointmentCount: 0,
+      visitCount: 0,
+      lastVisit: null,
+      nextVisit: null,
+      vehicles: [],
+      vehicleMap: new Map(),
+    };
+  }
+
+  // One entry per client, with the vehicles they've brought here and each
+  // vehicle's visits (newest first, as the query orders them).
   const clients = new Map<string, ClientEntry>();
   for (const row of rows) {
     // Registered clients and walk-in customers live in different tables,
@@ -125,36 +179,32 @@ export default async function GarageClientsPage({
     let client = clients.get(key);
     if (!client) {
       client = row.client
-        ? {
-            id: key,
-            kind: "client",
-            name: row.client.full_name || d.unnamedClient,
-            email: row.client.email,
-            phoneDigits: "",
-            appointmentCount: 0,
-            vehicles: [],
-            vehicleMap: new Map(),
-          }
-        : {
-            id: key,
-            kind: "walk_in",
-            customerId: row.walk_in!.id,
-            anonymized: Boolean(row.walk_in!.anonymized_at),
-            name: row.walk_in!.full_name,
-            email: [row.walk_in!.phone, row.walk_in!.email].filter(Boolean).join(" · "),
-            phoneDigits: (row.walk_in!.phone ?? "").replace(/\D/g, ""),
-            appointmentCount: 0,
-            vehicles: [],
-            vehicleMap: new Map(),
-          };
+        ? newEntry(key, "client", row.client_id!, row.client.full_name || d.unnamedClient, row.client.email, null, false)
+        : newEntry(
+            key,
+            "walk_in",
+            row.walk_in!.id,
+            row.walk_in!.full_name,
+            row.walk_in!.email,
+            row.walk_in!.phone,
+            Boolean(row.walk_in!.anonymized_at)
+          );
       clients.set(key, client);
     }
     client.appointmentCount += 1;
+    const startMs = new Date(row.start_time).getTime();
+    if (row.status !== "cancelled" && startMs <= now) {
+      client.visitCount += 1;
+      if (!client.lastVisit || row.start_time > client.lastVisit) client.lastVisit = row.start_time;
+    }
+    if ((row.status === "pending" || row.status === "confirmed") && startMs > now) {
+      if (!client.nextVisit || row.start_time < client.nextVisit) client.nextVisit = row.start_time;
+    }
 
     if (!row.vehicle) continue;
     ensureVehicle(client, row.vehicle).visits.push({
       id: row.id,
-      startTime: formatter.format(new Date(row.start_time)),
+      startTime: visitFormatter.format(new Date(row.start_time)),
       serviceName: row.services?.name ?? d.serviceFallback,
       status: row.status,
     });
@@ -166,18 +216,7 @@ export default async function GarageClientsPage({
     const key = `walk_in:${customer.id}`;
     let client = clients.get(key);
     if (!client) {
-      client = {
-        id: key,
-        kind: "walk_in",
-        customerId: customer.id,
-        anonymized: false,
-        name: customer.full_name,
-        email: [customer.phone, customer.email].filter(Boolean).join(" · "),
-        phoneDigits: (customer.phone ?? "").replace(/\D/g, ""),
-        appointmentCount: 0,
-        vehicles: [],
-        vehicleMap: new Map(),
-      };
+      client = newEntry(key, "walk_in", customer.id, customer.full_name, customer.email, customer.phone, false);
       clients.set(key, client);
     }
     for (const vehicle of customer.vehicles ?? []) {
@@ -185,45 +224,162 @@ export default async function GarageClientsPage({
     }
   }
 
-  const directory: DirectoryClient[] = [...clients.values()]
-    .map((client) => ({
-      id: client.id,
-      kind: client.kind,
-      customerId: client.customerId,
-      anonymized: client.anonymized,
-      name: client.name,
-      email: client.email,
-      phoneDigits: client.phoneDigits,
-      appointmentCount: client.appointmentCount,
-      vehicles: client.vehicles,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const directory: DirectoryClient[] = [...clients.values()].map((entry) => ({
+    id: entry.id,
+    kind: entry.kind,
+    subjectId: entry.subjectId,
+    anonymized: entry.anonymized,
+    name: entry.name,
+    email: entry.email,
+    phone: entry.phone,
+    phoneDigits: entry.phoneDigits,
+    isVip: entry.isVip,
+    appointmentCount: entry.appointmentCount,
+    visitCount: entry.visitCount,
+    lastVisit: entry.lastVisit,
+    nextVisit: entry.nextVisit,
+    vehicles: entry.vehicles,
+  }));
 
-  const initialQuery = typeof q === "string" ? q : "";
+  // Detail panel (?client=walk_in:<id> / client:<id>).
+  const selectedKey = typeof query.client === "string" ? query.client : null;
+  const selected = selectedKey ? directory.find((client) => client.id === selectedKey) ?? null : null;
+  let drawer: React.ReactNode = null;
+  if (selected && UUID_PATTERN.test(selected.subjectId)) {
+    const subjectColumn = selected.kind === "client" ? "client_id" : "garage_customer_id";
+    const [{ data: history }, { data: invoices }, { data: brands }] = await Promise.all([
+      supabase
+        .from("appointments")
+        .select(
+          "id, start_time, end_time, status, services(name), mechanic:profiles!appointments_assigned_mechanic_id_fkey(full_name), vehicle:vehicles(license_plate, model, brands(name))"
+        )
+        .eq("garage_id", garage.id)
+        .eq(subjectColumn, selected.subjectId)
+        .neq("status", "pending_payment")
+        .order("start_time", { ascending: false })
+        .limit(200),
+      supabase
+        .from("invoices")
+        .select("id, invoice_number, amount, currency, issued_at, file_path")
+        .eq("garage_id", garage.id)
+        .eq(subjectColumn, selected.subjectId)
+        .order("issued_at", { ascending: false }),
+      selected.kind === "walk_in" && !selected.anonymized
+        ? supabase.from("brands").select("id, name").order("name")
+        : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+    ]);
+
+    const invoiceRows = (invoices ?? []) as {
+      id: string;
+      invoice_number: string;
+      amount: number;
+      currency: string;
+      issued_at: string;
+      file_path: string;
+    }[];
+    // One batched Storage call; createSignedUrls preserves input order.
+    const signedUrls = new Map<string, string>();
+    if (invoiceRows.length > 0) {
+      const { data: signed } = await supabase.storage
+        .from("invoices")
+        .createSignedUrls(invoiceRows.map((invoice) => invoice.file_path), 60 * 10);
+      signed?.forEach((result, index) => {
+        if (result.signedUrl) signedUrls.set(invoiceRows[index].id, result.signedUrl);
+      });
+    }
+
+    const timeline: TimelineEntry[] = [
+      ...((history ?? []) as unknown as {
+        id: string;
+        start_time: string;
+        end_time: string;
+        status: string;
+        services: { name: string } | null;
+        mechanic: { full_name: string } | null;
+        vehicle: { license_plate: string | null; model: string | null; brands: { name: string } | null } | null;
+      }[]).map(
+        (job): TimelineEntry => ({
+          kind: "job",
+          id: job.id,
+          at: job.start_time,
+          endAt: job.end_time,
+          status: job.status,
+          title: job.services?.name ?? d.serviceFallback,
+          mechanic: job.mechanic?.full_name ?? null,
+          plate: job.vehicle?.license_plate ?? null,
+          vehicle: [job.vehicle?.brands?.name, job.vehicle?.model].filter(Boolean).join(" ") || null,
+        })
+      ),
+      ...invoiceRows.map(
+        (invoice): TimelineEntry => ({
+          kind: "invoice",
+          id: invoice.id,
+          at: invoice.issued_at,
+          number: invoice.invoice_number,
+          amount: Number(invoice.amount),
+          currency: invoice.currency,
+          url: signedUrls.get(invoice.id) ?? null,
+        })
+      ),
+    ].sort((a, b) => b.at.localeCompare(a.at));
+
+    const closeParams = new URLSearchParams();
+    for (const key of ["q", "filter", "sort"] as const) {
+      const value = query[key];
+      if (typeof value === "string" && value) closeParams.set(key, value);
+    }
+    const closeHref = `/${lang}/garage/clients${closeParams.size > 0 ? `?${closeParams}` : ""}`;
+
+    drawer = (
+      <ClientDrawer
+        client={selected}
+        notes={notesByKey.get(selected.id) ?? null}
+        timeline={timeline}
+        brands={brands ?? []}
+        closeHref={closeHref}
+        startInEdit={query.edit === "1"}
+        lang={lang}
+        dateLocale={dateLocale}
+        d={d}
+        addClientD={dictionary.addClient}
+        statusLabels={dictionary.common.appointmentStatus}
+      />
+    );
+  }
+
+  const initialQuery = typeof query.q === "string" ? query.q : "";
 
   return (
-    <div className="flex flex-1 flex-col gap-6 bg-zinc-50 px-4 py-10 dark:bg-black sm:px-12 sm:py-12">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6 bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-8 sm:py-10">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-6">
         <div>
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">{d.title}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">{d.title}</h1>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{d.subtitle}</p>
         </div>
-        {anonymized === "1" && (
-          <p role="status" className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
+        {query.anonymized === "1" && (
+          <p
+            role="status"
+            className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-300"
+          >
             {d.anonymized}
           </p>
         )}
-        {/* Keyed on the query so "Open in directory" after adding a client
-            re-seeds the search even when this page is already open. */}
+        {/* Keyed on the search so "Open in directory" after adding a client
+            re-seeds it even when this page is already open. */}
         <ClientDirectory
           key={initialQuery}
           clients={directory}
           d={d}
+          walkInD={dictionary.walkIn}
           lang={lang}
+          dateLocale={dateLocale}
           initialQuery={initialQuery}
-          statusLabels={dictionary.common.appointmentStatus}
+          initialFilter={parseDirectoryFilter(query.filter)}
+          initialSort={parseDirectorySort(query.sort)}
+          selectedId={selected?.id ?? null}
         />
       </div>
+      {drawer}
     </div>
   );
 }

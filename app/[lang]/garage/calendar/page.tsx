@@ -46,7 +46,7 @@ import {
   type CalendarAppointment,
   type GridColumn,
 } from "./calendar-views";
-import { DrawerShell } from "./drawer-shell";
+import { DrawerShell } from "@/components/drawer-shell";
 import { CalendarDragLayer } from "./drag-layer";
 import { SlotBookingSurface } from "./slot-booking";
 

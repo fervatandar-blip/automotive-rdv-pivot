@@ -30,6 +30,10 @@ export async function processAccountDeletion(profileId: string) {
   await admin.from("device_tokens").delete().eq("profile_id", profileId);
   await admin.from("waitlist").delete().eq("client_id", profileId);
   await admin.from("garage_staff").delete().eq("profile_id", profileId);
+  // What garages noted about this client (0042): personal data with no
+  // retention duty. The FK cascade never fires because the profile row is
+  // kept (anonymized), so delete explicitly.
+  await admin.from("garage_client_notes").delete().eq("client_id", profileId);
 
   // Invitations addressed to this person are keyed by their (auth) email,
   // not their profile id -- see 0033_garage_staff_invites.sql.

@@ -31,7 +31,14 @@ function FieldError({ messages }: { messages?: string[] }) {
  * Where to start the form, e.g. from a click on a calendar slot: the date
  * and time, and in the per-mechanic day view, that column's mechanic.
  */
-export type WalkInPreset = { date: string; time: string; mechanicId?: string };
+export type WalkInPreset = {
+  date?: string;
+  time?: string;
+  mechanicId?: string;
+  // From the client directory's "+ New booking": that client and car.
+  customer?: { kind: "garage_customer" | "client"; id: string };
+  vehicleId?: string;
+};
 
 export type WalkInModalHandle = { open: (preset?: WalkInPreset) => void };
 
@@ -187,11 +194,32 @@ function WalkInForm({
   // Two walk-in buttons can share a page (top bar + dashboard), and each
   // keeps its form mounted after closing, so field ids must be per-instance.
   const fieldId = useId();
-  const [query, setQuery] = useState("");
-  const [isNewCustomer, setIsNewCustomer] = useState(options.customers.length === 0);
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  // A preset customer (from the directory) is pre-selected if this garage
+  // can book them; otherwise the form starts as usual.
+  const presetCustomer = preset?.customer
+    ? options.customers.find(
+        (customer) => customer.kind === preset.customer!.kind && customer.id === preset.customer!.id
+      ) ?? null
+    : null;
+  // Seeded with a preset customer's name so they're visibly selected even
+  // when the list (first 8 matches) is long.
+  const [query, setQuery] = useState(presetCustomer?.name ?? "");
+  const [isNewCustomer, setIsNewCustomer] = useState(
+    !presetCustomer && options.customers.length === 0
+  );
+  const [selectedKey, setSelectedKey] = useState<string | null>(
+    presetCustomer ? `${presetCustomer.kind}:${presetCustomer.id}` : null
+  );
   // A brand-new customer usually arrives with a car to record.
-  const [vehicleChoice, setVehicleChoice] = useState<string>(options.customers.length === 0 ? "new" : "none");
+  const [vehicleChoice, setVehicleChoice] = useState<string>(() => {
+    if (presetCustomer) {
+      if (preset?.vehicleId && presetCustomer.vehicles.some((vehicle) => vehicle.id === preset.vehicleId)) {
+        return preset.vehicleId;
+      }
+      return presetCustomer.vehicles[0]?.id ?? "none";
+    }
+    return options.customers.length === 0 ? "new" : "none";
+  });
   const [when, setWhen] = useState<"now" | "at">(preset ? "at" : "now");
   const errors = state?.errors ?? {};
 

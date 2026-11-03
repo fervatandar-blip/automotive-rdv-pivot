@@ -398,6 +398,12 @@ export async function anonymizeGarageCustomer(formData: FormData) {
       .from("vehicles")
       .update({ license_plate: null, vin: null })
       .eq("garage_customer_id", customer.id);
+    // The garage's notes about them (0042) are personal data too.
+    await supabase
+      .from("garage_client_notes")
+      .delete()
+      .eq("garage_customer_id", customer.id)
+      .eq("garage_id", garage.id);
   }
 
   revalidateLocalizedPath("/garage/clients");

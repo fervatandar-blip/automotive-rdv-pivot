@@ -291,6 +291,78 @@ export const GarageCustomerFormSchema = z
     }
   });
 
+// CRM details for one client (garage_client_notes, 0042, plus contact
+// fields on garage_customers for the garage's own customers). Error
+// messages are keys into dictionary.garageClients.errors.
+export const ClientDetailsFormSchema = z
+  .object({
+    kind: z.enum(["client", "walk_in"], { error: "invalid" }),
+    subjectId: z.uuid({ error: "invalid" }),
+    // Garage customers only (registered clients manage their own profile).
+    name: z.string().trim().max(120, { error: "nameTooLong" }).optional(),
+    email: z
+      .email({ error: "emailInvalid" })
+      .transform((value) => value.toLowerCase())
+      .optional(),
+    phone: z.string().trim().max(40, { error: "phoneTooLong" }).optional(),
+    notes: z.string().trim().max(2000, { error: "notesTooLong" }).optional(),
+    preferredContactTime: z.string().trim().max(80, { error: "preferredTimeTooLong" }).optional(),
+    isVip: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.kind === "walk_in" && !data.name) {
+      ctx.addIssue({ code: "custom", path: ["name"], message: "nameRequired" });
+    }
+    if (data.kind === "walk_in" && !data.phone && !data.email) {
+      ctx.addIssue({ code: "custom", path: ["phone"], message: "contactRequired" });
+    }
+  });
+
+export type ClientDetailsFormState =
+  | {
+      errors?: Partial<Record<keyof z.input<typeof ClientDetailsFormSchema>, string[]>>;
+      message?: string;
+      saved?: boolean;
+      values?: Record<string, string>;
+    }
+  | undefined;
+
+// A vehicle added to one of the garage's own customers from the CRM panel.
+// Same rules and error keys as the vehicle part of the Add client form.
+export const CustomerVehicleFormSchema = z
+  .object({
+    customerId: z.uuid({ error: "saveFailed" }),
+    plate: z.string().trim().max(20, { error: "plateTooLong" }).optional(),
+    brandId: z.uuid({ error: "brandInvalid" }).optional(),
+    model: z.string().trim().max(100, { error: "modelTooLong" }).optional(),
+    year: z
+      .string()
+      .regex(/^\d{4}$/, { error: "yearInvalid" })
+      .transform(Number)
+      .refine((year) => year >= 1900 && year <= new Date().getFullYear() + 1, {
+        error: "yearInvalid",
+      })
+      .optional(),
+    vin: z
+      .string()
+      .transform(normalizeVin)
+      .pipe(z.string().regex(VIN_PATTERN, { error: "vinInvalid" }))
+      .optional(),
+  })
+  .refine((data) => Boolean(data.plate || data.model), {
+    error: "vehicleIdentify",
+    path: ["plate"],
+  });
+
+export type CustomerVehicleFormState =
+  | {
+      errors?: Partial<Record<keyof z.input<typeof CustomerVehicleFormSchema>, string[]>>;
+      message?: string;
+      added?: boolean;
+      values?: Record<string, string>;
+    }
+  | undefined;
+
 export type GarageCustomerFormState =
   | {
       errors?: Partial<Record<keyof z.input<typeof GarageCustomerFormSchema>, string[]>>;
