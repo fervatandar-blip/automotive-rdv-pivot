@@ -168,3 +168,74 @@ export async function getAvailableSlotsForDate({
 
   return { slots, isClosed };
 }
+
+export type DaySchedule = {
+  // Opening windows after overrides, before blocks (blocks are drawn
+  // separately so the grid can label them).
+  windows: AvailabilityWindow[];
+  isClosed: boolean;
+  blocks: { id: string; start: Date; end: Date; reason: string | null }[];
+};
+
+/**
+ * Opening hours, overrides and intraday blocks for a run of dates in three
+ * queries total (the calendar shows up to 42 days at once). Same resolution
+ * order as getBookableWindowsForDate. Garage members only: blocks are read
+ * straight from availability_blocks (RLS, 0039) so the reason comes along.
+ */
+export async function getScheduleForDates({
+  supabase,
+  garageId,
+  dates,
+}: {
+  supabase: SupabaseClient;
+  garageId: string;
+  dates: string[];
+}): Promise<Map<string, DaySchedule>> {
+  const schedule = new Map<string, DaySchedule>();
+  if (dates.length === 0) return schedule;
+
+  const first = dates[0];
+  const last = dates[dates.length - 1];
+  const [{ data: weekly }, { data: overrides }, { data: blocks }] = await Promise.all([
+    supabase.from("availability").select("day_of_week, start_time, end_time").eq("garage_id", garageId),
+    supabase
+      .from("availability_overrides")
+      .select("date, is_closed, start_time, end_time")
+      .eq("garage_id", garageId)
+      .gte("date", first)
+      .lte("date", last),
+    supabase
+      .from("availability_blocks")
+      .select("id, starts_at, ends_at, reason")
+      .eq("garage_id", garageId)
+      .lt("starts_at", zonedStartOfDay(addDaysToDateKey(last, 1)).toISOString())
+      .gt("ends_at", zonedStartOfDay(first).toISOString())
+      .order("starts_at"),
+  ]);
+
+  for (const date of dates) {
+    const dayOverrides = (overrides ?? []).filter((override) => override.date === date);
+    const isClosed = dayOverrides.some((override) => override.is_closed);
+    const windows: AvailabilityWindow[] = isClosed
+      ? []
+      : dayOverrides.length > 0
+        ? (dayOverrides as AvailabilityWindow[])
+        : (weekly ?? []).filter((row) => row.day_of_week === dayOfWeekForDateKey(date));
+    const dayStart = zonedStartOfDay(date).getTime();
+    const dayEnd = zonedStartOfDay(addDaysToDateKey(date, 1)).getTime();
+    schedule.set(date, {
+      windows,
+      isClosed,
+      blocks: (blocks ?? [])
+        .map((block) => ({
+          id: block.id as string,
+          start: new Date(block.starts_at),
+          end: new Date(block.ends_at),
+          reason: (block.reason as string | null) ?? null,
+        }))
+        .filter((block) => block.start.getTime() < dayEnd && block.end.getTime() > dayStart),
+    });
+  }
+  return schedule;
+}

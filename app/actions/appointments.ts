@@ -20,6 +20,9 @@ import {
 } from "@/lib/notifications";
 import { renderInvoicePdf } from "@/lib/invoice-pdf";
 import { REPAIR_STAGES } from "@/lib/definitions";
+import { isDateKey, parseCalendarView } from "@/lib/calendar-grid";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const PARTIES_SELECT =
   "id, start_time, garage_id, client_id, services(name), client:profiles!appointments_client_id_fkey(full_name, email), garage:garages!appointments_garage_id_fkey(name, email, owner_id)";
@@ -810,14 +813,15 @@ export async function assignMechanic(formData: FormData) {
   const id = formData.get("id");
   const mechanicId = formData.get("mechanicId");
 
-  // Back to the same calendar view; only known values are echoed into the URL.
-  const returnView = formData.get("returnView") === "month" ? "month" : "week";
+  // Back to the same calendar view, with the appointment's panel still
+  // open; only known values are echoed into the URL.
+  const returnView = parseCalendarView(formData.get("returnView"));
   const returnDate = formData.get("returnDate");
   const calendarUrl = (error?: string) => {
     const params = new URLSearchParams({ view: returnView });
-    if (typeof returnDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(returnDate)) {
-      params.set("date", returnDate);
-    }
+    if (isDateKey(returnDate)) params.set("date", returnDate);
+    if (typeof id === "string" && UUID_PATTERN.test(id)) params.set("appt", id);
+    if (formData.get("returnCancelled") === "1") params.set("cancelled", "1");
     if (error) params.set("error", error);
     return `/${lang}/garage/calendar?${params}`;
   };

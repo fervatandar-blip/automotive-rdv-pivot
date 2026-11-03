@@ -501,6 +501,11 @@ export const WalkInFormSchema = z
     serviceId: z.uuid({ error: "Choose a service." }),
     mechanicId: z.uuid().optional(),
     when: z.enum(["now", "at"]).default("now"),
+    // With when = "at": the day of the job (garage zone). Defaults to today.
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, { error: "Choose a valid date." })
+      .optional(),
     time: z
       .string()
       .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: "Enter a valid time." })

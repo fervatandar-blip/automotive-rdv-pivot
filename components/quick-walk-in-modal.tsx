@@ -1,11 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useId, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useActionState,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type Ref,
+} from "react";
 import { Check, Plus, Search, X } from "lucide-react";
 import { createWalkIn, getWalkInOptions, type WalkInOptions } from "@/app/actions/walk-ins";
 import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
+import { todayKeyInAppZone } from "@/lib/timezone";
 
 type D = Dictionary["walkIn"];
 
@@ -17,10 +27,15 @@ function FieldError({ messages }: { messages?: string[] }) {
   return messages?.length ? <p className="text-sm text-red-600">{messages[0]}</p> : null;
 }
 
+/** A date/time to start the form on, e.g. from a click on a calendar slot. */
+export type WalkInPreset = { date: string; time: string };
+
+export type WalkInModalHandle = { open: (preset?: WalkInPreset) => void };
+
 /**
- * "+ Walk-in" button and its modal, for the garage top bar. Options are
- * fetched when the modal opens rather than on every garage page render.
- * Ids come from useId so the modal can't collide with another on the page.
+ * "+ Walk-in" button and its modal, for the garage top bar and the
+ * dashboard's empty agenda. Options are fetched when the modal opens rather
+ * than on every garage page render.
  */
 export function QuickWalkInButton({
   lang,
@@ -33,35 +48,13 @@ export function QuickWalkInButton({
   // the dashboard's empty agenda).
   label?: string;
 }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
-  const [options, setOptions] = useState<WalkInOptions | null>(null);
-  const [loadError, setLoadError] = useState(false);
-  const [loading, startLoading] = useTransition();
-  // Remounting the form gives a clean slate after a booking or reopening.
-  const [formKey, setFormKey] = useState(0);
-
-  function open() {
-    dialogRef.current?.showModal();
-    setLoadError(false);
-    startLoading(async () => {
-      try {
-        setOptions(await getWalkInOptions(lang));
-      } catch {
-        setLoadError(true);
-      }
-    });
-  }
-
-  function close() {
-    dialogRef.current?.close();
-  }
+  const modalRef = useRef<WalkInModalHandle>(null);
 
   return (
     <>
       <button
         type="button"
-        onClick={open}
+        onClick={() => modalRef.current?.open()}
         className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
       >
         <Plus className="h-4 w-4" strokeWidth={2.25} />
@@ -74,48 +67,98 @@ export function QuickWalkInButton({
           </>
         )}
       </button>
-
-      <dialog
-        ref={dialogRef}
-        aria-labelledby={titleId}
-        onClose={() => setFormKey((key) => key + 1)}
-        className="m-auto w-[min(100%-2rem,36rem)] rounded-2xl border border-black/[.08] bg-white p-0 text-black shadow-xl backdrop:bg-black/40 dark:border-white/[.145] dark:bg-zinc-950 dark:text-zinc-50"
-      >
-        <div className="flex max-h-[85vh] flex-col">
-          <div className="flex items-center justify-between border-b border-black/[.08] px-5 py-4 dark:border-white/[.145]">
-            <h2 id={titleId} className="text-lg font-semibold">
-              {d.title}
-            </h2>
-            <button type="button" onClick={close} aria-label={d.close} className="rounded-full p-1.5 hover:bg-black/[.04] dark:hover:bg-white/[.06]">
-              <X className="h-5 w-5" strokeWidth={1.75} />
-            </button>
-          </div>
-
-          <div className="overflow-y-auto px-5 py-4">
-            {loading && !options && <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.loading}</p>}
-            {loadError && <p role="alert" className="text-sm text-red-600">{d.loadError}</p>}
-            {options && options.services.length === 0 && (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                {d.noServices}{" "}
-                <Link href={`/${lang}/garage/services`} className="font-medium underline" onClick={close}>
-                  {d.addServices}
-                </Link>
-              </p>
-            )}
-            {options && options.services.length > 0 && (
-              <WalkInForm
-                key={formKey}
-                lang={lang}
-                d={d}
-                options={options}
-                onDone={close}
-                onAnother={() => setFormKey((key) => key + 1)}
-              />
-            )}
-          </div>
-        </div>
-      </dialog>
+      <WalkInModal ref={modalRef} lang={lang} d={d} />
     </>
+  );
+}
+
+/**
+ * The walk-in / new-appointment dialog on its own, opened imperatively:
+ * `ref.current.open()` for a walk-in now, `open({ date, time })` to start
+ * on a specific slot (the calendar's clickable grid). One instance serves
+ * every slot on a page. Ids come from useId so it can't collide with the
+ * top bar's instance.
+ */
+export function WalkInModal({
+  lang,
+  d,
+  ref,
+}: {
+  lang: Locale;
+  d: D;
+  ref: Ref<WalkInModalHandle>;
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  const [options, setOptions] = useState<WalkInOptions | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [loading, startLoading] = useTransition();
+  const [preset, setPreset] = useState<WalkInPreset | null>(null);
+  // Remounting the form gives a clean slate after a booking or reopening.
+  const [formKey, setFormKey] = useState(0);
+
+  useImperativeHandle(ref, () => ({
+    open(nextPreset?: WalkInPreset) {
+      setPreset(nextPreset ?? null);
+      setFormKey((key) => key + 1);
+      dialogRef.current?.showModal();
+      setLoadError(false);
+      startLoading(async () => {
+        try {
+          setOptions(await getWalkInOptions(lang));
+        } catch {
+          setLoadError(true);
+        }
+      });
+    },
+  }));
+
+  function close() {
+    dialogRef.current?.close();
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onClose={() => setFormKey((key) => key + 1)}
+      className="m-auto w-[min(100%-2rem,36rem)] rounded-2xl border border-black/[.08] bg-white p-0 text-black shadow-xl backdrop:bg-black/40 dark:border-white/[.145] dark:bg-zinc-950 dark:text-zinc-50"
+    >
+      <div className="flex max-h-[85vh] flex-col">
+        <div className="flex items-center justify-between border-b border-black/[.08] px-5 py-4 dark:border-white/[.145]">
+          <h2 id={titleId} className="text-lg font-semibold">
+            {preset ? d.newAppointmentTitle : d.title}
+          </h2>
+          <button type="button" onClick={close} aria-label={d.close} className="rounded-full p-1.5 hover:bg-black/[.04] dark:hover:bg-white/[.06]">
+            <X className="h-5 w-5" strokeWidth={1.75} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto px-5 py-4">
+          {loading && !options && <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.loading}</p>}
+          {loadError && <p role="alert" className="text-sm text-red-600">{d.loadError}</p>}
+          {options && options.services.length === 0 && (
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              {d.noServices}{" "}
+              <Link href={`/${lang}/garage/services`} className="font-medium underline" onClick={close}>
+                {d.addServices}
+              </Link>
+            </p>
+          )}
+          {options && options.services.length > 0 && (
+            <WalkInForm
+              key={formKey}
+              lang={lang}
+              d={d}
+              options={options}
+              preset={preset}
+              onDone={close}
+              onAnother={() => setFormKey((key) => key + 1)}
+            />
+          )}
+        </div>
+      </div>
+    </dialog>
   );
 }
 
@@ -123,15 +166,20 @@ function WalkInForm({
   lang,
   d,
   options,
+  preset,
   onDone,
   onAnother,
 }: {
   lang: Locale;
   d: D;
   options: WalkInOptions;
+  preset: WalkInPreset | null;
   onDone: () => void;
   onAnother: () => void;
 }) {
+  // The garage's date, not the browser's: the form's min/default date and
+  // the server's "not in the past" check must agree.
+  const today = todayKeyInAppZone();
   const [state, action, pending] = useActionState(createWalkIn, undefined);
   // Two walk-in buttons can share a page (top bar + dashboard), and each
   // keeps its form mounted after closing, so field ids must be per-instance.
@@ -141,7 +189,7 @@ function WalkInForm({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   // A brand-new customer usually arrives with a car to record.
   const [vehicleChoice, setVehicleChoice] = useState<string>(options.customers.length === 0 ? "new" : "none");
-  const [when, setWhen] = useState<"now" | "at">("now");
+  const [when, setWhen] = useState<"now" | "at">(preset ? "at" : "now");
   const errors = state?.errors ?? {};
 
   const selected = useMemo(
@@ -384,11 +432,31 @@ function WalkInForm({
         <input type="hidden" name="when" value={when} />
         <div role="radiogroup" aria-label={d.whenLabel} className="flex flex-wrap items-center gap-2">
           <ChoiceChip checked={when === "now"} onSelect={() => setWhen("now")}>{d.now}</ChoiceChip>
-          <ChoiceChip checked={when === "at"} onSelect={() => setWhen("at")}>{d.laterToday}</ChoiceChip>
-          {when === "at" && (
-            <input name="time" type="time" required aria-label={d.timeLabel} className="rounded-md border border-black/[.08] px-3 py-1.5 text-sm dark:border-white/[.145] dark:bg-black" />
-          )}
+          <ChoiceChip checked={when === "at"} onSelect={() => setWhen("at")}>{d.pickDateTime}</ChoiceChip>
         </div>
+        {when === "at" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              name="date"
+              type="date"
+              required
+              min={today}
+              defaultValue={preset?.date ?? today}
+              aria-label={d.dateLabel}
+              className="rounded-md border border-black/[.08] px-3 py-1.5 text-sm dark:border-white/[.145] dark:bg-black"
+            />
+            <input
+              name="time"
+              type="time"
+              required
+              step={300}
+              defaultValue={preset?.time}
+              aria-label={d.timeLabel}
+              className="rounded-md border border-black/[.08] px-3 py-1.5 text-sm dark:border-white/[.145] dark:bg-black"
+            />
+          </div>
+        )}
+        <FieldError messages={errors.date} />
         <FieldError messages={errors.time} />
       </fieldset>
 

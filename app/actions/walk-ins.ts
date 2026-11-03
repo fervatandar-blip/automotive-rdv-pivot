@@ -8,6 +8,7 @@ import { locales, parseLocale, type Locale } from "@/lib/i18n/config";
 import { WalkInFormSchema, type WalkInFormState } from "@/lib/definitions";
 import {
   APP_TIME_ZONE,
+  addDaysToDateKey,
   dateKeyInAppZone,
   todayKeyInAppZone,
   zonedDateTimeToUtc,
@@ -17,6 +18,8 @@ const FIVE_MINUTES = 5 * 60 * 1000;
 // A walk-in logged a few minutes after the car actually rolled in is
 // normal; anything earlier than this is almost certainly a mistake.
 const PAST_TOLERANCE = 15 * 60 * 1000;
+// How far ahead staff can put a job in the agenda.
+const MAX_DAYS_AHEAD = 365;
 
 function revalidateLocalizedPath(path: string) {
   for (const locale of locales) {
@@ -192,6 +195,7 @@ export async function createWalkIn(
     serviceId: formData.get("serviceId"),
     mechanicId: formData.get("mechanicId") || undefined,
     when: formData.get("when") || undefined,
+    date: formData.get("date") || undefined,
     time: formData.get("time") || undefined,
   });
 
@@ -212,20 +216,30 @@ export async function createWalkIn(
   }
 
   // Timing, in the garage's zone: "now" is rounded up to the next five
-  // minutes; "at" is a wall-clock time today.
+  // minutes; "at" is a wall-clock time on the chosen day (today unless the
+  // form -- e.g. a calendar slot click -- names another day). Staff may book
+  // outside opening hours on purpose (early drop-off); the mechanic trigger
+  // (0037) still refuses double-booking a mechanic.
   const nowMs = Date.now();
   const today = todayKeyInAppZone();
+  const day = data.when === "now" ? today : (data.date ?? today);
+  if (day < today) {
+    return { errors: { date: ["That date has passed."] } };
+  }
+  if (day > addDaysToDateKey(today, MAX_DAYS_AHEAD)) {
+    return { errors: { date: ["Choose a date within the next year."] } };
+  }
   const start =
     data.when === "now"
       ? new Date(Math.ceil(nowMs / FIVE_MINUTES) * FIVE_MINUTES)
-      : zonedDateTimeToUtc(today, data.time!);
+      : zonedDateTimeToUtc(day, data.time!);
   const end = new Date(start.getTime() + service.duration_minutes * 60_000);
 
   if (start.getTime() < nowMs - PAST_TOLERANCE) {
     return { errors: { time: ["That time has already passed."] } };
   }
-  if (dateKeyInAppZone(start) !== today || dateKeyInAppZone(new Date(end.getTime() - 1)) !== today) {
-    return { errors: { time: ["A walk-in has to fit within today. Use the calendar for later days."] } };
+  if (dateKeyInAppZone(start) !== day || dateKeyInAppZone(new Date(end.getTime() - 1)) !== day) {
+    return { errors: { time: ["The job has to finish on the same day. Pick an earlier start time."] } };
   }
 
   // Track what this call created, so a failed booking doesn't leave an
@@ -344,8 +358,10 @@ export async function createWalkIn(
   return {
     created: {
       appointmentId: appointment.id,
+      // Just the time for today; with the day for any other date.
       startLabel: new Intl.DateTimeFormat(lang === "fr" ? "fr-FR" : "en-GB", {
         timeZone: APP_TIME_ZONE,
+        ...(day === today ? {} : { weekday: "short", day: "numeric", month: "short" }),
         hour: "2-digit",
         minute: "2-digit",
       }).format(start),

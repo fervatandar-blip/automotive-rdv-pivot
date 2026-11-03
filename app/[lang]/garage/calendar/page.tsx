@@ -1,256 +1,96 @@
 import Link from "next/link";
+import { ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
-import {
-  addDays,
-  addMonths,
-  monthGridDays,
-  parseDateKey,
-  startOfMonth,
-  startOfWeek,
-  todayKey,
-  toDateKey,
-} from "@/lib/calendar";
-import { DEFAULT_STATUS_STYLE, STATUS_STYLES } from "@/lib/status";
-import { resolveLocale, type Locale } from "@/lib/i18n/config";
-import { getDictionary, type Dictionary } from "@/lib/i18n/get-dictionary";
-import { LanguageSwitcher } from "@/components/language-switcher";
 import {
   assignMechanic,
   completeAppointment,
   confirmAppointment,
   providerCancelAppointment,
+  updateRepairStage,
 } from "@/app/actions/appointments";
-import { APP_TIME_ZONE, dateKeyInAppZone, zonedStartOfDay } from "@/lib/timezone";
+import { getScheduleForDates } from "@/lib/availability";
+import {
+  CALENDAR_VIEWS,
+  hourRange,
+  isDateKey,
+  minutesOnDate,
+  monthGridDates,
+  navigationTargets,
+  parseCalendarView,
+  weekDates,
+  type CalendarView,
+} from "@/lib/calendar-grid";
+import { REPAIR_STAGES } from "@/lib/definitions";
+import { resolveLocale, type Locale } from "@/lib/i18n/config";
+import { getDictionary, type Dictionary } from "@/lib/i18n/get-dictionary";
+import {
+  APP_TIME_ZONE,
+  addDaysToDateKey,
+  dateKeyToDisplayDate,
+  todayKeyInAppZone,
+  zonedStartOfDay,
+} from "@/lib/timezone";
+import { LicensePlate } from "@/components/license-plate";
+import { StyledSelect } from "@/components/styled-select";
+import {
+  AppointmentList,
+  MonthGrid,
+  STATUS_DOT,
+  TimeGrid,
+  customerName,
+  timeFormatter,
+  type CalendarAppointment,
+} from "./calendar-views";
+import { DrawerShell } from "./drawer-shell";
+import { SlotBookingSurface } from "./slot-booking";
 
 type D = Dictionary["garageCalendar"];
-type StatusLabels = Dictionary["common"]["appointmentStatus"];
-
-type CalendarAppointment = {
-  id: string;
-  start_time: string;
-  status: string;
-  assigned_mechanic_id: string | null;
-  services: { name: string } | null;
-  profiles: { full_name: string } | null;
-  // Walk-in customer (0038) when the job isn't for a registered client.
-  walk_in: { full_name: string } | null;
-};
-
 type Mechanic = { id: string; full_name: string };
 
-function formatTime(iso: string, dateLocale: string) {
-  return new Date(iso).toLocaleTimeString(dateLocale, {
+const APPOINTMENT_SELECT =
+  "id, start_time, end_time, status, repair_stage, assigned_mechanic_id, services(name), profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name, phone), vehicle:vehicles(license_plate, model, brands(name))";
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const CONTROL =
+  "inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-black dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+const DRAWER_BUTTON =
+  "inline-flex items-center justify-center rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+
+type CalendarState = { view: CalendarView; date: string; cancelled: boolean };
+
+function calendarHref(lang: Locale, state: CalendarState, extra: { appt?: string } = {}) {
+  const params = new URLSearchParams({ view: state.view, date: state.date });
+  if (state.cancelled) params.set("cancelled", "1");
+  if (extra.appt) params.set("appt", extra.appt);
+  return `/${lang}/garage/calendar?${params}`;
+}
+
+function heading(view: CalendarView, dates: string[], anchor: string, dateLocale: string) {
+  if (view === "day") {
+    return dateKeyToDisplayDate(anchor).toLocaleDateString(dateLocale, {
+      timeZone: APP_TIME_ZONE,
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+  if (view === "month") {
+    return dateKeyToDisplayDate(anchor).toLocaleDateString(dateLocale, {
+      timeZone: APP_TIME_ZONE,
+      month: "long",
+      year: "numeric",
+    });
+  }
+  // "November 2 – 8, 2026" / "2 – 8 novembre 2026", across months and years too.
+  return new Intl.DateTimeFormat(dateLocale, {
     timeZone: APP_TIME_ZONE,
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function AppointmentChip({
-  appointment,
-  lang,
-  mechanics,
-  isOwner,
-  compact = false,
-  d,
-  dateLocale,
-  returnTo,
-  statusLabels,
-}: {
-  appointment: CalendarAppointment;
-  lang: Locale;
-  mechanics: Mechanic[];
-  isOwner: boolean;
-  compact?: boolean;
-  returnTo: { view: string; date: string };
-  d: D;
-  dateLocale: string;
-  statusLabels: StatusLabels;
-}) {
-  const style = STATUS_STYLES[appointment.status] ?? DEFAULT_STATUS_STYLE;
-  const statusLabel =
-    statusLabels[appointment.status as keyof StatusLabels] ?? appointment.status;
-  const canConfirm = appointment.status === "pending";
-  const canComplete =
-    appointment.status === "pending" || appointment.status === "confirmed";
-  const canCancel =
-    appointment.status === "pending" || appointment.status === "confirmed";
-  const canReschedule = canCancel;
-  const assignedMechanic = mechanics.find(
-    (mechanic) => mechanic.id === appointment.assigned_mechanic_id
-  );
-
-  return (
-    <div
-      className={`flex items-start gap-1.5 rounded-md border px-2 py-1 text-xs ${style.bg} ${style.border}`}
-    >
-      <span
-        className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full"
-        style={{ backgroundColor: style.dot }}
-        aria-hidden
-      />
-      <div className="min-w-0">
-        <p className={`font-medium ${style.text}`}>
-          {formatTime(appointment.start_time, dateLocale)}
-          {!compact && ` · ${statusLabel}`}
-        </p>
-        <p className="truncate text-zinc-700 dark:text-zinc-300">
-          {appointment.services?.name ?? d.serviceFallback}
-        </p>
-        {!compact && (
-          <p className="truncate text-zinc-500 dark:text-zinc-500">
-            {appointment.profiles?.full_name ?? appointment.walk_in?.full_name ?? d.clientFallback}
-          </p>
-        )}
-        {compact && assignedMechanic && (
-          <p className="truncate text-zinc-500 dark:text-zinc-500">
-            {assignedMechanic.full_name}
-          </p>
-        )}
-        {!compact && (
-          <p className="truncate text-zinc-500 dark:text-zinc-500">
-            {assignedMechanic
-              ? `${d.assignedPrefix} ${assignedMechanic.full_name}`
-              : d.unassigned}
-          </p>
-        )}
-        {!compact && isOwner && mechanics.length > 0 && (
-          <form action={assignMechanic} className="mt-1.5 flex gap-1">
-            <input type="hidden" name="id" value={appointment.id} />
-            <input type="hidden" name="lang" value={lang} />
-            <input type="hidden" name="returnView" value={returnTo.view} />
-            <input type="hidden" name="returnDate" value={returnTo.date} />
-            <select
-              name="mechanicId"
-              defaultValue={appointment.assigned_mechanic_id ?? ""}
-              className="min-w-0 flex-1 rounded border border-black/[.08] bg-white px-1 py-0.5 text-[11px] dark:border-white/[.145] dark:bg-black"
-            >
-              <option value="">{d.autoAssign}</option>
-              {mechanics.map((mechanic) => (
-                <option key={mechanic.id} value={mechanic.id}>
-                  {mechanic.full_name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="shrink-0 rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
-            >
-              {d.set}
-            </button>
-          </form>
-        )}
-        {!compact && (
-          <div className="mt-1.5 flex flex-col gap-1">
-            {appointment.profiles && (
-              <Link
-                href={`/${lang}/appointments/${appointment.id}/messages`}
-                className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
-              >
-                {d.message}
-              </Link>
-            )}
-            {canConfirm && (
-              <form action={confirmAppointment}>
-                <input type="hidden" name="id" value={appointment.id} />
-                <input type="hidden" name="lang" value={lang} />
-                <button
-                  type="submit"
-                  className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
-                >
-                  {d.confirm}
-                </button>
-              </form>
-            )}
-            {canComplete && (
-              <form action={completeAppointment}>
-                <input type="hidden" name="id" value={appointment.id} />
-                <input type="hidden" name="lang" value={lang} />
-                <button
-                  type="submit"
-                  className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
-                >
-                  {d.complete}
-                </button>
-              </form>
-            )}
-            {canReschedule && (
-              <Link
-                href={`/${lang}/appointments/${appointment.id}/reschedule`}
-                className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
-              >
-                {d.reschedule}
-              </Link>
-            )}
-            {canCancel && (
-              <form action={providerCancelAppointment}>
-                <input type="hidden" name="id" value={appointment.id} />
-                <input type="hidden" name="lang" value={lang} />
-                <button
-                  type="submit"
-                  className="w-full rounded border border-black/[.08] bg-white px-1.5 py-0.5 text-left text-[11px] font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:bg-black dark:hover:bg-[#1a1a1a]"
-                >
-                  {d.cancel}
-                </button>
-              </form>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StatusLegend({ statusLabels }: { statusLabels: StatusLabels }) {
-  return (
-    <div className="flex flex-wrap gap-4 text-xs text-zinc-600 dark:text-zinc-400">
-      {Object.entries(STATUS_STYLES).map(([status, style]) => (
-        <div key={status} className="flex items-center gap-1.5">
-          <span
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: style.dot }}
-            aria-hidden
-          />
-          {statusLabels[status as keyof StatusLabels] ?? status}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ToggleLink({
-  href,
-  active,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-        active
-          ? "bg-foreground text-background"
-          : "text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50"
-      }`}
-    >
-      {children}
-    </Link>
-  );
-}
-
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-full border border-black/[.08] px-3 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-    >
-      {children}
-    </Link>
-  );
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).formatRange(dateKeyToDisplayDate(dates[0]), dateKeyToDisplayDate(dates[dates.length - 1]));
 }
 
 export default async function GarageCalendarPage({
@@ -258,259 +98,461 @@ export default async function GarageCalendarPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ view?: string; date?: string; error?: string }>;
+  searchParams: Promise<{
+    view?: string;
+    date?: string;
+    error?: string;
+    appt?: string;
+    cancelled?: string;
+  }>;
 }) {
   const { lang: rawLang } = await params;
   const lang = resolveLocale(rawLang);
   const { garage, isOwner } = await requireGarageMember(lang);
   const dictionary = await getDictionary(lang);
   const d = dictionary.garageCalendar;
-  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
-  const { view: viewParam, date: dateParam, error: errorParam } = await searchParams;
-  const view = viewParam === "month" ? "month" : "week";
-  const anchor = parseDateKey(dateParam ?? todayKey());
+  const statusLabels = dictionary.common.appointmentStatus;
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-GB";
+  const query = await searchParams;
+  const now = new Date();
+  const todayKey = todayKeyInAppZone(now);
 
-  const rangeDays =
-    view === "week"
-      ? Array.from({ length: 7 }, (_, i) => addDays(startOfWeek(anchor), i))
-      : monthGridDays(anchor);
-  // rangeDays are calendar-grid dates; the query bounds must be the garage's
-  // local midnights, not the server's (UTC on Vercel), or appointments in the
-  // first hour or two of a local day land outside the range.
-  const rangeStart = zonedStartOfDay(toDateKey(rangeDays[0]));
-  const rangeEnd = zonedStartOfDay(
-    toDateKey(addDays(rangeDays[rangeDays.length - 1], 1))
-  );
+  const view = parseCalendarView(query.view);
+  const anchor = isDateKey(query.date) ? query.date : todayKey;
+  // Cancelled jobs are hidden on the grids by default (they'd take room
+  // beside live ones); the list always shows them.
+  const showCancelled = query.cancelled === "1";
+  const state: CalendarState = { view, date: anchor, cancelled: showCancelled };
+  const selectedId = query.appt && UUID_PATTERN.test(query.appt) ? query.appt : null;
+
+  const dates =
+    view === "day" ? [anchor] : view === "month" ? monthGridDates(anchor) : weekDates(anchor);
+  const rangeStart = zonedStartOfDay(dates[0]);
+  const rangeEnd = zonedStartOfDay(addDaysToDateKey(dates[dates.length - 1], 1));
 
   const supabase = await createClient();
+  const isGrid = view === "day" || view === "week";
 
-  const { data: staffRows } = await supabase
-    .from("garage_staff")
-    .select("profiles(id, full_name)")
-    .eq("garage_id", garage.id);
-  const staffMechanics = (staffRows ?? [])
-    .map((row) => row.profiles as unknown as Mechanic | null)
-    .filter((mechanic): mechanic is Mechanic => mechanic !== null);
+  const [{ data: appointmentData }, { data: staffRows }, { data: ownerProfile }, schedule, { data: selectedData }] =
+    await Promise.all([
+      // Everything overlapping the range, so overnight jobs show on both days.
+      (() => {
+        let request = supabase
+          .from("appointments")
+          .select(APPOINTMENT_SELECT)
+          .eq("garage_id", garage.id)
+          .lt("start_time", rangeEnd.toISOString())
+          .gt("end_time", rangeStart.toISOString())
+          .order("start_time", { ascending: true });
+        if (view !== "list" && !showCancelled) request = request.neq("status", "cancelled");
+        return request;
+      })(),
+      supabase.from("garage_staff").select("profiles(id, full_name)").eq("garage_id", garage.id),
+      garage.owner_takes_bookings
+        ? supabase.from("profiles").select("id, full_name").eq("id", garage.owner_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      isGrid
+        ? getScheduleForDates({ supabase, garageId: garage.id, dates })
+        : Promise.resolve(new Map()),
+      selectedId
+        ? supabase
+            .from("appointments")
+            .select(
+              `${APPOINTMENT_SELECT}, client_id, mechanic:profiles!appointments_assigned_mechanic_id_fkey(full_name)`
+            )
+            .eq("id", selectedId)
+            .eq("garage_id", garage.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
 
-  // The bookable mechanics (0037): accepted staff, plus the owner unless
-  // they've opted out of taking jobs.
-  const { data: ownerProfile } = garage.owner_takes_bookings
-    ? await supabase.from("profiles").select("id, full_name").eq("id", garage.owner_id).maybeSingle()
-    : { data: null };
+  const appointments = (appointmentData ?? []) as unknown as CalendarAppointment[];
   const mechanics: Mechanic[] = [
-    ...(ownerProfile ? [{ id: ownerProfile.id, full_name: ownerProfile.full_name || d.ownerFallback }] : []),
-    ...staffMechanics,
+    ...(ownerProfile
+      ? [{ id: ownerProfile.id as string, full_name: (ownerProfile.full_name as string) || d.ownerFallback }]
+      : []),
+    ...(staffRows ?? [])
+      .map((row) => row.profiles as unknown as Mechanic | null)
+      .filter((mechanic): mechanic is Mechanic => mechanic !== null),
   ];
+  const mechanicNames = new Map(mechanics.map((mechanic) => [mechanic.id, mechanic.full_name]));
 
-  const { data: appointments } = await supabase
-    .from("appointments")
-    .select(
-      "id, start_time, status, assigned_mechanic_id, services(name), profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name)"
-    )
-    .eq("garage_id", garage.id)
-    .gte("start_time", rangeStart.toISOString())
-    .lt("start_time", rangeEnd.toISOString())
-    .order("start_time", { ascending: true });
+  const { startHour, endHour } = hourRange({
+    windows: isGrid ? [...schedule.values()].flatMap((day) => day.windows) : [],
+    events: isGrid
+      ? dates.flatMap((date) =>
+          appointments
+            .map((appointment) => minutesOnDate(appointment, date))
+            .filter((span) => span.endMin > span.startMin)
+        )
+      : [],
+  });
 
-  const rows = (appointments ?? []) as unknown as CalendarAppointment[];
-  const byDay = new Map<string, CalendarAppointment[]>();
-  for (const appointment of rows) {
-    const key = dateKeyInAppZone(new Date(appointment.start_time));
-    if (!byDay.has(key)) byDay.set(key, []);
-    byDay.get(key)?.push(appointment);
-  }
+  const { prev, next } = navigationTargets(view, anchor);
+  const title = heading(view, dates, anchor, dateLocale);
+  const hrefForAppointment = (id: string) => calendarHref(lang, state, { appt: id });
+  const hrefForDay = (date: string) => calendarHref(lang, { ...state, view: "day", date });
+  const viewLabels: Record<CalendarView, string> = {
+    day: d.day,
+    week: d.week,
+    month: d.month,
+    list: d.list,
+  };
 
-  const todaysKey = todayKey();
-  const anchorKey = toDateKey(anchor);
-  const returnTo = { view, date: anchorKey };
-  const prevAnchor =
-    view === "week" ? addDays(anchor, -7) : addMonths(startOfMonth(anchor), -1);
-  const nextAnchor =
-    view === "week" ? addDays(anchor, 7) : addMonths(startOfMonth(anchor), 1);
-
-  const heading =
-    view === "week"
-      ? `${d.months[rangeDays[0].getMonth()]} ${rangeDays[0].getDate()} – ${d.months[rangeDays[6].getMonth()]} ${rangeDays[6].getDate()}, ${rangeDays[6].getFullYear()}`
-      : `${d.months[anchor.getMonth()]} ${anchor.getFullYear()}`;
+  const selected = selectedData as
+    | (CalendarAppointment & { client_id: string | null; mechanic: { full_name: string } | null })
+    | null;
 
   return (
-    <div className="flex flex-1 flex-col gap-6 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <div className="flex items-start justify-between">
-          <div>
-            <Link
-              href={`/${lang}/dashboard`}
-              className="text-sm font-medium underline"
-            >
-              &larr; {d.backToDashboard}
+    <div className="flex flex-1 flex-col gap-4 bg-zinc-50 px-4 py-6 dark:bg-zinc-950 sm:px-6 lg:px-8">
+      {/* Header bar: date navigation + title on the left, view switcher on the right. */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <nav aria-label={d.dateNavigation} className="flex items-center gap-1.5">
+            <Link href={calendarHref(lang, { ...state, date: prev })} aria-label={d.previous} className={`${CONTROL} w-9`}>
+              <ChevronLeft className="h-4 w-4" strokeWidth={2} />
             </Link>
-            <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
-              {heading}
-            </h1>
-          </div>
-          <LanguageSwitcher lang={lang} />
-        </div>
-
-        {(errorParam === "mechanic-busy" || errorParam === "assign-failed") && (
-          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
-            {errorParam === "mechanic-busy" ? d.mechanicBusyError : d.assignFailedError}
-          </p>
-        )}
-
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex rounded-full border border-black/[.08] p-1 dark:border-white/[.145]">
-            <ToggleLink
-              href={`/${lang}/garage/calendar?view=week&date=${anchorKey}`}
-              active={view === "week"}
-            >
-              {d.week}
-            </ToggleLink>
-            <ToggleLink
-              href={`/${lang}/garage/calendar?view=month&date=${anchorKey}`}
-              active={view === "month"}
-            >
-              {d.month}
-            </ToggleLink>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <NavLink
-              href={`/${lang}/garage/calendar?view=${view}&date=${toDateKey(prevAnchor)}`}
-            >
-              &larr;
-            </NavLink>
-            <NavLink
-              href={`/${lang}/garage/calendar?view=${view}&date=${todaysKey}`}
-            >
+            <Link href={calendarHref(lang, { ...state, date: todayKey })} className={`${CONTROL} px-3.5`}>
               {d.today}
-            </NavLink>
-            <NavLink
-              href={`/${lang}/garage/calendar?view=${view}&date=${toDateKey(nextAnchor)}`}
-            >
-              &rarr;
-            </NavLink>
-          </div>
+            </Link>
+            <Link href={calendarHref(lang, { ...state, date: next })} aria-label={d.next} className={`${CONTROL} w-9`}>
+              <ChevronRight className="h-4 w-4" strokeWidth={2} />
+            </Link>
+          </nav>
+          <h1 className="text-xl font-semibold tracking-tight text-black first-letter:uppercase dark:text-zinc-50">
+            {title}
+          </h1>
         </div>
 
-        <StatusLegend statusLabels={dictionary.common.appointmentStatus} />
-
-        {view === "week" ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-7">
-            {rangeDays.map((day) => {
-              const key = toDateKey(day);
-              const dayAppointments = byDay.get(key) ?? [];
-              const isToday = key === todaysKey;
-
-              return (
-                <div
-                  key={key}
-                  className={`flex flex-col gap-2 rounded-xl border bg-white p-3 dark:bg-zinc-950 ${
-                    isToday
-                      ? "border-black dark:border-white"
-                      : "border-black/[.08] dark:border-white/[.145]"
-                  }`}
-                >
-                  <div className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-                    {d.weekdays[day.getDay()]}{" "}
-                    <span className="text-black dark:text-zinc-50">
-                      {day.getDate()}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    {dayAppointments.length > 0 ? (
-                      dayAppointments.map((appointment) => (
-                        <AppointmentChip
-                          key={appointment.id}
-                          appointment={appointment}
-                          lang={lang}
-                          mechanics={mechanics}
-                          isOwner={isOwner}
-                          d={d}
-                          dateLocale={dateLocale}
-                          returnTo={returnTo}
-                          statusLabels={dictionary.common.appointmentStatus}
-                        />
-                      ))
-                    ) : (
-                      <p className="text-xs text-zinc-400 dark:text-zinc-600">
-                        &mdash;
-                      </p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="grid grid-cols-7 gap-2">
-            {d.weekdays.map((label: string, index: number) => (
-              <div
-                key={index}
-                className="px-1 text-xs font-medium text-zinc-600 dark:text-zinc-400"
+        <div className="flex flex-wrap items-center gap-2">
+          {view !== "list" && (
+            <Link
+              href={calendarHref(lang, { ...state, cancelled: !showCancelled })}
+              aria-pressed={showCancelled}
+              className={`${CONTROL} gap-1.5 px-3 text-xs`}
+            >
+              {showCancelled ? (
+                <EyeOff aria-hidden className="h-3.5 w-3.5" />
+              ) : (
+                <Eye aria-hidden className="h-3.5 w-3.5" />
+              )}
+              {showCancelled ? d.hideCancelled : d.showCancelled}
+            </Link>
+          )}
+          <nav
+            aria-label={d.viewSwitcher}
+            className="inline-flex rounded-lg border border-zinc-200 bg-zinc-100/80 p-0.5 dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            {CALENDAR_VIEWS.map((option) => (
+              <Link
+                key={option}
+                href={calendarHref(lang, { ...state, view: option })}
+                aria-current={option === view ? "page" : undefined}
+                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                  option === view
+                    ? "bg-white text-black shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
+                    : "text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                }`}
               >
-                {label}
-              </div>
+                {viewLabels[option]}
+              </Link>
             ))}
-            {rangeDays.map((day) => {
-              const key = toDateKey(day);
-              const dayAppointments = byDay.get(key) ?? [];
-              const isCurrentMonth = day.getMonth() === anchor.getMonth();
-              const isToday = key === todaysKey;
-              const visible = dayAppointments.slice(0, 3);
-              const overflow = dayAppointments.length - visible.length;
-
-              return (
-                <div
-                  key={key}
-                  className={`flex min-h-[110px] flex-col gap-1 rounded-xl border p-2 ${
-                    isToday
-                      ? "border-black dark:border-white"
-                      : "border-black/[.08] dark:border-white/[.145]"
-                  } ${
-                    isCurrentMonth
-                      ? "bg-white dark:bg-zinc-950"
-                      : "bg-zinc-100/60 dark:bg-zinc-900/40"
-                  }`}
-                >
-                  <span
-                    className={`text-xs font-medium ${
-                      isCurrentMonth
-                        ? "text-black dark:text-zinc-50"
-                        : "text-zinc-400 dark:text-zinc-600"
-                    }`}
-                  >
-                    {day.getDate()}
-                  </span>
-                  <div className="flex flex-col gap-1">
-                    {visible.map((appointment) => (
-                      <AppointmentChip
-                        key={appointment.id}
-                        appointment={appointment}
-                        lang={lang}
-                        mechanics={mechanics}
-                        isOwner={isOwner}
-                        compact
-                        d={d}
-                        dateLocale={dateLocale}
-                        returnTo={returnTo}
-                        statusLabels={dictionary.common.appointmentStatus}
-                      />
-                    ))}
-                    {overflow > 0 && (
-                      <Link
-                        href={`/${lang}/garage/calendar?view=week&date=${key}`}
-                        className="text-[11px] font-medium text-zinc-600 underline dark:text-zinc-400"
-                      >
-                        +{overflow} {d.more}
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+          </nav>
+        </div>
       </div>
+
+      {(query.error === "mechanic-busy" || query.error === "assign-failed") && (
+        <p
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+        >
+          {query.error === "mechanic-busy" ? d.mechanicBusyError : d.assignFailedError}
+        </p>
+      )}
+
+      <StatusLegend statusLabels={statusLabels} d={d} showBlocks={isGrid} />
+
+      {isGrid && (
+        <SlotBookingSurface lang={lang} d={dictionary.walkIn}>
+          <TimeGrid
+            dates={dates}
+            appointments={appointments}
+            schedule={schedule}
+            startHour={startHour}
+            endHour={endHour}
+            todayKey={todayKey}
+            now={now}
+            lang={lang}
+            dateLocale={dateLocale}
+            d={d}
+            hrefForAppointment={hrefForAppointment}
+            hrefForDay={view === "week" ? hrefForDay : null}
+            selectedId={selectedId}
+          />
+        </SlotBookingSurface>
+      )}
+      {view === "month" && (
+        <MonthGrid
+          dates={dates}
+          monthKey={anchor.slice(0, 7)}
+          appointments={appointments}
+          todayKey={todayKey}
+          lang={lang}
+          dateLocale={dateLocale}
+          d={d}
+          hrefForAppointment={hrefForAppointment}
+          hrefForDay={hrefForDay}
+        />
+      )}
+      {view === "list" && (
+        <AppointmentList
+          dates={dates}
+          appointments={appointments}
+          mechanicNames={mechanicNames}
+          todayKey={todayKey}
+          lang={lang}
+          dateLocale={dateLocale}
+          d={d}
+          statusLabels={statusLabels}
+          hrefForAppointment={hrefForAppointment}
+        />
+      )}
+
+      {selected && (
+        <AppointmentDrawer
+          appointment={selected}
+          closeHref={calendarHref(lang, state)}
+          state={state}
+          lang={lang}
+          dateLocale={dateLocale}
+          d={d}
+          dictionary={dictionary}
+          mechanics={mechanics}
+          isOwner={isOwner}
+        />
+      )}
     </div>
+  );
+}
+
+function StatusLegend({
+  statusLabels,
+  d,
+  showBlocks,
+}: {
+  statusLabels: Dictionary["common"]["appointmentStatus"];
+  d: D;
+  showBlocks: boolean;
+}) {
+  const entries = ["confirmed", "pending", "completed", "cancelled"] as const;
+  return (
+    <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-600 dark:text-zinc-400">
+      {entries.map((status) => (
+        <li key={status} className="flex items-center gap-1.5">
+          <span aria-hidden className={`h-2.5 w-1 rounded-full ${STATUS_DOT[status]}`} />
+          {statusLabels[status]}
+        </li>
+      ))}
+      {showBlocks && (
+        <>
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className="h-2.5 w-3 rounded-sm border border-amber-300/70 bg-amber-500/15" />
+            {d.blocked}
+          </li>
+          <li className="flex items-center gap-1.5">
+            <span aria-hidden className="h-2.5 w-3 rounded-sm border border-zinc-300 bg-[repeating-linear-gradient(135deg,transparent_0_2px,rgb(0_0_0/0.12)_2px_4px)] dark:border-zinc-700 dark:bg-[repeating-linear-gradient(135deg,transparent_0_2px,rgb(255_255_255/0.12)_2px_4px)]" />
+            {d.closed}
+          </li>
+        </>
+      )}
+    </ul>
+  );
+}
+
+function AppointmentDrawer({
+  appointment,
+  closeHref,
+  state,
+  lang,
+  dateLocale,
+  d,
+  dictionary,
+  mechanics,
+  isOwner,
+}: {
+  appointment: CalendarAppointment & { client_id: string | null; mechanic: { full_name: string } | null };
+  closeHref: string;
+  state: CalendarState;
+  lang: Locale;
+  dateLocale: string;
+  d: D;
+  dictionary: Dictionary;
+  mechanics: Mechanic[];
+  isOwner: boolean;
+}) {
+  const formatTime = timeFormatter(lang);
+  const start = new Date(appointment.start_time);
+  const isOpen = appointment.status === "pending" || appointment.status === "confirmed";
+  const service = appointment.services?.name ?? d.serviceFallback;
+  const vehicle = appointment.vehicle;
+  const vehicleDescription = [vehicle?.brands?.name, vehicle?.model].filter(Boolean).join(" ");
+  const plate = vehicle?.license_plate?.trim();
+  const statusLabel =
+    dictionary.common.appointmentStatus[appointment.status as keyof Dictionary["common"]["appointmentStatus"]] ??
+    appointment.status;
+
+  return (
+    <DrawerShell closeHref={closeHref} closeLabel={d.close} title={service}>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+            <span aria-hidden className={`h-2 w-2 rounded-full ${STATUS_DOT[appointment.status] ?? STATUS_DOT.pending}`} />
+            {statusLabel}
+          </span>
+          <p className="text-lg font-semibold text-black first-letter:uppercase dark:text-zinc-50">
+            {start.toLocaleDateString(dateLocale, {
+              timeZone: APP_TIME_ZONE,
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+            })}
+          </p>
+          <p className="text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+            {formatTime.format(start)}–{formatTime.format(new Date(appointment.end_time))}
+          </p>
+        </div>
+
+        <dl className="grid grid-cols-[6.5rem_1fr] gap-x-4 gap-y-3 text-sm">
+          <dt className="text-zinc-500 dark:text-zinc-400">{d.clientLabel}</dt>
+          <dd className="font-medium text-black dark:text-zinc-50">
+            {customerName(appointment, d)}
+            {appointment.walk_in?.phone && (
+              <a
+                href={`tel:${appointment.walk_in.phone.replace(/[^\d+]/g, "")}`}
+                className="block font-normal text-brand-600 hover:underline dark:text-brand-400"
+              >
+                {appointment.walk_in.phone}
+              </a>
+            )}
+          </dd>
+          <dt className="text-zinc-500 dark:text-zinc-400">{d.vehicleLabel}</dt>
+          <dd className="flex flex-wrap items-center gap-2 text-black dark:text-zinc-50">
+            {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
+            {vehicleDescription || (!plate && <span className="text-zinc-500">—</span>)}
+          </dd>
+          <dt className="text-zinc-500 dark:text-zinc-400">{d.mechanicLabel}</dt>
+          <dd className="text-black dark:text-zinc-50">{appointment.mechanic?.full_name ?? d.unassigned}</dd>
+        </dl>
+
+        {isOwner && isOpen && mechanics.length > 0 && (
+          <form action={assignMechanic} className="flex flex-col gap-2">
+            <input type="hidden" name="id" value={appointment.id} />
+            <input type="hidden" name="lang" value={lang} />
+            <input type="hidden" name="returnView" value={state.view} />
+            <input type="hidden" name="returnDate" value={state.date} />
+            {state.cancelled && <input type="hidden" name="returnCancelled" value="1" />}
+            <label htmlFor="drawer-mechanic" className="text-sm font-medium">
+              {d.reassign}
+            </label>
+            <div className="flex gap-2">
+              <StyledSelect
+                id="drawer-mechanic"
+                name="mechanicId"
+                defaultValue={appointment.assigned_mechanic_id ?? ""}
+                className="text-sm dark:border-zinc-700 dark:bg-zinc-950"
+              >
+                <option value="">{d.autoAssign}</option>
+                {mechanics.map((mechanic) => (
+                  <option key={mechanic.id} value={mechanic.id}>
+                    {mechanic.full_name}
+                  </option>
+                ))}
+              </StyledSelect>
+              <button type="submit" className={`${DRAWER_BUTTON} shrink-0 py-1.5`}>
+                {d.set}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {appointment.status === "confirmed" && (
+          <form action={updateRepairStage} className="flex flex-col gap-2">
+            <input type="hidden" name="id" value={appointment.id} />
+            <input type="hidden" name="lang" value={lang} />
+            <label htmlFor="drawer-stage" className="text-sm font-medium">
+              {d.repairStageLabel}
+            </label>
+            <div className="flex gap-2">
+              <StyledSelect
+                id="drawer-stage"
+                name="stage"
+                defaultValue={appointment.repair_stage ?? ""}
+                className="text-sm dark:border-zinc-700 dark:bg-zinc-950"
+              >
+                <option value="" disabled>
+                  {d.repairStagePlaceholder}
+                </option>
+                {REPAIR_STAGES.map((stage) => (
+                  <option key={stage} value={stage}>
+                    {dictionary.common.repairStage[stage]}
+                  </option>
+                ))}
+              </StyledSelect>
+              <button type="submit" className={`${DRAWER_BUTTON} shrink-0 py-1.5`}>
+                {d.update}
+              </button>
+            </div>
+          </form>
+        )}
+
+        <div className="flex flex-col gap-2 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+          {appointment.status === "pending" && (
+            <form action={confirmAppointment}>
+              <input type="hidden" name="id" value={appointment.id} />
+              <input type="hidden" name="lang" value={lang} />
+              <button
+                type="submit"
+                className="w-full rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+              >
+                {d.confirm}
+              </button>
+            </form>
+          )}
+          {isOpen && (
+            <form action={completeAppointment}>
+              <input type="hidden" name="id" value={appointment.id} />
+              <input type="hidden" name="lang" value={lang} />
+              <button type="submit" className={`${DRAWER_BUTTON} w-full`}>
+                {d.complete}
+              </button>
+            </form>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            {appointment.client_id && appointment.profiles && (
+              <Link href={`/${lang}/appointments/${appointment.id}/messages`} className={DRAWER_BUTTON}>
+                {d.message}
+              </Link>
+            )}
+            {isOpen && (
+              <Link href={`/${lang}/appointments/${appointment.id}/reschedule`} className={DRAWER_BUTTON}>
+                {d.reschedule}
+              </Link>
+            )}
+          </div>
+          {isOpen && (
+            <form action={providerCancelAppointment}>
+              <input type="hidden" name="id" value={appointment.id} />
+              <input type="hidden" name="lang" value={lang} />
+              <button
+                type="submit"
+                className="w-full rounded-full px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+              >
+                {d.cancel}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </DrawerShell>
   );
 }
