@@ -89,6 +89,8 @@ export default async function GarageLayout({
             blockTimeLabel: dictionary.garageTopBar.blockTime,
             groupLabel: dictionary.garageTopBar.actionsLabel,
             today: todayKeyInAppZone(),
+            searchPlaceholder: dictionary.garageTopBar.searchPlaceholder,
+            searchLabel: dictionary.garageTopBar.searchLabel,
           }}
         />
         <main className="flex flex-1 flex-col">{children}</main>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { QuickWalkInButton } from "@/components/quick-walk-in-modal";
 import { AddClientButton } from "@/components/add-client-modal";
 import { BlockTimeButton } from "@/components/block-time-modal";
+import { GarageSearch } from "@/components/garage-search";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import { usePathname } from "next/navigation";
 import { useSyncExternalStore } from "react";
@@ -136,11 +137,13 @@ export function GarageTopBar({
     blockTimeLabel: string;
     groupLabel: string;
     today: string; // "YYYY-MM-DD" in APP_TIME_ZONE, for the block form
+    searchPlaceholder: string;
+    searchLabel: string;
   };
 }) {
   return (
     <header className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800/80 dark:bg-zinc-950 sm:px-8">
-      <div className="flex min-w-0 items-center gap-3">
+      <div className="flex min-w-0 shrink items-center gap-3">
         <Link href={`/${lang}/garage/dashboard`} className="shrink-0">
           <AnimatedLogo size={32} />
         </Link>
@@ -148,11 +151,20 @@ export function GarageTopBar({
           {garageName}
         </p>
         <span
-          className={`hidden shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium md:inline ${STATUS_BADGE[status] ?? ""}`}
+          className={`hidden shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium xl:inline ${STATUS_BADGE[status] ?? ""}`}
         >
           {statusLabels[status as keyof typeof statusLabels] ?? status}
         </span>
       </div>
+      {actions && (
+        <div className="flex flex-1 justify-end md:justify-center md:px-2">
+          <GarageSearch
+            lang={lang}
+            placeholder={actions.searchPlaceholder}
+            label={actions.searchLabel}
+          />
+        </div>
+      )}
       {actions && (
         <div className="flex shrink-0 items-center gap-2">
           <div

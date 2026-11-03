@@ -377,12 +377,12 @@
     "teamEmpty": "Personne ne prend encore de rendez-vous.",
     "teamManage": "Gérer l'équipe",
     "teamYou": "vous",
-    "teamNote": "Tout le monde suit les horaires du garage.",
-    "statToday": "Aujourd'hui",
-    "kpiTodayHint": "{count} restant(s)",
     "legacyPendingTitle": "{count} ancienne(s) réservation(s) à confirmer",
     "legacyPendingDescription": "Faites avec paiement en ligne avant le paiement sur place. Les nouvelles réservations sont confirmées automatiquement.",
-    "legacyPendingAction": "Voir dans le calendrier"
+    "legacyPendingAction": "Voir dans le calendrier",
+    "statReadyForPickup": "Prêts à récupérer",
+    "kpiReadyForPickupHint": "En attente de leur propriétaire",
+    "logWalkIn": "Enregistrer un client sans RDV"
   },
   "garageCalendar": {
     "backToDashboard": "Retour au tableau de bord",
@@ -694,8 +694,8 @@
     "appointment": "rendez-vous",
     "appointments": "rendez-vous",
     "noClientsYet": "Aucun client pour le moment.",
-    "searchLabel": "Rechercher des clients par nom, e-mail, plaque d'immatriculation ou VIN",
-    "searchPlaceholder": "Rechercher par nom, plaque (ex. LU 1234) ou VIN",
+    "searchLabel": "Rechercher des clients par nom, téléphone, e-mail, plaque ou VIN",
+    "searchPlaceholder": "Rechercher par nom, téléphone, plaque (ex. LU 1234) ou VIN",
     "clearSearch": "Effacer la recherche",
     "resultsCount": "{count} client(s) correspondant(s)",
     "clientCount": "{count} client(s)",
@@ -1090,6 +1090,8 @@
   "garageTopBar": {
     "actionsLabel": "Actions rapides",
     "addClient": "Ajouter un client",
-    "blockTime": "Bloquer un créneau"
+    "blockTime": "Bloquer un créneau",
+    "searchPlaceholder": "Rechercher clients, téléphones, plaques…",
+    "searchLabel": "Rechercher des clients par nom, numéro de téléphone ou plaque d'immatriculation"
   }
 }

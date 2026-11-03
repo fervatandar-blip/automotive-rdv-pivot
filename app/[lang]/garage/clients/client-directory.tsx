@@ -34,6 +34,8 @@ export type DirectoryClient = {
   anonymized?: boolean;
   name: string;
   email: string;
+  // Digits of the phone number on file (garage customers only), for search.
+  phoneDigits: string;
   appointmentCount: number;
   vehicles: DirectoryVehicle[];
 };
@@ -72,6 +74,11 @@ export function ClientDirectory({
   const { results, vehicleTerm } = useMemo(() => {
     const text = deferredQuery.trim().toLowerCase();
     const term = normalizeVehicleSearch(deferredQuery);
+    // Phone numbers are typed every which way ("+352 621 12 34 56",
+    // "621123456"), so compare digits only -- once there are enough of them
+    // to mean something. Only garage-added customers have a phone on file;
+    // RDV client profiles don't store one.
+    const digits = deferredQuery.replace(/\D/g, "");
     if (!text) return { results: clients, vehicleTerm: "" };
 
     return {
@@ -80,6 +87,7 @@ export function ClientDirectory({
         (client) =>
           client.name.toLowerCase().includes(text) ||
           client.email.toLowerCase().includes(text) ||
+          (digits.length >= 4 && client.phoneDigits.includes(digits)) ||
           client.vehicles.some((vehicle) => vehicleMatches(vehicle, term))
       ),
     };

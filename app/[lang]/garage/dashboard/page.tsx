@@ -3,13 +3,13 @@ import { redirect } from "next/navigation";
 import {
   AlertCircle,
   ArrowRight,
-  CalendarCheck,
   CalendarClock,
   CheckCircle2,
   CircleCheckBig,
   Gauge,
   Hourglass,
   Info,
+  KeyRound,
   Wrench,
   XCircle,
   type LucideIcon,
@@ -29,6 +29,7 @@ import { getDictionary, type Dictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { LicensePlate } from "@/components/license-plate";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
+import { QuickWalkInButton } from "@/components/quick-walk-in-modal";
 import { StyledSelect } from "@/components/styled-select";
 import { REPAIR_STAGES } from "@/lib/definitions";
 import { getBookableWindowsForDate } from "@/lib/availability";
@@ -348,18 +349,35 @@ function EmptyCalendarGraphic() {
   );
 }
 
-function EmptyAgenda({ text, lang, d }: { text: string; lang: Locale; d: D }) {
+/**
+ * Empty agenda: the drawing, what's (not) there, and the one useful next
+ * step -- logging a walk-in -- with the calendar as the secondary way out.
+ */
+function EmptyAgenda({
+  text,
+  lang,
+  d,
+  walkIn,
+}: {
+  text: string;
+  lang: Locale;
+  d: D;
+  walkIn: Dictionary["walkIn"];
+}) {
   return (
-    <div className={`${CARD} flex flex-col items-center gap-3 px-6 py-12 text-center`}>
+    <div className={`${CARD} flex flex-col items-center gap-4 px-6 py-12 text-center`}>
       <EmptyCalendarGraphic />
       <p className="text-sm text-zinc-600 dark:text-zinc-400">{text}</p>
-      <Link
-        href={`/${lang}/garage/calendar`}
-        className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:underline dark:text-brand-400"
-      >
-        {d.viewFullCalendar}
-        <ArrowRight aria-hidden className="h-4 w-4" />
-      </Link>
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
+        <QuickWalkInButton lang={lang} d={walkIn} label={d.logWalkIn} />
+        <Link
+          href={`/${lang}/garage/calendar`}
+          className="inline-flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          {d.viewFullCalendar}
+          <ArrowRight aria-hidden className="h-4 w-4" />
+        </Link>
+      </div>
     </div>
   );
 }
@@ -787,7 +805,7 @@ export default async function GarageDashboardPage({
                 />
               ))
             ) : (
-              <EmptyAgenda text={d.noUpcomingAssigned} lang={lang} d={d} />
+              <EmptyAgenda text={d.noUpcomingAssigned} lang={lang} d={d} walkIn={dictionary.walkIn} />
             )}
           </section>
 
@@ -831,6 +849,7 @@ export default async function GarageDashboardPage({
     { count: upcomingCount },
     { count: pendingCount },
     { count: completedThisWeekCount },
+    { count: readyForPickupCount },
     { data: weekData },
     { data: todayLoad },
     { windows },
@@ -856,6 +875,14 @@ export default async function GarageDashboardPage({
       .eq("garage_id", garage.id)
       .eq("status", "completed")
       .gte("start_time", startOfWeek.toISOString()),
+    // Cars that are done and waiting for their owner, whatever day they
+    // were booked: they stay here until the job is marked complete.
+    ownerSupabase
+      .from("appointments")
+      .select("*", { count: "exact", head: true })
+      .eq("garage_id", garage.id)
+      .eq("status", "confirmed")
+      .eq("repair_stage", "ready_for_pickup"),
     // Today + This week tabs: one query, split below.
     ownerSupabase
       .from("appointments")
@@ -931,7 +958,7 @@ export default async function GarageDashboardPage({
 
   function renderList(list: AgendaAppointment[], emptyText: string) {
     if (list.length === 0) {
-      return <EmptyAgenda text={emptyText} lang={lang} d={d} />;
+      return <EmptyAgenda text={emptyText} lang={lang} d={d} walkIn={dictionary.walkIn} />;
     }
     return list.map((appointment) => (
       <AppointmentCard
@@ -996,11 +1023,12 @@ export default async function GarageDashboardPage({
             hint={d.kpiUpcomingHint}
           />
           <KpiCard
-            href={`/${lang}/garage/dashboard?view=today`}
-            icon={CalendarCheck}
-            label={d.statToday}
-            value={todayAppointments.length}
-            hint={d.kpiTodayHint.replace("{count}", String(openToday.length))}
+            href={`/${lang}/garage/calendar`}
+            icon={KeyRound}
+            label={d.statReadyForPickup}
+            value={readyForPickupCount ?? 0}
+            hint={d.kpiReadyForPickupHint}
+            highlight={(readyForPickupCount ?? 0) > 0}
           />
           <KpiCard
             href={`/${lang}/garage/calendar`}
@@ -1146,7 +1174,6 @@ export default async function GarageDashboardPage({
                   })}
                 </ul>
               )}
-              <p className="mt-4 text-xs text-zinc-400 dark:text-zinc-500">{d.teamNote}</p>
             </section>
 
             <PushNotificationOptIn />

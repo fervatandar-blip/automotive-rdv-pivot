@@ -377,12 +377,12 @@
     "teamEmpty": "No one takes bookings yet.",
     "teamManage": "Manage team",
     "teamYou": "you",
-    "teamNote": "Everyone follows the garage's opening hours.",
-    "statToday": "Today",
-    "kpiTodayHint": "{count} still to do",
     "legacyPendingTitle": "{count} older booking(s) still need confirmation",
     "legacyPendingDescription": "Made with online payment before pay-on-site. New bookings are confirmed automatically.",
-    "legacyPendingAction": "Review in calendar"
+    "legacyPendingAction": "Review in calendar",
+    "statReadyForPickup": "Ready for pickup",
+    "kpiReadyForPickupHint": "Waiting for their owner",
+    "logWalkIn": "Log walk-in"
   },
   "garageCalendar": {
     "backToDashboard": "Back to dashboard",
@@ -694,8 +694,8 @@
     "appointment": "appointment",
     "appointments": "appointments",
     "noClientsYet": "No clients yet.",
-    "searchLabel": "Search clients by name, email, license plate or VIN",
-    "searchPlaceholder": "Search by name, plate (e.g. LU 1234) or VIN",
+    "searchLabel": "Search clients by name, phone, email, license plate or VIN",
+    "searchPlaceholder": "Search by name, phone, plate (e.g. LU 1234) or VIN",
     "clearSearch": "Clear search",
     "resultsCount": "{count} matching client(s)",
     "clientCount": "{count} client(s)",
@@ -1090,6 +1090,8 @@
   "garageTopBar": {
     "actionsLabel": "Quick actions",
     "addClient": "Add client",
-    "blockTime": "Block time"
+    "blockTime": "Block time",
+    "searchPlaceholder": "Search clients, phones, plates…",
+    "searchLabel": "Search clients by name, phone number or license plate"
   }
 }

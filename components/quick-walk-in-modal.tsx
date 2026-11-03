@@ -22,7 +22,17 @@ function FieldError({ messages }: { messages?: string[] }) {
  * fetched when the modal opens rather than on every garage page render.
  * Ids come from useId so the modal can't collide with another on the page.
  */
-export function QuickWalkInButton({ lang, d }: { lang: Locale; d: D }) {
+export function QuickWalkInButton({
+  lang,
+  d,
+  label,
+}: {
+  lang: Locale;
+  d: D;
+  // Replaces the responsive Walk-in / short label (e.g. "Log walk-in" in
+  // the dashboard's empty agenda).
+  label?: string;
+}) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const [options, setOptions] = useState<WalkInOptions | null>(null);
@@ -55,8 +65,14 @@ export function QuickWalkInButton({ lang, d }: { lang: Locale; d: D }) {
         className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
       >
         <Plus className="h-4 w-4" strokeWidth={2.25} />
-        <span className="hidden sm:inline">{d.openButton}</span>
-        <span className="sm:hidden">{d.openButtonShort}</span>
+        {label ? (
+          <span>{label}</span>
+        ) : (
+          <>
+            <span className="hidden sm:inline">{d.openButton}</span>
+            <span className="sm:hidden">{d.openButtonShort}</span>
+          </>
+        )}
       </button>
 
       <dialog
