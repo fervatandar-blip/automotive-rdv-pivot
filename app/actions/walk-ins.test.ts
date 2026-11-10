@@ -178,7 +178,7 @@ describe("createWalkIn", () => {
 
     const result = await createWalkIn(undefined, form(newWalkIn));
 
-    expect(result?.message).toMatch(/busy/i);
+    expect(result?.message).toMatch(/no technician is available/i);
     const deletes = ops.filter((op) => op.method === "delete").map((op) => op.table);
     expect(deletes).toEqual(["vehicles", "garage_customers"]);
   });

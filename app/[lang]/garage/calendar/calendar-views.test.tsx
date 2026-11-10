@@ -176,7 +176,7 @@ describe("TimeGrid by mechanic", () => {
     ]);
     expect(html).toContain("Marc Weber");
     expect(html).toContain("(you)");
-    expect(html).toContain("1 job(s)");
+    expect(html).toContain("1 service order(s)");
     expect(html).toContain(">MW<");
     expect(html.match(/data-slot-mechanic="m2"/g)).toHaveLength(20);
     expect(html).toContain('data-col-mechanic="m2" data-col-mechanic-name="Lea Muller"');

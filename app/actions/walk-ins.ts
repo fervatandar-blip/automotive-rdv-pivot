@@ -239,7 +239,7 @@ export async function createWalkIn(
     return { errors: { time: ["That time has already passed."] } };
   }
   if (dateKeyInAppZone(start) !== day || dateKeyInAppZone(new Date(end.getTime() - 1)) !== day) {
-    return { errors: { time: ["The job has to finish on the same day. Pick an earlier start time."] } };
+    return { errors: { time: ["The service order must finish on the same day. Select an earlier start time."] } };
   }
 
   // Track what this call created, so a failed booking doesn't leave an
@@ -340,15 +340,15 @@ export async function createWalkIn(
     if (bookingError?.code === "23P01") {
       return {
         message: data.mechanicId
-          ? "That mechanic already has a job then. Pick someone else or Auto-assign."
-          : "Every mechanic is busy then. Choose a later time today.",
+          ? "This technician is already booked at that time. Select another technician or use Auto-assign."
+          : "No technician is available at that time. Select a later time today.",
       };
     }
     if (bookingError?.code === "42501") {
-      return { message: "That customer or vehicle can't be booked from this garage." };
+      return { message: "This customer or vehicle cannot be booked by this workshop." };
     }
     console.error("[walk-in] appointment insert failed:", bookingError);
-    return { message: "Could not create the walk-in. Please try again." };
+    return { message: "The unscheduled visit could not be recorded. Try again." };
   }
 
   revalidateLocalizedPath("/garage/calendar");

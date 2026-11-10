@@ -27,7 +27,7 @@ describe("GarageSidebar", () => {
       "Services &amp; Pricing",
       "Messages",
       "Settings",
-      "Garage Profile",
+      "Workshop Profile",
       "Working Hours",
       "Staff",
     ].map((text) => position(html, text));

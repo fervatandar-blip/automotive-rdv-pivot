@@ -193,7 +193,7 @@ export async function notifyBookingReceived({
     await sendEmail({
       to: recipientEmail,
       subject: "New booking request",
-      html: `<p>Hi ${escapeHtml(recipientName)},</p><p>You have a new <strong>${escapeHtml(serviceName)}</strong> booking request from ${escapeHtml(otherPartyName)} on ${when}. Confirm it from your dashboard.</p>`,
+      html: `<p>Hello ${escapeHtml(recipientName)},</p><p>New booking request: <strong>${escapeHtml(serviceName)}</strong> for ${escapeHtml(otherPartyName)} on ${when}. Confirmation is required from the dashboard.</p>`,
     });
   }
   if (notificationAllowed) {
@@ -265,7 +265,7 @@ export async function notifyBookingConfirmed({
     await sendEmail({
       to: recipientEmail,
       subject: "New booking",
-      html: `<p>Hi ${escapeHtml(recipientName)},</p><p>${escapeHtml(otherPartyName)} booked <strong>${escapeHtml(serviceName)}</strong> on ${when}. It's already in your agenda; payment is taken at the garage.</p>`,
+      html: `<p>Hello ${escapeHtml(recipientName)},</p><p>New booking: <strong>${escapeHtml(serviceName)}</strong> for ${escapeHtml(otherPartyName)} on ${when}. The appointment has been added to the agenda; payment is collected on site.</p>`,
     });
   }
   await sendPushToProfile({
