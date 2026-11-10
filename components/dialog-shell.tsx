@@ -52,6 +52,10 @@ export function DialogShell({
 }
 
 export const TRIGGER_BUTTON_CLASSES = {
+  // Icon-only (label rendered sr-only + tooltip by the trigger): the top
+  // bar's secondary actions.
+  icon:
+    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50",
   // Inside the top bar's action group: borderless, the group draws the frame.
   ghost:
     "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50",

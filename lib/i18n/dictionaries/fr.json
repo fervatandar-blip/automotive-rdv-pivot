@@ -382,7 +382,13 @@
     "legacyPendingAction": "Voir dans le calendrier",
     "statReadyForPickup": "Prêts à récupérer",
     "kpiReadyForPickupHint": "En attente de leur propriétaire",
-    "logWalkIn": "Enregistrer un client sans RDV"
+    "logWalkIn": "Enregistrer un client sans RDV",
+    "moreActions": "Plus d'actions",
+    "stageHeading": "Étape de réparation",
+    "cancelAppointment": "Annuler le rendez-vous",
+    "cancelConfirm": "Annuler ce rendez-vous ?",
+    "cancelConfirmYes": "Oui, annuler",
+    "cancelKeep": "Garder"
   },
   "garageCalendar": {
     "week": "Semaine",
@@ -1199,18 +1205,18 @@
     "dashboard": "Tableau de bord",
     "calendar": "Calendrier et agenda",
     "clients": "Répertoire clients",
-    "communication": "Communication et prestations",
     "messages": "Messages",
     "services": "Prestations et tarifs",
-    "settings": "Paramètres et conformité",
+    "settings": "Paramètres",
     "profile": "Profil du garage",
-    "hours": "Horaires et disponibilités",
+    "hours": "Horaires",
     "verification": "Vérification et KYC",
     "staff": "Équipe",
     "notifications": "Notifications",
     "account": "Paramètres du compte",
     "expand": "Déplier le menu",
     "collapse": "Replier le menu",
-    "logOut": "Déconnexion"
+    "logOut": "Déconnexion",
+    "servicesGroup": "Prestations"
   }
 }

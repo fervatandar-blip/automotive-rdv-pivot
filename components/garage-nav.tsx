@@ -62,13 +62,19 @@ function setCollapsed(value: boolean) {
 type NavLabels = Dictionary["garageNav"];
 
 /**
- * The garage portal menu. Operations is the day-to-day trio; everything
- * you set up once lives under Settings. Pages taken out of the menu
- * (Reviews, Waitlist, and Finance during the pay-on-site pilot, 0040)
- * still work by URL -- the waitlist keeps notifying clients on
- * cancellations regardless.
+ * The garage portal menu: three groups, nothing else. Pages taken out of
+ * the menu (Reviews, Waitlist, and Finance during the pay-on-site pilot,
+ * 0040) still work by URL -- the waitlist keeps notifying clients on
+ * cancellations regardless. Verification is listed only while the garage
+ * is not yet approved: it's a one-time onboarding step, but an unapproved
+ * garage must still be able to reach it. Notifications and Account live in
+ * the sidebar footer (personal settings, not garage settings).
  */
-function navGroups(lang: Locale, isOwner: boolean, t: NavLabels) {
+function navGroups(
+  lang: Locale,
+  { isOwner, needsVerification }: { isOwner: boolean; needsVerification: boolean },
+  t: NavLabels
+) {
   return [
     {
       label: t.operations,
@@ -79,10 +85,10 @@ function navGroups(lang: Locale, isOwner: boolean, t: NavLabels) {
       ],
     },
     {
-      label: t.communication,
+      label: t.servicesGroup,
       items: [
-        { href: `/${lang}/garage/messages`, label: t.messages, icon: MessageSquare },
         { href: `/${lang}/garage/services`, label: t.services, icon: Wrench },
+        { href: `/${lang}/garage/messages`, label: t.messages, icon: MessageSquare },
       ],
     },
     {
@@ -90,12 +96,12 @@ function navGroups(lang: Locale, isOwner: boolean, t: NavLabels) {
       items: [
         { href: `/${lang}/garage/profile`, label: t.profile, icon: Building2 },
         { href: `/${lang}/garage/availability`, label: t.hours, icon: Clock },
-        { href: `/${lang}/garage/documents`, label: t.verification, icon: FileText },
         // Owner-only: the staff page gates on requireGarageOwner, so a
         // mecanicien would only hit a redirect.
         ...(isOwner ? [{ href: `/${lang}/garage/staff`, label: t.staff, icon: UserCog }] : []),
-        { href: `/${lang}/garage/notifications`, label: t.notifications, icon: Bell },
-        { href: `/${lang}/account`, label: t.account, icon: User },
+        ...(needsVerification && isOwner
+          ? [{ href: `/${lang}/garage/documents`, label: t.verification, icon: FileText }]
+          : []),
       ],
     },
   ];
@@ -103,6 +109,39 @@ function navGroups(lang: Locale, isOwner: boolean, t: NavLabels) {
 
 function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+const NAV_ITEM_BASE =
+  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600";
+const NAV_ITEM_ACTIVE = "bg-zinc-800/60 font-medium text-white";
+const NAV_ITEM_IDLE = "text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-100";
+
+function NavLink({
+  href,
+  label,
+  icon: Icon,
+  active,
+  collapsed,
+}: {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  active: boolean;
+  collapsed: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      title={collapsed ? label : undefined}
+      aria-current={active ? "page" : undefined}
+      className={`${NAV_ITEM_BASE} ${active ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE} ${
+        collapsed ? "justify-center" : ""
+      }`}
+    >
+      <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+      {!collapsed && <span className="truncate">{label}</span>}
+    </Link>
+  );
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -139,22 +178,23 @@ export function GarageTopBar({
   };
 }) {
   return (
-    <header className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800/80 dark:bg-zinc-950 sm:px-8">
-      <div className="flex min-w-0 shrink items-center gap-3">
-        <Link href={`/${lang}/garage/dashboard`} className="shrink-0">
-          <AnimatedLogo size={32} />
+    <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white px-4 dark:border-zinc-800/60 dark:bg-zinc-950 sm:px-6">
+      <div className="flex min-w-0 shrink items-center gap-2.5">
+        {/* The sidebar carries the logo from sm up; phones have no sidebar. */}
+        <Link href={`/${lang}/garage/dashboard`} className="shrink-0 sm:hidden">
+          <AnimatedLogo size={28} />
         </Link>
-        <p className="truncate text-base font-semibold text-black dark:text-zinc-50 sm:text-lg">
-          {garageName}
-        </p>
-        <span
-          className={`hidden shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium xl:inline ${STATUS_BADGE[status] ?? ""}`}
-        >
-          {statusLabels[status as keyof typeof statusLabels] ?? status}
-        </span>
+        <p className="truncate text-sm font-semibold text-black dark:text-zinc-50">{garageName}</p>
+        {status !== "approved" && (
+          <span
+            className={`hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium lg:inline ${STATUS_BADGE[status] ?? ""}`}
+          >
+            {statusLabels[status as keyof typeof statusLabels] ?? status}
+          </span>
+        )}
       </div>
       {actions && (
-        <div className="flex flex-1 justify-end md:justify-center md:px-2">
+        <div className="flex flex-1 justify-end md:justify-center md:px-4">
           <GarageSearch
             lang={lang}
             placeholder={actions.searchPlaceholder}
@@ -163,28 +203,23 @@ export function GarageTopBar({
         </div>
       )}
       {actions && (
-        <div className="flex shrink-0 items-center gap-2">
-          <div
-            role="group"
-            aria-label={actions.groupLabel}
-            className="flex items-center gap-0.5 rounded-full border border-zinc-200 bg-zinc-50 p-0.5 dark:border-zinc-800 dark:bg-zinc-900/60"
-          >
+        <div className="flex shrink-0 items-center gap-1">
+          <div role="group" aria-label={actions.groupLabel} className="flex items-center gap-0.5">
             <AddClientButton
               lang={lang}
               d={actions.addClient}
               label={actions.addClientLabel}
-              variant="ghost"
-              collapseLabel
+              variant="icon"
             />
             <BlockTimeButton
               lang={lang}
               d={actions.blockTime}
               label={actions.blockTimeLabel}
               today={actions.today}
-              variant="ghost"
-              collapseLabel
+              variant="icon"
             />
           </div>
+          <span aria-hidden className="mx-1.5 h-5 w-px bg-zinc-200 dark:bg-zinc-800" />
           <QuickWalkInButton lang={lang} d={actions.walkIn} />
         </div>
       )}
@@ -227,14 +262,21 @@ function SidebarLocaleToggle({
 export function GarageSidebar({
   lang,
   isOwner,
+  needsVerification,
   labels,
 }: {
   lang: Locale;
   isOwner: boolean;
+  // Garage not approved yet: keep the verification page in the menu.
+  needsVerification: boolean;
   labels: NavLabels;
 }) {
   const pathname = usePathname();
-  const groups = navGroups(lang, isOwner, labels);
+  const groups = navGroups(lang, { isOwner, needsVerification }, labels);
+  const footerLinks = [
+    { href: `/${lang}/garage/notifications`, label: labels.notifications, icon: Bell },
+    { href: `/${lang}/account`, label: labels.account, icon: User },
+  ];
 
   // Server always renders expanded; the real preference (if any) is only
   // known client-side, so it's resolved after mount to avoid a hydration
@@ -278,7 +320,7 @@ export function GarageSidebar({
           type="button"
           onClick={toggleCollapsed}
           aria-label={collapsed ? labels.expand : labels.collapse}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-white/[.06] hover:text-zinc-50"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-800/40 hover:text-zinc-100"
         >
           {collapsed ? (
             <PanelLeft className="h-4 w-4" strokeWidth={1.5} />
@@ -288,61 +330,57 @@ export function GarageSidebar({
         </button>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
-        {groups.map((group, groupIndex) => (
-          <div key={group.label} className="flex flex-col gap-1">
-            {!collapsed && (
-              <span
-                className={
-                  groupIndex === 0
-                    ? "px-3 pb-2 text-xs font-medium uppercase tracking-wide text-zinc-500"
-                    : "mt-6 border-t border-white/[.08] px-3 pb-2 pt-4 text-xs font-medium uppercase tracking-wide text-zinc-500"
-                }
-              >
+      <nav className="flex flex-1 flex-col gap-6 overflow-y-auto">
+        {groups.map((group) => (
+          <div key={group.label} className="flex flex-col gap-0.5">
+            {collapsed ? (
+              <span className="sr-only">{group.label}</span>
+            ) : (
+              <span className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
                 {group.label}
               </span>
             )}
-            {collapsed && groupIndex > 0 && (
-              <div className="mx-2 my-2 border-t border-white/[.08]" />
-            )}
-            {group.items.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(pathname, item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={collapsed ? item.label : undefined}
-                  className={
-                    active
-                      ? `flex items-center gap-3 rounded-lg bg-brand-600 px-3 py-2.5 text-sm font-medium text-white ${collapsed ? "justify-center" : ""}`
-                      : `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/[.06] hover:text-zinc-50 ${collapsed ? "justify-center" : ""}`
-                  }
-                >
-                  <Icon className="h-5 w-5 shrink-0" strokeWidth={1.5} />
-                  {!collapsed && item.label}
-                </Link>
-              );
-            })}
+            {group.items.map((item) => (
+              <NavLink
+                key={item.href}
+                href={item.href}
+                label={item.label}
+                icon={item.icon}
+                active={isActive(pathname, item.href)}
+                collapsed={collapsed}
+              />
+            ))}
           </div>
         ))}
       </nav>
 
-      <div className="flex flex-col gap-3 border-t border-white/[.08] pt-4">
-        {!collapsed && <SidebarLocaleToggle lang={lang} pathname={pathname} />}
+      <div className="flex flex-col gap-0.5 border-t border-zinc-800/60 pt-4">
+        {footerLinks.map((item) => (
+          <NavLink
+            key={item.href}
+            href={item.href}
+            label={item.label}
+            icon={item.icon}
+            active={isActive(pathname, item.href)}
+            collapsed={collapsed}
+          />
+        ))}
         <form action={logout}>
           <input type="hidden" name="lang" value={lang} />
           <button
             type="submit"
             title={collapsed ? labels.logOut : undefined}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-400 transition-colors hover:bg-white/[.06] hover:text-zinc-50 ${
-              collapsed ? "w-full justify-center" : "w-full"
-            }`}
+            className={`${NAV_ITEM_BASE} ${NAV_ITEM_IDLE} w-full ${collapsed ? "justify-center" : ""}`}
           >
-            <LogOut className="h-5 w-5 shrink-0" strokeWidth={1.5} />
+            <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
             {!collapsed && labels.logOut}
           </button>
         </form>
+        {!collapsed && (
+          <div className="mt-3">
+            <SidebarLocaleToggle lang={lang} pathname={pathname} />
+          </div>
+        )}
       </div>
     </aside>
   );

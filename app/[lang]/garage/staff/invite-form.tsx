@@ -35,7 +35,7 @@ export function InviteMechanicForm({
     <form
       ref={formRef}
       action={action}
-      className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+      className="flex flex-col gap-4 rounded-xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40"
     >
       <input type="hidden" name="lang" value={lang} />
 

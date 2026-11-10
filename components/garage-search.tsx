@@ -51,7 +51,7 @@ export function GarageSearch({
       <Form action={action} role="search" className="relative hidden w-full max-w-sm md:block">
         <Search
           aria-hidden
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500"
           strokeWidth={1.75}
         />
         <input
@@ -63,11 +63,11 @@ export function GarageSearch({
           autoComplete="off"
           spellCheck={false}
           enterKeyHint="search"
-          className="w-full rounded-full border border-zinc-200 bg-zinc-50 py-1.5 pl-9 pr-9 text-sm text-black placeholder:text-zinc-400 focus:border-brand-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-brand-500 dark:focus:bg-zinc-900"
+          className="h-9 w-full rounded-lg border border-zinc-200/80 bg-zinc-50 pl-10 pr-10 text-sm text-black placeholder:text-zinc-400 focus:border-brand-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-800/60 dark:bg-zinc-900/40 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-brand-500 dark:focus:bg-zinc-900"
         />
         <kbd
           aria-hidden
-          className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-zinc-200 px-1.5 font-sans text-[11px] text-zinc-400 lg:block dark:border-zinc-700 dark:text-zinc-500"
+          className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-zinc-200 px-1.5 font-sans text-[11px] text-zinc-400 lg:block dark:border-zinc-700 dark:text-zinc-500"
         >
           /
         </kbd>

@@ -45,11 +45,17 @@ export function BlockTimeButton({
       <button
         type="button"
         onClick={() => dialogRef.current?.showModal()}
-        title={collapseLabel ? label : undefined}
+        title={collapseLabel || variant === "icon" ? label : undefined}
         className={TRIGGER_BUTTON_CLASSES[variant]}
       >
         <CalendarOff aria-hidden className="h-4 w-4" strokeWidth={2} />
-        <span className={collapseLabel ? "sr-only sm:not-sr-only" : undefined}>{label}</span>
+        <span
+          className={
+            variant === "icon" ? "sr-only" : collapseLabel ? "sr-only sm:not-sr-only" : undefined
+          }
+        >
+          {label}
+        </span>
       </button>
       <DialogShell
         dialogRef={dialogRef}

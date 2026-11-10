@@ -4,6 +4,7 @@ import {
   AlertCircle,
   ArrowRight,
   CalendarClock,
+  Check,
   CheckCircle2,
   CircleCheckBig,
   Gauge,
@@ -18,19 +19,13 @@ import { getAuthedProfile, getGarageMembership } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/actions/auth";
 import { acceptMechanicInvite, declineMechanicInvite } from "@/app/actions/staff";
-import {
-  completeAppointment,
-  confirmAppointment,
-  providerCancelAppointment,
-  updateRepairStage,
-} from "@/app/actions/appointments";
+import { completeAppointment, confirmAppointment } from "@/app/actions/appointments";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { getDictionary, type Dictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { LicensePlate } from "@/components/license-plate";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
 import { QuickWalkInButton } from "@/components/quick-walk-in-modal";
-import { StyledSelect } from "@/components/styled-select";
 import { REPAIR_STAGES } from "@/lib/definitions";
 import { getBookableWindowsForDate } from "@/lib/availability";
 import {
@@ -53,6 +48,7 @@ import {
   zonedStartOfDay,
 } from "@/lib/timezone";
 import { AgendaTabs } from "./agenda-tabs";
+import { AppointmentActionsMenu } from "./appointment-actions-menu";
 
 type D = Dictionary["garageDashboard"];
 type StageLabels = Dictionary["common"]["repairStage"];
@@ -68,13 +64,14 @@ const APPOINTMENT_SELECT =
 // shows them).
 const AGENDA_STATUSES = ["pending", "confirmed", "completed"];
 
-// Surfaces: one card style for the whole page. Light mode mirrors the dark
-// zinc palette instead of dropping it, since the app supports both themes.
+// Surfaces: one quiet style for the whole page -- a single hairline border,
+// no fill in dark mode, never a box inside a box. Light mode keeps a white
+// fill so cards lift off the zinc-50 page.
 const CARD =
-  "rounded-xl border border-zinc-200 bg-white dark:border-zinc-800/80 dark:bg-zinc-900/50";
-const CARD_INTERACTIVE = `${CARD} transition-colors hover:border-zinc-300 hover:bg-zinc-50/80 dark:hover:border-zinc-700 dark:hover:bg-zinc-900/80`;
-const ACTION_BUTTON =
-  "inline-flex w-full items-center justify-center rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:border-zinc-700/80 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+  "rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800/60 dark:bg-transparent";
+const CARD_INTERACTIVE = `${CARD} transition-colors hover:border-zinc-300 dark:hover:border-zinc-700/80 dark:hover:bg-zinc-900/40`;
+const SECTION_LABEL =
+  "text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400";
 
 function isUpcoming(appointment: { status: string; start_time: string }) {
   return (
@@ -131,42 +128,39 @@ const BADGE_STYLES: Record<
 > = {
   awaiting_action: {
     icon: AlertCircle,
-    className:
-      "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300",
+    className: "text-amber-700 dark:text-amber-300",
     labelKey: "badgeAwaitingAction",
   },
   confirmed: {
     icon: CheckCircle2,
-    className:
-      "border-green-200 bg-green-50 text-green-800 dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-300",
+    className: "text-zinc-600 dark:text-zinc-400",
     labelKey: "badgeConfirmed",
   },
   in_progress: {
     icon: Wrench,
-    className:
-      "border-brand-400/40 bg-brand-50 text-brand-700 dark:border-brand-500/25 dark:bg-brand-500/10 dark:text-brand-400",
+    className: "text-brand-700 dark:text-brand-400",
     labelKey: "badgeInProgress",
   },
   completed: {
     icon: CircleCheckBig,
-    className:
-      "border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700/80 dark:bg-zinc-800/60 dark:text-zinc-400",
+    className: "text-green-700 dark:text-green-400",
     labelKey: "badgeCompleted",
   },
   cancelled: {
     icon: XCircle,
-    className:
-      "border-red-200 bg-red-50 text-red-800 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300",
+    className: "text-red-700 dark:text-red-400",
     labelKey: "badgeCancelled",
   },
 };
 
+// Borderless status: icon + text in the state's color. The row already has
+// a frame; a bordered pill here would be the box-in-a-box we're removing.
 function StatusBadge({ badge, d }: { badge: AgendaBadge; d: D }) {
   const style = BADGE_STYLES[badge];
   const Icon = style.icon;
   return (
     <span
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${style.className}`}
+      className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium ${style.className}`}
     >
       <Icon aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
       {d[style.labelKey]}
@@ -174,36 +168,23 @@ function StatusBadge({ badge, d }: { badge: AgendaBadge; d: D }) {
   );
 }
 
-function VehicleLine({
-  vehicle,
-  d,
-}: {
-  vehicle: NonNullable<AgendaAppointment["vehicle"]>;
-  d: D;
-}) {
-  const description = [vehicle.brands?.name, vehicle.model, vehicle.year]
-    .filter(Boolean)
-    .join(" ");
-  const plate = vehicle.license_plate?.trim();
-  if (!plate && !description) return null;
+const PRIMARY_BUTTON =
+  "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-zinc-950";
 
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-2">
-      {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
-      {description && (
-        <span className="text-sm text-zinc-700 dark:text-zinc-300">{description}</span>
-      )}
-    </div>
-  );
-}
-
-function AppointmentCard({
+/**
+ * One agenda row: time, who, what, which car on the left; status, the one
+ * primary action (Confirm for a pending booking, Complete for a confirmed
+ * one) and a "⋯" overflow on the right. Everything else -- message,
+ * reschedule, repair stage, cancel -- lives in the overflow.
+ */
+function AppointmentRow({
   appointment,
   lang,
   dateLocale,
   now,
   d,
   stageLabels,
+  showDay,
 }: {
   appointment: AgendaAppointment;
   lang: Locale;
@@ -211,110 +192,109 @@ function AppointmentCard({
   now: Date;
   d: D;
   stageLabels: StageLabels;
+  // Week / mechanic lists span several days; Today doesn't need the date.
+  showDay: boolean;
 }) {
-  const isOpen = appointment.status === "pending" || appointment.status === "confirmed";
-  const canConfirm = appointment.status === "pending";
+  const isPending = appointment.status === "pending";
+  const isConfirmed = appointment.status === "confirmed";
+  const isOpen = isPending || isConfirmed;
   const start = new Date(appointment.start_time);
+  const vehicle = appointment.vehicle;
+  const plate = vehicle?.license_plate?.trim();
+  const vehicleText = vehicle
+    ? [vehicle.brands?.name, vehicle.model, vehicle.year].filter(Boolean).join(" ")
+    : "";
+  const stage =
+    isConfirmed && appointment.repair_stage
+      ? stageLabels[appointment.repair_stage as keyof StageLabels]
+      : null;
+  const details = [appointment.services?.name ?? d.serviceFallback, vehicleText, stage]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
-    <article
-      className={`${CARD_INTERACTIVE} flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:gap-5 sm:p-5`}
-    >
-      {/* Time rail: the thing a manager scans first. */}
-      <div className="flex shrink-0 items-baseline gap-2 sm:w-20 sm:flex-col sm:items-start sm:gap-0.5">
-        <p className="text-lg font-semibold tabular-nums leading-none text-black dark:text-zinc-50">
+    <li className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3.5 transition-colors hover:bg-zinc-50/70 sm:flex-nowrap sm:px-5 dark:hover:bg-zinc-900/40">
+      <div className="flex w-14 shrink-0 flex-col items-start gap-0.5">
+        <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-sm font-semibold tabular-nums text-black dark:bg-zinc-800/70 dark:text-zinc-50">
           {timeFormatter(lang).format(start)}
-        </p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400">
-          {dayFormatter(dateLocale).format(start)}
-        </p>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-semibold text-black dark:text-zinc-50">
-            {appointment.services?.name ?? d.serviceFallback}
-          </h3>
-          <StatusBadge badge={agendaBadge(appointment, now)} d={d} />
-        </div>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-          {d.clientLabel} {customerName(appointment, d)}
-        </p>
-        {appointment.vehicle && <VehicleLine vehicle={appointment.vehicle} d={d} />}
-        {appointment.status === "confirmed" && (
-          <form action={updateRepairStage} className="mt-3 flex items-center gap-2">
-            <input type="hidden" name="id" value={appointment.id} />
-            <input type="hidden" name="lang" value={lang} />
-            <StyledSelect
-              name="stage"
-              defaultValue={appointment.repair_stage ?? ""}
-              aria-label={d.repairStagePlaceholder}
-              className="py-1.5 text-xs dark:border-zinc-700/80 dark:bg-zinc-900"
-            >
-              <option value="" disabled>
-                {d.repairStagePlaceholder}
-              </option>
-              {REPAIR_STAGES.map((stage) => (
-                <option key={stage} value={stage}>
-                  {stageLabels[stage]}
-                </option>
-              ))}
-            </StyledSelect>
-            <button type="submit" className={`${ACTION_BUTTON} w-auto shrink-0`}>
-              {d.update}
-            </button>
-          </form>
+        </span>
+        {showDay && (
+          <span className="whitespace-nowrap text-[11px] text-zinc-500 dark:text-zinc-500">
+            {dayFormatter(dateLocale).format(start)}
+          </span>
         )}
       </div>
 
-      {(appointment.profiles || isOpen) && (
-        <div className="grid shrink-0 grid-cols-2 gap-1.5 sm:flex sm:w-28 sm:flex-col">
-          {canConfirm && (
-            <form action={confirmAppointment}>
-              <input type="hidden" name="id" value={appointment.id} />
-              <input type="hidden" name="lang" value={lang} />
-              <button
-                type="submit"
-                className="inline-flex w-full items-center justify-center rounded-full bg-brand-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
-              >
-                {d.confirm}
-              </button>
-            </form>
-          )}
-          {appointment.profiles && (
-            <Link href={`/${lang}/appointments/${appointment.id}/messages`} className={ACTION_BUTTON}>
-              {d.message}
-            </Link>
-          )}
-          {isOpen && (
-            <form action={completeAppointment}>
-              <input type="hidden" name="id" value={appointment.id} />
-              <input type="hidden" name="lang" value={lang} />
-              <button type="submit" className={ACTION_BUTTON}>
-                {d.complete}
-              </button>
-            </form>
-          )}
-          {isOpen && (
-            <Link href={`/${lang}/appointments/${appointment.id}/reschedule`} className={ACTION_BUTTON}>
-              {d.reschedule}
-            </Link>
-          )}
-          {isOpen && (
-            <form action={providerCancelAppointment}>
-              <input type="hidden" name="id" value={appointment.id} />
-              <input type="hidden" name="lang" value={lang} />
-              <button
-                type="submit"
-                className={`${ACTION_BUTTON} text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300`}
-              >
-                {d.cancel}
-              </button>
-            </form>
-          )}
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate font-medium text-black dark:text-zinc-50">
+            {customerName(appointment, d)}
+          </p>
+          {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
         </div>
-      )}
-    </article>
+        <p className="mt-0.5 truncate text-sm text-zinc-500 dark:text-zinc-400">{details}</p>
+      </div>
+
+      <div className="ml-auto flex shrink-0 items-center gap-3">
+        <StatusBadge badge={agendaBadge(appointment, now)} d={d} />
+        {isPending && (
+          <form action={confirmAppointment}>
+            <input type="hidden" name="id" value={appointment.id} />
+            <input type="hidden" name="lang" value={lang} />
+            <button
+              type="submit"
+              className={`${PRIMARY_BUTTON} bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600/50 dark:bg-brand-500 dark:hover:bg-brand-600`}
+            >
+              {d.confirm}
+            </button>
+          </form>
+        )}
+        {isConfirmed && (
+          <form action={completeAppointment}>
+            <input type="hidden" name="id" value={appointment.id} />
+            <input type="hidden" name="lang" value={lang} />
+            <button
+              type="submit"
+              className={`${PRIMARY_BUTTON} bg-green-600 hover:bg-green-700 focus-visible:ring-green-600/50 dark:bg-green-600 dark:hover:bg-green-500`}
+            >
+              <Check aria-hidden className="h-3.5 w-3.5" strokeWidth={2.5} />
+              {d.complete}
+            </button>
+          </form>
+        )}
+        <AppointmentActionsMenu
+          appointmentId={appointment.id}
+          lang={lang}
+          labels={{
+            moreActions: d.moreActions,
+            message: d.message,
+            reschedule: d.reschedule,
+            complete: d.complete,
+            stageHeading: d.stageHeading,
+            cancelAppointment: d.cancelAppointment,
+            cancelConfirm: d.cancelConfirm,
+            cancelConfirmYes: d.cancelConfirmYes,
+            cancelKeep: d.cancelKeep,
+          }}
+          canMessage={appointment.profiles !== null}
+          isOpen={isOpen}
+          showComplete={isPending}
+          stages={
+            isConfirmed
+              ? REPAIR_STAGES.map((value) => ({ value, label: stageLabels[value] }))
+              : null
+          }
+          currentStage={appointment.repair_stage}
+        />
+      </div>
+    </li>
+  );
+}
+
+/** The agenda's single frame: rows divided by hairlines, no per-row boxes. */
+function AppointmentList({ children }: { children: React.ReactNode }) {
+  return (
+    <ul className={`${CARD} divide-y divide-zinc-200/80 dark:divide-zinc-800/60`}>{children}</ul>
   );
 }
 
@@ -401,16 +381,14 @@ function KpiCard({
   return (
     <Link href={href} className={`${CARD_INTERACTIVE} group flex flex-col gap-3 p-4 sm:p-5`}>
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{label}</p>
-        <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-            highlight
-              ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
-              : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+        <p className={SECTION_LABEL}>{label}</p>
+        <Icon
+          aria-hidden
+          className={`h-4 w-4 shrink-0 ${
+            highlight ? "text-amber-600 dark:text-amber-400" : "text-zinc-400 dark:text-zinc-500"
           }`}
-        >
-          <Icon aria-hidden className="h-4 w-4" strokeWidth={2} />
-        </span>
+          strokeWidth={1.75}
+        />
       </div>
       <p className="text-3xl font-semibold tabular-nums tracking-tight text-black dark:text-zinc-50">
         {value}
@@ -520,10 +498,8 @@ function CapacityKpi({ capacity, lang, d }: { capacity: DayCapacity; lang: Local
       className={`${CARD_INTERACTIVE} group flex flex-col gap-3 p-4 sm:p-5`}
     >
       <div className="flex items-center justify-between gap-2">
-        <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{d.capacityTitle}</p>
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-          <Gauge aria-hidden className="h-4 w-4" strokeWidth={2} />
-        </span>
+        <p className={SECTION_LABEL}>{d.capacityTitle}</p>
+        <Gauge aria-hidden className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
       </div>
       <div className="flex items-center gap-3">
         <CapacityRing
@@ -789,21 +765,22 @@ export default async function GarageDashboardPage({
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
           {pageHeader}
           <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              {d.yourAssignedAppointments}
-            </h2>
+            <h2 className={SECTION_LABEL}>{d.yourAssignedAppointments}</h2>
             {upcoming.length > 0 ? (
-              upcoming.map((appointment) => (
-                <AppointmentCard
-                  key={appointment.id}
-                  appointment={appointment}
-                  lang={lang}
-                  dateLocale={dateLocale}
-                  now={now}
-                  d={d}
-                  stageLabels={stageLabels}
-                />
-              ))
+              <AppointmentList>
+                {upcoming.map((appointment) => (
+                  <AppointmentRow
+                    key={appointment.id}
+                    appointment={appointment}
+                    lang={lang}
+                    dateLocale={dateLocale}
+                    now={now}
+                    d={d}
+                    stageLabels={stageLabels}
+                    showDay
+                  />
+                ))}
+              </AppointmentList>
             ) : (
               <EmptyAgenda text={d.noUpcomingAssigned} lang={lang} d={d} walkIn={dictionary.walkIn} />
             )}
@@ -811,20 +788,21 @@ export default async function GarageDashboardPage({
 
           {other.length > 0 && (
             <section className="flex flex-col gap-3">
-              <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                {d.pastAndCancelled}
-              </h2>
-              {other.map((appointment) => (
-                <AppointmentCard
-                  key={appointment.id}
-                  appointment={appointment}
-                  lang={lang}
-                  dateLocale={dateLocale}
-                  now={now}
-                  d={d}
-                  stageLabels={stageLabels}
-                />
-              ))}
+              <h2 className={SECTION_LABEL}>{d.pastAndCancelled}</h2>
+              <AppointmentList>
+                {other.map((appointment) => (
+                  <AppointmentRow
+                    key={appointment.id}
+                    appointment={appointment}
+                    lang={lang}
+                    dateLocale={dateLocale}
+                    now={now}
+                    d={d}
+                    stageLabels={stageLabels}
+                    showDay
+                  />
+                ))}
+              </AppointmentList>
             </section>
           )}
         </div>
@@ -956,21 +934,26 @@ export default async function GarageDashboardPage({
           .join(" · ")
       : d.glanceClosed;
 
-  function renderList(list: AgendaAppointment[], emptyText: string) {
+  function renderList(list: AgendaAppointment[], emptyText: string, showDay: boolean) {
     if (list.length === 0) {
       return <EmptyAgenda text={emptyText} lang={lang} d={d} walkIn={dictionary.walkIn} />;
     }
-    return list.map((appointment) => (
-      <AppointmentCard
-        key={appointment.id}
-        appointment={appointment}
-        lang={lang}
-        dateLocale={dateLocale}
-        now={now}
-        d={d}
-        stageLabels={stageLabels}
-      />
-    ));
+    return (
+      <AppointmentList>
+        {list.map((appointment) => (
+          <AppointmentRow
+            key={appointment.id}
+            appointment={appointment}
+            lang={lang}
+            dateLocale={dateLocale}
+            now={now}
+            d={d}
+            stageLabels={stageLabels}
+            showDay={showDay}
+          />
+        ))}
+      </AppointmentList>
+    );
   }
 
   const initialView = parseAgendaView(view);
@@ -1063,21 +1046,21 @@ export default async function GarageDashboardPage({
                   id: "today",
                   label: d.tabToday,
                   count: todayAppointments.length,
-                  panel: renderList(todayAppointments, d.emptyToday),
+                  panel: renderList(todayAppointments, d.emptyToday, false),
                 },
                 {
                   id: "week",
                   label: d.tabWeek,
                   count: weekAppointments.length,
-                  panel: renderList(weekAppointments, d.emptyWeek),
+                  panel: renderList(weekAppointments, d.emptyWeek, true),
                 },
               ]}
             />
           </section>
 
-          <aside className="flex flex-col gap-4">
-            <section aria-labelledby="glance-title" className={`${CARD} p-5`}>
-              <h2 id="glance-title" className="text-sm font-semibold text-black dark:text-zinc-50">
+          <aside className="flex flex-col gap-8 lg:border-l lg:border-zinc-200/80 lg:pl-6 dark:lg:border-zinc-800/60">
+            <section aria-labelledby="glance-title">
+              <h2 id="glance-title" className={SECTION_LABEL}>
                 {d.glanceTitle}
               </h2>
               <dl className="mt-4 flex flex-col gap-3 text-sm">
@@ -1099,7 +1082,7 @@ export default async function GarageDashboardPage({
                     {completedToday.length}
                   </dd>
                 </div>
-                <div className="flex flex-col gap-1 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+                <div className="flex flex-col gap-1 border-t border-zinc-200/80 pt-3 dark:border-zinc-800/60">
                   <dt className="text-zinc-500 dark:text-zinc-400">{d.glanceNextUp}</dt>
                   <dd className="text-black dark:text-zinc-50">
                     {nextUp ? (
@@ -1120,9 +1103,9 @@ export default async function GarageDashboardPage({
               </dl>
             </section>
 
-            <section aria-labelledby="team-title" className={`${CARD} p-5`}>
+            <section aria-labelledby="team-title" className="border-t border-zinc-200/80 pt-8 dark:border-zinc-800/60">
               <div className="flex items-center justify-between gap-2">
-                <h2 id="team-title" className="text-sm font-semibold text-black dark:text-zinc-50">
+                <h2 id="team-title" className={SECTION_LABEL}>
                   {d.teamTitle}
                 </h2>
                 <Link

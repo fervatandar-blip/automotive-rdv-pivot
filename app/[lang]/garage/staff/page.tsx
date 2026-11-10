@@ -101,7 +101,7 @@ export default async function GarageStaffPage({
 
         <section
           aria-labelledby="capacity-title"
-          className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+          className="flex flex-col gap-4 rounded-xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40"
         >
           <div>
             <h2 id="capacity-title" className="text-lg font-semibold text-black dark:text-zinc-50">
@@ -134,13 +134,13 @@ export default async function GarageStaffPage({
 
         {inviteRows.length > 0 && (
           <section className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               {d.pendingInvites}
             </h2>
             {inviteRows.map((invite) => (
               <div
                 key={invite.id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-dashed border-black/[.12] bg-white p-4 dark:border-white/[.2] dark:bg-zinc-950"
+                className="flex items-center justify-between gap-4 rounded-xl border border-dashed border-zinc-300 bg-white p-4 dark:border-zinc-700/60 dark:bg-transparent"
               >
                 <div className="min-w-0">
                   <p className="truncate font-medium text-black dark:text-zinc-50">
@@ -174,14 +174,14 @@ export default async function GarageStaffPage({
         )}
 
         <section className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             {d.teamMembers}
           </h2>
           {staffRows.length > 0 ? (
             staffRows.map((row) => (
               <div
                 key={row.profile_id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+                className="flex items-center justify-between gap-4 rounded-xl border border-zinc-200/80 bg-white p-4 dark:border-zinc-800/60 dark:bg-zinc-900/40"
               >
                 <div className="min-w-0">
                   <p className="truncate font-medium text-black dark:text-zinc-50">

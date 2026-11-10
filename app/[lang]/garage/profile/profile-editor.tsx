@@ -77,7 +77,7 @@ function ProfileSection({
     <form
       action={action}
       aria-labelledby={`section-${section}-title`}
-      className="flex flex-col gap-5 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+      className="flex flex-col gap-5 rounded-xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40"
     >
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="section" value={section} />
@@ -332,7 +332,7 @@ export function ProfileEditor({
 
       <section
         aria-labelledby="section-hours-title"
-        className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+        className="flex flex-col gap-4 rounded-xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

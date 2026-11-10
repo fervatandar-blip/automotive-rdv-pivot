@@ -382,7 +382,13 @@
     "legacyPendingAction": "Review in calendar",
     "statReadyForPickup": "Ready for pickup",
     "kpiReadyForPickupHint": "Waiting for their owner",
-    "logWalkIn": "Log walk-in"
+    "logWalkIn": "Log walk-in",
+    "moreActions": "More actions",
+    "stageHeading": "Repair stage",
+    "cancelAppointment": "Cancel appointment",
+    "cancelConfirm": "Cancel this appointment?",
+    "cancelConfirmYes": "Yes, cancel",
+    "cancelKeep": "Keep"
   },
   "garageCalendar": {
     "week": "Week",
@@ -1199,18 +1205,18 @@
     "dashboard": "Dashboard",
     "calendar": "Calendar & Agenda",
     "clients": "Client Directory",
-    "communication": "Communication & Services",
     "messages": "Messages",
     "services": "Services & Pricing",
-    "settings": "Settings & Compliance",
+    "settings": "Settings",
     "profile": "Garage Profile",
-    "hours": "Working Hours & Availability",
+    "hours": "Working Hours",
     "verification": "Verification & KYC",
     "staff": "Staff",
     "notifications": "Notifications",
     "account": "Account Settings",
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
-    "logOut": "Log out"
+    "logOut": "Log out",
+    "servicesGroup": "Services"
   }
 }

@@ -30,9 +30,9 @@ function Panel({
   return (
     <section
       aria-labelledby={id}
-      className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+      className="overflow-hidden rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800/60 dark:bg-zinc-900/40"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-200 px-4 py-4 sm:px-5 dark:border-zinc-800">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-200/80 px-4 py-4 sm:px-5 dark:border-zinc-800/60">
         <div>
           <h2 id={id} className="text-base font-semibold text-black dark:text-zinc-50">
             {title}
@@ -125,7 +125,7 @@ export default async function GarageAvailabilityPage({
           <div className="flex flex-col gap-5 px-4 py-4 sm:px-5">
             <ClosedDatesForm lang={lang} d={d} today={todayKey} />
             {closures.length > 0 || specialHours.length > 0 ? (
-              <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 dark:divide-zinc-800 dark:border-zinc-800">
+              <ul className="-mx-4 divide-y divide-zinc-200/80 border-t border-zinc-200/80 sm:-mx-5 dark:divide-zinc-800/60 dark:border-zinc-800/60">
                 {closures.map((run) => {
                   const days =
                     Math.round(
@@ -133,7 +133,7 @@ export default async function GarageAvailabilityPage({
                     ) + 1;
                   const label = run.from === run.to ? formatDay(run.from) : `${formatDay(run.from)} – ${formatDay(run.to)}`;
                   return (
-                    <li key={run.from} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                    <li key={run.from} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
                       <span className="min-w-0">
                         <span className="font-medium text-black first-letter:uppercase dark:text-zinc-50">{label}</span>
                         <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
@@ -152,7 +152,7 @@ export default async function GarageAvailabilityPage({
                   );
                 })}
                 {specialHours.map((override) => (
-                  <li key={override.id} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                  <li key={override.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
                     <span>
                       <span className="font-medium text-black first-letter:uppercase dark:text-zinc-50">
                         {formatDay(override.date)}
