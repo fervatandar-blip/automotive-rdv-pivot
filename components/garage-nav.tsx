@@ -7,7 +7,7 @@ import { BlockTimeButton } from "@/components/block-time-modal";
 import { GarageSearch } from "@/components/garage-search";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import {
   LayoutDashboard,
   Calendar,
@@ -23,6 +23,8 @@ import {
   PanelLeft,
   PanelLeftClose,
   LogOut,
+  Menu,
+  X,
 } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { locales, type Locale } from "@/lib/i18n/config";
@@ -144,6 +146,153 @@ function NavLink({
   );
 }
 
+/**
+ * Phones (< md): the sidebar's menu in a left drawer. A native modal
+ * <dialog> gives focus trapping, Esc-to-close and an inert page for free;
+ * this adds backdrop-click close, closing on navigation and a scroll lock.
+ */
+function MobileNav({
+  lang,
+  isOwner,
+  needsVerification,
+  labels,
+  quickActions,
+}: {
+  lang: Locale;
+  isOwner: boolean;
+  needsVerification: boolean;
+  labels: NavLabels;
+  quickActions?: ReactNode;
+}) {
+  const pathname = usePathname();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const groups = navGroups(lang, { isOwner, needsVerification }, labels);
+  const footerLinks = [
+    { href: `/${lang}/garage/notifications`, label: labels.notifications, icon: Bell },
+    { href: `/${lang}/account`, label: labels.account, icon: User },
+  ];
+
+  // Close when the route changes (a link was followed) -- covers links
+  // whose navigation finishes after the click handler ran.
+  useEffect(() => {
+    dialogRef.current?.close();
+  }, [pathname]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    function unlock() {
+      document.documentElement.style.overflow = "";
+    }
+    dialog.addEventListener("close", unlock);
+    return () => {
+      dialog.removeEventListener("close", unlock);
+      unlock();
+    };
+  }, []);
+
+  function open() {
+    dialogRef.current?.showModal();
+    document.documentElement.style.overflow = "hidden";
+  }
+
+  function close() {
+    dialogRef.current?.close();
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={open}
+        aria-label={labels.openMenu}
+        aria-haspopup="dialog"
+        className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-black md:hidden dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50"
+      >
+        <Menu className="h-5 w-5" strokeWidth={1.75} />
+      </button>
+      <dialog
+        ref={dialogRef}
+        aria-label={labels.openMenu}
+        onClick={(event) => {
+          // A click on the dialog element itself is a click on the backdrop.
+          if (event.target === dialogRef.current) close();
+        }}
+        className="m-0 h-dvh max-h-none w-72 max-w-[85vw] bg-zinc-950 p-0 text-zinc-50 backdrop:bg-black/60 md:hidden"
+      >
+        <div className="flex h-full flex-col overflow-y-auto px-4 pb-6 pt-4">
+          <div className="mb-6 flex items-center justify-between gap-2 px-2">
+            <Link href={`/${lang}/garage/dashboard`} onClick={close} className="flex items-center gap-2">
+              <AnimatedLogo size={28} />
+              <span className="text-lg font-bold tracking-tight">RDV</span>
+            </Link>
+            <button
+              type="button"
+              onClick={close}
+              aria-label={labels.closeMenu}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-800/40 hover:text-zinc-100"
+            >
+              <X className="h-5 w-5" strokeWidth={1.75} />
+            </button>
+          </div>
+
+          <nav className="flex flex-col gap-6">
+            {groups.map((group) => (
+              <div key={group.label} className="flex flex-col gap-0.5">
+                <span className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  {group.label}
+                </span>
+                {group.items.map((item) => (
+                  <div key={item.href} onClick={close}>
+                    <NavLink
+                      href={item.href}
+                      label={item.label}
+                      icon={item.icon}
+                      active={isActive(pathname, item.href)}
+                      collapsed={false}
+                    />
+                  </div>
+                ))}
+              </div>
+            ))}
+          </nav>
+
+          {quickActions && (
+            // Light surface so the modals' ghost triggers read correctly.
+            <div className="mt-6 flex flex-col items-start gap-1 rounded-lg bg-zinc-900 p-1.5 [&>button]:w-full [&>button]:text-zinc-300 [&>button:hover]:bg-zinc-800 [&>button:hover]:text-zinc-50">
+              {quickActions}
+            </div>
+          )}
+
+          <div className="mt-auto flex flex-col gap-0.5 border-t border-zinc-800/60 pt-4">
+            {footerLinks.map((item) => (
+              <div key={item.href} onClick={close}>
+                <NavLink
+                  href={item.href}
+                  label={item.label}
+                  icon={item.icon}
+                  active={isActive(pathname, item.href)}
+                  collapsed={false}
+                />
+              </div>
+            ))}
+            <form action={logout}>
+              <input type="hidden" name="lang" value={lang} />
+              <button type="submit" className={`${NAV_ITEM_BASE} ${NAV_ITEM_IDLE} w-full`}>
+                <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+                {labels.logOut}
+              </button>
+            </form>
+            <div className="mt-3">
+              <SidebarLocaleToggle lang={lang} pathname={pathname} />
+            </div>
+          </div>
+        </div>
+      </dialog>
+    </>
+  );
+}
+
 const STATUS_BADGE: Record<string, string> = {
   pending: "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-400",
   approved:
@@ -157,6 +306,7 @@ export function GarageTopBar({
   status,
   statusLabels,
   actions,
+  nav,
 }: {
   lang: Locale;
   garageName: string;
@@ -176,14 +326,37 @@ export function GarageTopBar({
     searchPlaceholder: string;
     searchLabel: string;
   };
+  // Below md the sidebar is hidden; this drives the hamburger drawer.
+  nav: { isOwner: boolean; needsVerification: boolean; labels: NavLabels };
 }) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white px-4 dark:border-zinc-800/60 dark:bg-zinc-950 sm:px-6">
-      <div className="flex min-w-0 shrink items-center gap-2.5">
-        {/* The sidebar carries the logo from sm up; phones have no sidebar. */}
-        <Link href={`/${lang}/garage/dashboard`} className="shrink-0 sm:hidden">
-          <AnimatedLogo size={28} />
-        </Link>
+    <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-zinc-200/80 bg-white px-3 dark:border-zinc-800/60 dark:bg-zinc-950 sm:px-4 md:gap-3 md:px-6">
+      <div className="flex min-w-0 shrink items-center gap-1.5 md:gap-2.5">
+        <MobileNav
+          lang={lang}
+          isOwner={nav.isOwner}
+          needsVerification={nav.needsVerification}
+          labels={nav.labels}
+          quickActions={
+            actions && (
+              <>
+                <AddClientButton
+                  lang={lang}
+                  d={actions.addClient}
+                  label={actions.addClientLabel}
+                  variant="ghost"
+                />
+                <BlockTimeButton
+                  lang={lang}
+                  d={actions.blockTime}
+                  label={actions.blockTimeLabel}
+                  today={actions.today}
+                  variant="ghost"
+                />
+              </>
+            )
+          }
+        />
         <p className="truncate text-sm font-semibold text-black dark:text-zinc-50">{garageName}</p>
         {status !== "approved" && (
           <span
@@ -193,8 +366,11 @@ export function GarageTopBar({
           </span>
         )}
       </div>
+      {/* Phones: search, Register client and Block time move out of the
+          bar (the directory has its own search; the other two are in the
+          drawer), leaving name, menu and the walk-in "+". */}
       {actions && (
-        <div className="flex flex-1 justify-end md:justify-center md:px-4">
+        <div className="hidden flex-1 justify-center px-4 md:flex">
           <GarageSearch
             lang={lang}
             placeholder={actions.searchPlaceholder}
@@ -204,7 +380,11 @@ export function GarageTopBar({
       )}
       {actions && (
         <div className="flex shrink-0 items-center gap-1">
-          <div role="group" aria-label={actions.groupLabel} className="flex items-center gap-0.5">
+          <div
+            role="group"
+            aria-label={actions.groupLabel}
+            className="hidden items-center gap-0.5 md:flex"
+          >
             <AddClientButton
               lang={lang}
               d={actions.addClient}
@@ -219,7 +399,7 @@ export function GarageTopBar({
               variant="icon"
             />
           </div>
-          <span aria-hidden className="mx-1.5 h-5 w-px bg-zinc-200 dark:bg-zinc-800" />
+          <span aria-hidden className="mx-1.5 hidden h-5 w-px bg-zinc-200 md:block dark:bg-zinc-800" />
           <QuickWalkInButton lang={lang} d={actions.walkIn} />
         </div>
       )}
@@ -294,7 +474,7 @@ export function GarageSidebar({
 
   return (
     <aside
-      className={`hidden shrink-0 flex-col bg-zinc-950 py-6 transition-[width] duration-150 sm:flex ${
+      className={`hidden shrink-0 flex-col bg-zinc-950 py-6 transition-[width] duration-150 md:flex ${
         collapsed ? "w-16 px-2" : "w-60 px-4"
       }`}
     >

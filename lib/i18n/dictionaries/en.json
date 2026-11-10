@@ -388,7 +388,8 @@
     "cancelAppointment": "Cancel appointment",
     "cancelConfirm": "Cancel this appointment?",
     "cancelConfirmYes": "Yes, cancel",
-    "cancelKeep": "Keep"
+    "cancelKeep": "Keep",
+    "overviewToggle": "Today's overview & team"
   },
   "garageCalendar": {
     "week": "Week",
@@ -1217,6 +1218,8 @@
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "logOut": "Log out",
-    "servicesGroup": "Services"
+    "servicesGroup": "Services",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   }
 }

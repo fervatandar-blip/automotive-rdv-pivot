@@ -49,7 +49,7 @@ export default async function GarageLayout({
 
   if (!garage.platform_terms_accepted_at) {
     return (
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-center gap-4 px-6 py-6">
           <Link href={`/${lang}/dashboard`}>
             <AnimatedLogo size={40} />
@@ -76,10 +76,15 @@ export default async function GarageLayout({
         needsVerification={garage.status !== "approved"}
         labels={dictionary.garageNav}
       />
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <GarageTopBar
           lang={lang}
           garageName={garage.name}
+          nav={{
+            isOwner,
+            needsVerification: garage.status !== "approved",
+            labels: dictionary.garageNav,
+          }}
           status={garage.status}
           statusLabels={{
             approved: dictionary.garageProfile.statusApproved,

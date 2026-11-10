@@ -65,16 +65,17 @@ export function QuickWalkInButton({
       <button
         type="button"
         onClick={() => modalRef.current?.open()}
-        className="flex shrink-0 items-center gap-1.5 rounded-full bg-brand-600 px-3.5 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+        title={label ? undefined : d.openButton}
+        // Top bar (no label): a round "+" icon on phones, labelled from md up.
+        className={`flex shrink-0 items-center gap-1.5 rounded-full bg-brand-600 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 ${
+          label ? "px-3.5 py-1.5" : "h-9 w-9 justify-center md:h-auto md:w-auto md:px-3.5 md:py-1.5"
+        }`}
       >
-        <Plus className="h-4 w-4" strokeWidth={2.25} />
+        <Plus aria-hidden className="h-4 w-4" strokeWidth={2.25} />
         {label ? (
           <span>{label}</span>
         ) : (
-          <>
-            <span className="hidden sm:inline">{d.openButton}</span>
-            <span className="sm:hidden">{d.openButtonShort}</span>
-          </>
+          <span className="sr-only md:not-sr-only">{d.openButton}</span>
         )}
       </button>
       <WalkInModal ref={modalRef} lang={lang} d={d} />

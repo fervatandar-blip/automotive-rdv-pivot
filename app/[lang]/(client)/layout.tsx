@@ -74,10 +74,15 @@ export default async function ClientLayout({
             needsVerification={membership.garage.status !== "approved"}
             labels={garageNav}
           />
-          <div className="flex flex-1 flex-col">
+          <div className="flex min-w-0 flex-1 flex-col">
             <GarageTopBar
               lang={lang}
               garageName={membership.garage.name}
+              nav={{
+                isOwner: membership.isOwner,
+                needsVerification: membership.garage.status !== "approved",
+                labels: garageNav,
+              }}
               status={membership.garage.status}
               statusLabels={{
                 approved: garageProfile.statusApproved,
@@ -105,7 +110,7 @@ export default async function ClientLayout({
   return (
     <div className="flex flex-1">
       <ClientSidebar lang={lang} />
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between gap-4 border-b border-black/[.08] bg-white px-6 py-4 dark:border-white/[.145] dark:bg-zinc-950 sm:px-8">
           <ClientPageTitle />
           <div className="flex items-center gap-4">

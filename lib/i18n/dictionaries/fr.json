@@ -388,7 +388,8 @@
     "cancelAppointment": "Annuler le rendez-vous",
     "cancelConfirm": "Annuler ce rendez-vous ?",
     "cancelConfirmYes": "Oui, annuler",
-    "cancelKeep": "Garder"
+    "cancelKeep": "Garder",
+    "overviewToggle": "Aperçu du jour et équipe"
   },
   "garageCalendar": {
     "week": "Semaine",
@@ -1217,6 +1218,8 @@
     "expand": "Déplier le menu",
     "collapse": "Replier le menu",
     "logOut": "Déconnexion",
-    "servicesGroup": "Prestations"
+    "servicesGroup": "Prestations",
+    "openMenu": "Ouvrir le menu",
+    "closeMenu": "Fermer le menu"
   }
 }

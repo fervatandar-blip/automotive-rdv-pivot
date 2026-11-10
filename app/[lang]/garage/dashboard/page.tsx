@@ -49,6 +49,7 @@ import {
 } from "@/lib/timezone";
 import { AgendaTabs } from "./agenda-tabs";
 import { AppointmentActionsMenu } from "./appointment-actions-menu";
+import { MobileCollapsible } from "./mobile-collapsible";
 
 type D = Dictionary["garageDashboard"];
 type StageLabels = Dictionary["common"]["repairStage"];
@@ -57,7 +58,7 @@ type StageLabels = Dictionary["common"]["repairStage"];
 // garage members only for vehicles booked with this garage (vehicles RLS,
 // 0036/0038); null when the appointment has no vehicle attached.
 const APPOINTMENT_SELECT =
-  "id, start_time, end_time, status, repair_stage, assigned_mechanic_id, services(name), profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name), vehicle:vehicles(model, year, license_plate, brands(name))";
+  "id, client_id, start_time, end_time, status, repair_stage, assigned_mechanic_id, services(name), profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name, phone), vehicle:vehicles(model, year, license_plate, brands(name))";
 
 // Statuses the agenda lists: pending_payment is an unfinished checkout and
 // cancelled jobs are noise on a "what's on today" view (the calendar still
@@ -70,6 +71,9 @@ const AGENDA_STATUSES = ["pending", "confirmed", "completed"];
 const CARD =
   "rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800/60 dark:bg-transparent";
 const CARD_INTERACTIVE = `${CARD} transition-colors hover:border-zinc-300 dark:hover:border-zinc-700/80 dark:hover:bg-zinc-900/40`;
+// KPI strip: a swipeable row on phones (the next card peeks in so the row
+// reads as scrollable), a 2x2 grid from sm, one row of four from lg.
+const KPI_ITEM = "w-[72%] max-w-[17rem] shrink-0 snap-start sm:w-auto sm:max-w-none";
 const SECTION_LABEL =
   "text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400";
 
@@ -107,7 +111,8 @@ type AgendaAppointment = {
   services: { name: string } | null;
   profiles: { full_name: string } | null;
   // Walk-in customer (0038) when the job isn't for a registered client.
-  walk_in: { full_name: string } | null;
+  walk_in: { full_name: string; phone: string | null } | null;
+  client_id: string | null;
   vehicle: {
     model: string | null;
     year: number | null;
@@ -172,13 +177,16 @@ const PRIMARY_BUTTON =
   "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-zinc-950";
 
 /**
- * One agenda row: time, who, what, which car on the left; status, the one
- * primary action (Confirm for a pending booking, Complete for a confirmed
- * one) and a "⋯" overflow on the right. Everything else -- message,
- * reschedule, repair stage, cancel -- lives in the overflow.
+ * One agenda row. Phones stack it: time + status (and the "⋯") on top, then
+ * customer and phone, car and plate, the service order, and the primary
+ * action full-width at the bottom. From md it's one line: time, details,
+ * status, primary action, "⋯" -- the wrappers switch to `display: contents`
+ * so their children become items of the row and `order` places them.
+ * Nothing that identifies the job (name, phone, plate) is truncated.
  */
 function AppointmentRow({
   appointment,
+  phone,
   lang,
   dateLocale,
   now,
@@ -187,6 +195,8 @@ function AppointmentRow({
   showDay,
 }: {
   appointment: AgendaAppointment;
+  // Walk-in's phone, or the one the garage noted for a registered client.
+  phone: string | null;
   lang: Locale;
   dateLocale: string;
   now: Date;
@@ -208,85 +218,96 @@ function AppointmentRow({
     isConfirmed && appointment.repair_stage
       ? stageLabels[appointment.repair_stage as keyof StageLabels]
       : null;
-  const details = [appointment.services?.name ?? d.serviceFallback, vehicleText, stage]
+  const serviceLine = [appointment.services?.name ?? d.serviceFallback, stage]
     .filter(Boolean)
     .join(" · ");
 
   return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3.5 transition-colors hover:bg-zinc-50/70 sm:flex-nowrap sm:px-5 dark:hover:bg-zinc-900/40">
-      <div className="flex w-14 shrink-0 flex-col items-start gap-0.5">
-        <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-sm font-semibold tabular-nums text-black dark:bg-zinc-800/70 dark:text-zinc-50">
-          {timeFormatter(lang).format(start)}
-        </span>
-        {showDay && (
-          <span className="whitespace-nowrap text-[11px] text-zinc-500 dark:text-zinc-500">
-            {dayFormatter(dateLocale).format(start)}
+    <li className="flex flex-col gap-2.5 px-4 py-3.5 transition-colors hover:bg-zinc-50/70 sm:px-5 md:flex-row md:items-center md:gap-4 dark:hover:bg-zinc-900/40">
+      <div className="flex items-center justify-between gap-3 md:contents">
+        <div className="flex items-center gap-2 md:order-1 md:w-16 md:shrink-0 md:flex-col md:items-start md:gap-0.5">
+          <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-sm font-semibold tabular-nums text-black dark:bg-zinc-800/70 dark:text-zinc-50">
+            {timeFormatter(lang).format(start)}
           </span>
-        )}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <p className="truncate font-medium text-black dark:text-zinc-50">
-            {customerName(appointment, d)}
-          </p>
-          {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
+          {showDay && (
+            <span className="whitespace-nowrap text-xs text-zinc-500 md:text-[11px]">
+              {dayFormatter(dateLocale).format(start)}
+            </span>
+          )}
         </div>
-        <p className="mt-0.5 truncate text-sm text-zinc-500 dark:text-zinc-400">{details}</p>
+        <div className="flex items-center gap-2 md:contents">
+          <div className="md:order-3 md:ml-auto">
+            <StatusBadge badge={agendaBadge(appointment, now)} d={d} />
+          </div>
+          <div className="md:order-5">
+            <AppointmentActionsMenu
+              appointmentId={appointment.id}
+              lang={lang}
+              labels={{
+                moreActions: d.moreActions,
+                message: d.message,
+                reschedule: d.reschedule,
+                complete: d.complete,
+                stageHeading: d.stageHeading,
+                cancelAppointment: d.cancelAppointment,
+                cancelConfirm: d.cancelConfirm,
+                cancelConfirmYes: d.cancelConfirmYes,
+                cancelKeep: d.cancelKeep,
+              }}
+              canMessage={appointment.profiles !== null}
+              isOpen={isOpen}
+              showComplete={isPending}
+              stages={
+                isConfirmed
+                  ? REPAIR_STAGES.map((value) => ({ value, label: stageLabels[value] }))
+                  : null
+              }
+              currentStage={appointment.repair_stage}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="ml-auto flex shrink-0 items-center gap-3">
-        <StatusBadge badge={agendaBadge(appointment, now)} d={d} />
-        {isPending && (
-          <form action={confirmAppointment}>
-            <input type="hidden" name="id" value={appointment.id} />
-            <input type="hidden" name="lang" value={lang} />
-            <button
-              type="submit"
-              className={`${PRIMARY_BUTTON} bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600/50 dark:bg-brand-500 dark:hover:bg-brand-600`}
+      <div className="flex min-w-0 flex-col gap-1 md:order-2 md:flex-1 md:gap-0.5">
+        <p className="flex flex-wrap items-baseline gap-x-2 break-words">
+          <span className="font-medium text-black dark:text-zinc-50">
+            {customerName(appointment, d)}
+          </span>
+          {phone && (
+            <a
+              href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+              className="text-sm tabular-nums text-zinc-500 hover:text-black hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
             >
-              {d.confirm}
-            </button>
-          </form>
+              {phone}
+            </a>
+          )}
+        </p>
+        {(plate || vehicleText) && (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+            {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
+            {vehicleText && <span>{vehicleText}</span>}
+          </p>
         )}
-        {isConfirmed && (
-          <form action={completeAppointment}>
-            <input type="hidden" name="id" value={appointment.id} />
-            <input type="hidden" name="lang" value={lang} />
-            <button
-              type="submit"
-              className={`${PRIMARY_BUTTON} bg-green-600 hover:bg-green-700 focus-visible:ring-green-600/50 dark:bg-green-600 dark:hover:bg-green-500`}
-            >
-              <Check aria-hidden className="h-3.5 w-3.5" strokeWidth={2.5} />
-              {d.complete}
-            </button>
-          </form>
-        )}
-        <AppointmentActionsMenu
-          appointmentId={appointment.id}
-          lang={lang}
-          labels={{
-            moreActions: d.moreActions,
-            message: d.message,
-            reschedule: d.reschedule,
-            complete: d.complete,
-            stageHeading: d.stageHeading,
-            cancelAppointment: d.cancelAppointment,
-            cancelConfirm: d.cancelConfirm,
-            cancelConfirmYes: d.cancelConfirmYes,
-            cancelKeep: d.cancelKeep,
-          }}
-          canMessage={appointment.profiles !== null}
-          isOpen={isOpen}
-          showComplete={isPending}
-          stages={
-            isConfirmed
-              ? REPAIR_STAGES.map((value) => ({ value, label: stageLabels[value] }))
-              : null
-          }
-          currentStage={appointment.repair_stage}
-        />
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">{serviceLine}</p>
       </div>
+
+      {(isPending || isConfirmed) && (
+        <form action={isPending ? confirmAppointment : completeAppointment} className="md:order-4">
+          <input type="hidden" name="id" value={appointment.id} />
+          <input type="hidden" name="lang" value={lang} />
+          <button
+            type="submit"
+            className={`${PRIMARY_BUTTON} w-full justify-center py-2 md:w-auto md:py-1.5 ${
+              isPending
+                ? "bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600/50 dark:bg-brand-500 dark:hover:bg-brand-600"
+                : "bg-green-600 hover:bg-green-700 focus-visible:ring-green-600/50 dark:bg-green-600 dark:hover:bg-green-500"
+            }`}
+          >
+            {isConfirmed && <Check aria-hidden className="h-3.5 w-3.5" strokeWidth={2.5} />}
+            {isPending ? d.confirm : d.complete}
+          </button>
+        </form>
+      )}
     </li>
   );
 }
@@ -296,6 +317,39 @@ function AppointmentList({ children }: { children: React.ReactNode }) {
   return (
     <ul className={`${CARD} divide-y divide-zinc-200/80 dark:divide-zinc-800/60`}>{children}</ul>
   );
+}
+
+/**
+ * Phone per appointment: a walk-in customer's own, or the one the garage
+ * noted for a registered client (0042, readable by garage members only).
+ * RDV client profiles carry no phone number.
+ */
+async function phonesFor(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  garageId: string,
+  rows: AgendaAppointment[]
+): Promise<Map<string, string>> {
+  const clientIds = [
+    ...new Set(rows.map((row) => row.client_id).filter((id): id is string => Boolean(id))),
+  ];
+  const noted = new Map<string, string>();
+  if (clientIds.length > 0) {
+    const { data } = await supabase
+      .from("garage_client_notes")
+      .select("client_id, phone")
+      .eq("garage_id", garageId)
+      .in("client_id", clientIds)
+      .not("phone", "is", null);
+    for (const note of data ?? []) {
+      if (note.client_id && note.phone) noted.set(note.client_id, note.phone);
+    }
+  }
+  const phones = new Map<string, string>();
+  for (const row of rows) {
+    const phone = row.walk_in?.phone ?? (row.client_id ? noted.get(row.client_id) : undefined);
+    if (phone) phones.set(row.id, phone);
+  }
+  return phones;
 }
 
 /** Empty calendar page with dashed "nothing here" lines; theme-aware via currentColor. */
@@ -379,7 +433,7 @@ function KpiCard({
   highlight?: boolean;
 }) {
   return (
-    <Link href={href} className={`${CARD_INTERACTIVE} group flex flex-col gap-3 p-4 sm:p-5`}>
+    <Link href={href} className={`${CARD_INTERACTIVE} ${KPI_ITEM} group flex flex-col gap-3 p-4 sm:p-5`}>
       <div className="flex items-center justify-between gap-2">
         <p className={SECTION_LABEL}>{label}</p>
         <Icon
@@ -495,7 +549,7 @@ function CapacityKpi({ capacity, lang, d }: { capacity: DayCapacity; lang: Local
   return (
     <Link
       href={`/${lang}/garage/${capacity.kind === "no_mechanics" ? "staff" : "availability"}`}
-      className={`${CARD_INTERACTIVE} group flex flex-col gap-3 p-4 sm:p-5`}
+      className={`${CARD_INTERACTIVE} ${KPI_ITEM} group flex flex-col gap-3 p-4 sm:p-5`}
     >
       <div className="flex items-center justify-between gap-2">
         <p className={SECTION_LABEL}>{d.capacityTitle}</p>
@@ -757,6 +811,7 @@ export default async function GarageDashboardPage({
       .order("start_time", { ascending: true });
 
     const rows = (appointments ?? []) as unknown as AgendaAppointment[];
+    const phones = await phonesFor(supabase, garage.id, rows);
     const upcoming = rows.filter(isUpcoming);
     const other = rows.filter((appointment) => !upcoming.includes(appointment));
 
@@ -772,6 +827,7 @@ export default async function GarageDashboardPage({
                   <AppointmentRow
                     key={appointment.id}
                     appointment={appointment}
+                    phone={phones.get(appointment.id) ?? null}
                     lang={lang}
                     dateLocale={dateLocale}
                     now={now}
@@ -794,6 +850,7 @@ export default async function GarageDashboardPage({
                   <AppointmentRow
                     key={appointment.id}
                     appointment={appointment}
+                    phone={phones.get(appointment.id) ?? null}
                     lang={lang}
                     dateLocale={dateLocale}
                     now={now}
@@ -895,6 +952,7 @@ export default async function GarageDashboardPage({
   ]);
 
   const weekAppointments = (weekData ?? []) as unknown as AgendaAppointment[];
+  const phones = await phonesFor(ownerSupabase, garage.id, weekAppointments);
   const todayAppointments = weekAppointments.filter(
     (appointment) => new Date(appointment.start_time).getTime() < tomorrowStart.getTime()
   );
@@ -944,6 +1002,7 @@ export default async function GarageDashboardPage({
           <AppointmentRow
             key={appointment.id}
             appointment={appointment}
+            phone={phones.get(appointment.id) ?? null}
             lang={lang}
             dateLocale={dateLocale}
             now={now}
@@ -997,7 +1056,7 @@ export default async function GarageDashboardPage({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden">
           <KpiCard
             href={`/${lang}/garage/calendar`}
             icon={CalendarClock}
@@ -1058,7 +1117,8 @@ export default async function GarageDashboardPage({
             />
           </section>
 
-          <aside className="flex flex-col gap-8 lg:border-l lg:border-zinc-200/80 lg:pl-6 dark:lg:border-zinc-800/60">
+          <aside className="lg:border-l lg:border-zinc-200/80 lg:pl-6 dark:lg:border-zinc-800/60">
+            <MobileCollapsible label={d.overviewToggle}>
             <section aria-labelledby="glance-title">
               <h2 id="glance-title" className={SECTION_LABEL}>
                 {d.glanceTitle}
@@ -1160,6 +1220,7 @@ export default async function GarageDashboardPage({
             </section>
 
             <PushNotificationOptIn />
+            </MobileCollapsible>
           </aside>
         </div>
       </div>
