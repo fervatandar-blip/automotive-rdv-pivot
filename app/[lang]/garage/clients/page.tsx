@@ -31,7 +31,7 @@ type AppointmentRow = {
   start_time: string;
   status: string;
   services: { name: string } | null;
-  client: { full_name: string; email: string } | null;
+  client: { full_name: string; email: string; phone: string | null } | null;
   // Walk-in customer (0038), when the job isn't for a registered client.
   walk_in: { id: string; full_name: string; phone: string | null; email: string | null; anonymized_at: string | null } | null;
   // Visible only for vehicles booked with this garage (vehicles RLS,
@@ -90,7 +90,7 @@ export default async function GarageClientsPage({
     supabase
       .from("appointments")
       .select(
-        `id, client_id, garage_customer_id, start_time, status, services(name), client:profiles!appointments_client_id_fkey(full_name, email), walk_in:garage_customers(id, full_name, phone, email, anonymized_at), vehicle:vehicles(${VEHICLE_SELECT})`
+        `id, client_id, garage_customer_id, start_time, status, services(name), client:profiles!appointments_client_id_fkey(full_name, email, phone), walk_in:garage_customers(id, full_name, phone, email, anonymized_at), vehicle:vehicles(${VEHICLE_SELECT})`
       )
       .eq("garage_id", garage.id)
       .neq("status", "pending_payment")
@@ -155,8 +155,9 @@ export default async function GarageClientsPage({
     anonymized: boolean
   ): ClientEntry {
     const notes = notesByKey.get(key);
-    // A registered client's phone is the one the garage noted (0042).
-    const shownPhone = kind === "client" ? notes?.phone ?? null : phone;
+    // A registered client: the phone the garage noted (0042) wins over the
+    // one the client gave on their profile (0044).
+    const shownPhone = kind === "client" ? notes?.phone ?? phone : phone;
     return {
       id: key,
       kind,
@@ -190,7 +191,7 @@ export default async function GarageClientsPage({
     let client = clients.get(key);
     if (!client) {
       client = row.client
-        ? newEntry(key, "client", row.client_id!, row.client.full_name || d.unnamedClient, row.client.email, null, false)
+        ? newEntry(key, "client", row.client_id!, row.client.full_name || d.unnamedClient, row.client.email, row.client.phone, false)
         : newEntry(
             key,
             "walk_in",

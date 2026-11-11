@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarPlus, Car, Check, Wrench } from "lucide-react";
+import { ArrowRight, CalendarPlus, Car, Check } from "lucide-react";
 import { getAuthedProfile } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import { logout } from "@/app/actions/auth";
-import { cancelAppointment } from "@/app/actions/appointments";
 import { submitReview } from "@/app/actions/reviews";
 import { leaveWaitlist } from "@/app/actions/waitlist";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { EmptyStateCard } from "@/components/empty-state-card";
+import { LicensePlate } from "@/components/license-plate";
+import { CancelBookingButton } from "./cancel-booking-button";
 import { REPAIR_STAGES } from "@/lib/definitions";
 import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
 
@@ -22,7 +23,12 @@ type Appointment = {
   repair_stage: string | null;
   services: { name: string } | null;
   garages: { name: string; city: string | null } | null;
-  vehicles: { model: string | null; year: number | null } | null;
+  vehicles: {
+    model: string | null;
+    year: number | null;
+    license_plate: string | null;
+    brands: { name: string } | null;
+  } | null;
 };
 
 type StepStatus = "complete" | "current" | "upcoming";
@@ -102,24 +108,50 @@ function isUpcoming(appointment: { status: string; start_time: string }) {
   );
 }
 
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString(undefined, {
+function dateLocaleFor(lang: Locale) {
+  return lang === "fr" ? "fr-FR" : "en-GB";
+}
+
+function formatDay(iso: string, lang: Locale) {
+  return new Date(iso).toLocaleDateString(dateLocaleFor(lang), {
     timeZone: APP_TIME_ZONE,
     weekday: "short",
-    month: "short",
     day: "numeric",
-    hour: "numeric",
+    month: "short",
+  });
+}
+
+function formatTime(iso: string, lang: Locale) {
+  return new Date(iso).toLocaleTimeString(dateLocaleFor(lang), {
+    timeZone: APP_TIME_ZONE,
+    hour: "2-digit",
     minute: "2-digit",
   });
 }
 
-function formatDateHeader(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
-    timeZone: APP_TIME_ZONE,
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+const CARD =
+  "rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800/60 dark:bg-transparent";
+const SECTION_LABEL =
+  "text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400";
+const SECONDARY_BUTTON =
+  "rounded-full border border-zinc-200 px-3.5 py-1.5 text-sm font-medium text-black transition-colors hover:bg-zinc-100 dark:border-zinc-700/80 dark:text-zinc-50 dark:hover:bg-zinc-800/60";
+
+function StatusPill({ status, d }: { status: string; d: Dictionary["clientDashboard"] }) {
+  const styles: Record<string, { label: string; className: string }> = {
+    confirmed: { label: d.statusConfirmed, className: "text-green-700 dark:text-green-400" },
+    pending: { label: d.statusPending, className: "text-amber-700 dark:text-amber-300" },
+    pending_payment: { label: d.paymentProcessing, className: "text-amber-700 dark:text-amber-300" },
+    completed: { label: d.completed, className: "text-zinc-500 dark:text-zinc-400" },
+    cancelled: { label: d.cancelled, className: "text-red-600 dark:text-red-400" },
+  };
+  const style = styles[status];
+  if (!style) return null;
+  return (
+    <span className={`inline-flex shrink-0 items-center gap-1.5 text-xs font-medium ${style.className}`}>
+      <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
+      {style.label}
+    </span>
+  );
 }
 
 function ReviewForm({
@@ -131,29 +163,26 @@ function ReviewForm({
   lang: Locale;
   dictionary: Dictionary;
 }) {
-  const ratingOptions = [
-    { value: 5, label: dictionary.clientDashboard.ratingOptions["5"] },
-    { value: 4, label: dictionary.clientDashboard.ratingOptions["4"] },
-    { value: 3, label: dictionary.clientDashboard.ratingOptions["3"] },
-    { value: 2, label: dictionary.clientDashboard.ratingOptions["2"] },
-    { value: 1, label: dictionary.clientDashboard.ratingOptions["1"] },
-  ];
+  const d = dictionary.clientDashboard;
+  const ratingOptions = (["5", "4", "3", "2", "1"] as const).map((value) => ({
+    value,
+    label: d.ratingOptions[value],
+  }));
 
+  // Collapsed by default: one tap to open instead of a form on every card.
   return (
-    <form
-      action={submitReview}
-      className="mt-2 flex flex-col gap-2 border-t border-black/[.08] pt-3 dark:border-white/[.145]"
-    >
-      <input type="hidden" name="appointmentId" value={appointmentId} />
-      <input type="hidden" name="lang" value={lang} />
-      <p className="text-sm font-medium text-black dark:text-zinc-50">
-        {dictionary.clientDashboard.leaveAReview}
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
+    <details className="group border-t border-zinc-200/80 pt-3 dark:border-zinc-800/60">
+      <summary className="cursor-pointer list-none text-sm font-medium text-brand-700 hover:underline dark:text-brand-400 [&::-webkit-details-marker]:hidden">
+        {d.leaveAReview}
+      </summary>
+      <form action={submitReview} className="mt-3 flex flex-col gap-2">
+        <input type="hidden" name="appointmentId" value={appointmentId} />
+        <input type="hidden" name="lang" value={lang} />
         <select
           name="rating"
-          defaultValue={5}
-          className="rounded-md border border-black/[.08] px-2 py-1 text-sm dark:border-white/[.145] dark:bg-black"
+          defaultValue="5"
+          aria-label={d.leaveAReview}
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950"
         >
           {ratingOptions.map((option) => (
             <option key={option.value} value={option.value}>
@@ -161,20 +190,21 @@ function ReviewForm({
             </option>
           ))}
         </select>
+        <textarea
+          name="comment"
+          placeholder={d.optionalComment}
+          aria-label={d.optionalComment}
+          rows={2}
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+        />
         <button
           type="submit"
-          className="rounded-full bg-brand-600 px-4 py-1 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+          className="self-start rounded-full bg-brand-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
         >
-          {dictionary.clientDashboard.submit}
+          {d.submit}
         </button>
-      </div>
-      <textarea
-        name="comment"
-        placeholder={dictionary.clientDashboard.optionalComment}
-        rows={2}
-        className="rounded-md border border-black/[.08] px-3 py-2 text-sm dark:border-white/[.145] dark:bg-black"
-      />
-    </form>
+      </form>
+    </details>
   );
 }
 
@@ -194,103 +224,71 @@ function AppointmentCard({
   reviewable?: boolean;
 }) {
   const d = dictionary.clientDashboard;
+  const isOpen = appointment.status === "pending" || appointment.status === "confirmed";
+  const vehicle = appointment.vehicles;
+  const vehicleText = vehicle
+    ? [vehicle.brands?.name, vehicle.model, vehicle.year].filter(Boolean).join(" ")
+    : "";
+  const plate = vehicle?.license_plate?.trim();
 
   return (
-    <div className="flex flex-col rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-400">
-              <Wrench className="h-4 w-4" strokeWidth={1.5} />
-            </div>
-            <div>
-              <h3 className="font-semibold text-black dark:text-zinc-50">
-                {appointment.services?.name ?? d.serviceFallback}
-              </h3>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                {formatDateHeader(appointment.start_time)}
-              </p>
-            </div>
-          </div>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            {d.withGarage} {appointment.garages?.name ?? d.garageFallback}
+    <article className={`${CARD} flex flex-col gap-4 p-4 sm:p-5`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold capitalize text-black dark:text-zinc-50">
+            {formatDay(appointment.start_time, lang)}
+            <span className="font-normal text-zinc-500 dark:text-zinc-400">
+              {" · "}
+              {formatTime(appointment.start_time, lang)}
+            </span>
+          </p>
+          <h3 className="mt-1 text-base font-semibold text-black dark:text-zinc-50">
+            {appointment.services?.name ?? d.serviceFallback}
+          </h3>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            {appointment.garages?.name ?? d.garageFallback}
             {appointment.garages?.city ? ` · ${appointment.garages.city}` : ""}
           </p>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            {formatDateTime(appointment.start_time)}
-          </p>
-          {appointment.vehicles &&
-            (appointment.vehicles.model || appointment.vehicles.year) && (
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                {[appointment.vehicles.model, appointment.vehicles.year]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            )}
-          {cancellable && appointment.repair_stage && (
-            <div className="mt-4 max-w-xs">
-              <RepairStageIndicator
-                steps={repairStageSteps(appointment.repair_stage, dictionary.common.repairStage)}
-              />
-            </div>
-          )}
-          {appointment.status === "pending_payment" && (
-            <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
-              {d.paymentProcessing}
-            </p>
-          )}
-          {appointment.status === "cancelled" && (
-            <p className="mt-1 text-sm text-red-600">{d.cancelled}</p>
-          )}
-          {appointment.status === "completed" && (
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              {d.completed}
-            </p>
-          )}
-          {invoiceUrl && (
-            <a
-              href={invoiceUrl}
-              className="mt-1 inline-block text-sm font-medium underline"
-            >
-              {d.downloadInvoice}
-            </a>
-          )}
         </div>
-        <div className="flex shrink-0 flex-col gap-1.5">
-          <Link
-            href={`/${lang}/appointments/${appointment.id}/messages`}
-            className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:border-brand-600 hover:bg-brand-50 hover:text-brand-700 dark:border-white/[.145] dark:hover:border-brand-500 dark:hover:bg-brand-950 dark:hover:text-brand-400"
-          >
-            {d.message}
-          </Link>
-          {cancellable &&
-            (appointment.status === "pending" ||
-              appointment.status === "confirmed") && (
-              <>
-                <Link
-                  href={`/${lang}/appointments/${appointment.id}/reschedule`}
-                  className="rounded-full border border-black/[.08] px-4 py-1.5 text-center text-sm font-medium transition-colors hover:border-brand-600 hover:bg-brand-50 hover:text-brand-700 dark:border-white/[.145] dark:hover:border-brand-500 dark:hover:bg-brand-950 dark:hover:text-brand-400"
-                >
-                  {d.reschedule}
-                </Link>
-                <form action={cancelAppointment}>
-                  <input type="hidden" name="id" value={appointment.id} />
-                  <input type="hidden" name="lang" value={lang} />
-                  <button
-                    type="submit"
-                    className="w-full rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-                  >
-                    {d.cancel}
-                  </button>
-                </form>
-              </>
-            )}
-        </div>
+        <StatusPill status={appointment.status} d={d} />
       </div>
-      {reviewable && (
-        <ReviewForm appointmentId={appointment.id} lang={lang} dictionary={dictionary} />
+
+      {(plate || vehicleText) && (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
+          {vehicleText && <span>{vehicleText}</span>}
+        </div>
       )}
-    </div>
+
+      {cancellable && appointment.repair_stage && (
+        <RepairStageIndicator steps={repairStageSteps(appointment.repair_stage, dictionary.common.repairStage)} />
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Link href={`/${lang}/appointments/${appointment.id}/messages`} className={SECONDARY_BUTTON}>
+          {d.message}
+        </Link>
+        {cancellable && isOpen && (
+          <Link href={`/${lang}/appointments/${appointment.id}/reschedule`} className={SECONDARY_BUTTON}>
+            {d.reschedule}
+          </Link>
+        )}
+        {invoiceUrl && (
+          <a href={invoiceUrl} className={SECONDARY_BUTTON}>
+            {d.downloadInvoice}
+          </a>
+        )}
+        {cancellable && isOpen && (
+          <CancelBookingButton
+            appointmentId={appointment.id}
+            lang={lang}
+            labels={{ cancel: d.cancel, confirm: d.cancelConfirm, yes: d.cancelConfirmYes, keep: d.cancelKeep }}
+          />
+        )}
+      </div>
+
+      {reviewable && <ReviewForm appointmentId={appointment.id} lang={lang} dictionary={dictionary} />}
+    </article>
   );
 }
 
@@ -359,7 +357,7 @@ export default async function DashboardPage({
   const { data: appointments } = await supabase
     .from("appointments")
     .select(
-      "id, start_time, status, repair_stage, services(name), garages!appointments_garage_id_fkey(name, city), vehicles(model, year)"
+      "id, start_time, status, repair_stage, services(name), garages!appointments_garage_id_fkey(name, city), vehicles(model, year, license_plate, brands(name))"
     )
     .eq("client_id", profile.id)
     .order("start_time", { ascending: true });
@@ -431,99 +429,46 @@ export default async function DashboardPage({
     brands: { name: string } | null;
   }[];
 
+  // Most recent first: last week's service matters more than last year's.
+  const past = [...other].reverse();
+  const firstName = (profile.full_name || "").trim().split(/\s+/)[0];
+
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8 sm:py-10">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-              {d.welcomePrefix} {profile.full_name || profile.email}
-            </h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {profile.email}
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link
-              href={`/${lang}/garages`}
-              className="flex h-11 items-center justify-center rounded-full bg-brand-600 px-6 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
-            >
-              {d.bookAppointment}
-            </Link>
-            <Link
-              href={`/${lang}/vehicles`}
-              className="text-sm font-medium underline"
-            >
-              {d.myVehicles}
-            </Link>
-            <Link
-              href={`/${lang}/account`}
-              className="text-sm font-medium underline"
-            >
-              {d.account}
-            </Link>
-          </div>
-        </div>
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50 sm:text-3xl">
+            {firstName ? `${d.welcomePrefix} ${firstName}` : d.welcomeFallback}
+          </h1>
+          <Link
+            href={`/${lang}/garages`}
+            className="flex h-11 items-center justify-center gap-2 rounded-full bg-brand-600 px-6 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+          >
+            <CalendarPlus aria-hidden className="h-4 w-4" strokeWidth={2} />
+            {d.bookAppointment}
+          </Link>
+        </header>
 
         {booked === "1" && (
-          <p className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
+          <p
+            role="status"
+            className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-500/20 dark:bg-green-500/10 dark:text-green-300"
+          >
             {d.appointmentBooked}
           </p>
         )}
 
         {reviewError && (
-          <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
+          <p
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+          >
             {reviewError === "duplicate" ? d.reviewErrorDuplicate : d.reviewErrorGeneric}
           </p>
         )}
 
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
-              {d.vehicleManagement}
-            </h2>
-            {vehicleRows.length > 0 && (
-              <Link
-                href={`/${lang}/vehicles`}
-                className="text-sm font-medium underline"
-              >
-                {d.manageVehicles}
-              </Link>
-            )}
-          </div>
-          {vehicleRows.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {vehicleRows.map((vehicle) => (
-                <div
-                  key={vehicle.id}
-                  className="flex shrink-0 flex-col gap-1 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
-                >
-                  <h3 className="font-semibold text-black dark:text-zinc-50">
-                    {[vehicle.brands?.name, vehicle.model]
-                      .filter(Boolean)
-                      .join(" ") || d.vehicleFallback}
-                  </h3>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {[vehicle.year, vehicle.license_plate]
-                      .filter(Boolean)
-                      .join(" · ") || d.noDetailsAdded}
-                  </p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyStateCard
-              icon={Car}
-              title={d.noVehiclesTitle}
-              description={d.noVehiclesDescription}
-              ctaHref={`/${lang}/vehicles`}
-              ctaLabel={d.addVehicle}
-            />
-          )}
-        </div>
-
-        <div className="flex flex-col gap-4">
-          <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+        <section aria-labelledby="upcoming-title" className="flex flex-col gap-3">
+          <h2 id="upcoming-title" className={SECTION_LABEL}>
             {d.upcoming}
           </h2>
           {upcoming.length > 0 ? (
@@ -545,69 +490,110 @@ export default async function DashboardPage({
               ctaLabel={d.findAGarage}
             />
           )}
-        </div>
+        </section>
+
+        <section aria-labelledby="vehicles-title" className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="vehicles-title" className={SECTION_LABEL}>
+              {d.myVehicles}
+            </h2>
+            {vehicleRows.length > 0 && (
+              <Link
+                href={`/${lang}/vehicles`}
+                className="inline-flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                {d.manageVehicles}
+                <ArrowRight aria-hidden className="h-4 w-4" />
+              </Link>
+            )}
+          </div>
+          {vehicleRows.length > 0 ? (
+            <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
+              {vehicleRows.map((vehicle) => (
+                <li key={vehicle.id} className={`${CARD} flex w-56 shrink-0 snap-start flex-col gap-2 p-4`}>
+                  <p className="font-semibold text-black dark:text-zinc-50">
+                    {[vehicle.brands?.name, vehicle.model].filter(Boolean).join(" ") || d.vehicleFallback}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                    {vehicle.license_plate && (
+                      <LicensePlate plate={vehicle.license_plate} label={d.plateLabel} />
+                    )}
+                    {vehicle.year && <span>{vehicle.year}</span>}
+                    {!vehicle.license_plate && !vehicle.year && <span>{d.noDetailsAdded}</span>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyStateCard
+              icon={Car}
+              title={d.noVehiclesTitle}
+              description={d.noVehiclesDescription}
+              ctaHref={`/${lang}/vehicles`}
+              ctaLabel={d.addVehicle}
+            />
+          )}
+        </section>
 
         {waitlistRows.length > 0 && (
-          <div className="flex flex-col gap-4">
-            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+          <section aria-labelledby="waitlist-title" className="flex flex-col gap-3">
+            <h2 id="waitlist-title" className={SECTION_LABEL}>
               {d.waitlist}
             </h2>
-            {waitlistRows.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
-              >
-                <div>
-                  <h3 className="font-semibold text-black dark:text-zinc-50">
-                    {entry.services?.name ?? d.serviceFallback}
-                  </h3>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    {d.waitlistWith} {entry.garages?.name ?? d.garageFallback} {d.waitlistOn}{" "}
-                    {dateKeyToDisplayDate(entry.date).toLocaleDateString(
-                      undefined,
-                      { timeZone: APP_TIME_ZONE, weekday: "short", month: "short", day: "numeric" }
-                    )}
-                  </p>
-                  {entry.notified_at && (
-                    <p className="mt-1 text-sm text-amber-600 dark:text-amber-500">
-                      {d.waitlistSlotOpened}
+            <ul className={`${CARD} divide-y divide-zinc-200/80 dark:divide-zinc-800/60`}>
+              {waitlistRows.map((entry) => (
+                <li key={entry.id} className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5">
+                  <div className="min-w-0">
+                    <p className="font-medium text-black dark:text-zinc-50">
+                      {entry.services?.name ?? d.serviceFallback}
                     </p>
-                  )}
-                </div>
-                <form action={leaveWaitlist}>
-                  <input type="hidden" name="id" value={entry.id} />
-                  <input type="hidden" name="lang" value={lang} />
-                  <button
-                    type="submit"
-                    className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-                  >
-                    {d.leave}
-                  </button>
-                </form>
-              </div>
-            ))}
-          </div>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      {entry.garages?.name ?? d.garageFallback} ·{" "}
+                      {dateKeyToDisplayDate(entry.date).toLocaleDateString(dateLocaleFor(lang), {
+                        timeZone: APP_TIME_ZONE,
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </p>
+                    {entry.notified_at && (
+                      <p className="mt-1 text-sm font-medium text-amber-700 dark:text-amber-300">
+                        {d.waitlistSlotOpened}
+                      </p>
+                    )}
+                  </div>
+                  <form action={leaveWaitlist}>
+                    <input type="hidden" name="id" value={entry.id} />
+                    <input type="hidden" name="lang" value={lang} />
+                    <button
+                      type="submit"
+                      className="rounded-full px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                    >
+                      {d.leave}
+                    </button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
-        {other.length > 0 && (
-          <div className="flex flex-col gap-4">
-            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+        {past.length > 0 && (
+          <section aria-labelledby="past-title" className="flex flex-col gap-3">
+            <h2 id="past-title" className={SECTION_LABEL}>
               {d.pastAndCancelled}
             </h2>
-            {other.map((appointment) => (
+            {past.map((appointment) => (
               <AppointmentCard
                 key={appointment.id}
                 appointment={appointment}
                 lang={lang}
                 dictionary={dictionary}
                 invoiceUrl={invoiceUrls.get(appointment.id)}
-                reviewable={
-                  appointment.status === "completed" &&
-                  !reviewedAppointmentIds.has(appointment.id)
-                }
+                reviewable={appointment.status === "completed" && !reviewedAppointmentIds.has(appointment.id)}
               />
             ))}
-          </div>
+          </section>
         )}
       </div>
     </div>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { headers } from "next/headers";
-import { Car } from "lucide-react";
 import {
   getAuthedProfile,
   getOptionalAuthedProfile,
@@ -8,10 +7,10 @@ import {
 } from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { ClientSidebar, ClientMobileNav } from "@/components/client-nav";
+import { ClientSidebar, ClientTabBar } from "@/components/client-nav";
 import { ClientPageTitle } from "@/components/client-page-title";
-import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
 import { GarageSidebar, GarageTopBar } from "@/components/garage-nav";
+import { AnimatedLogo } from "@/components/animated-logo";
 
 function initialsFor(name: string) {
   return name
@@ -106,34 +105,35 @@ export default async function ClientLayout({
   }
 
   const initials = initialsFor(profile.full_name || profile.email);
+  const { clientNav } = await getDictionary(lang);
 
   return (
     <div className="flex flex-1">
-      <ClientSidebar lang={lang} />
+      <ClientSidebar lang={lang} labels={clientNav} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between gap-4 border-b border-black/[.08] bg-white px-6 py-4 dark:border-white/[.145] dark:bg-zinc-950 sm:px-8">
-          <ClientPageTitle />
-          <div className="flex items-center gap-4">
-            <ClientMobileNav lang={lang} />
-            <PushNotificationOptIn />
-            <Link
-              href={`/${lang}/vehicles`}
-              aria-label="Vehicles"
-              className="hidden text-zinc-600 transition-colors hover:text-black dark:text-zinc-400 dark:hover:text-zinc-50 sm:block"
-            >
-              <Car className="h-5 w-5" strokeWidth={1.5} />
+        {/* Push opt-in lives on the Account page; the tab bar replaces the
+            old header icon row on phones. */}
+        <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white px-4 dark:border-zinc-800/60 dark:bg-zinc-950 md:px-8">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <Link href={`/${lang}/dashboard`} className="shrink-0 md:hidden">
+              <AnimatedLogo size={28} />
             </Link>
-            <Link
-              href={`/${lang}/account`}
-              aria-label="Account"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-xs font-semibold text-white"
-            >
-              {initials}
-            </Link>
+            <ClientPageTitle labels={clientNav} />
           </div>
+          <Link
+            href={`/${lang}/account`}
+            aria-label={clientNav.account}
+            title={clientNav.account}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white transition-opacity hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
+          >
+            {initials}
+          </Link>
         </header>
-        <main className="flex flex-1 flex-col">{children}</main>
+        <main className="flex flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+          {children}
+        </main>
       </div>
+      <ClientTabBar lang={lang} labels={clientNav} />
     </div>
   );
 }

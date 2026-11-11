@@ -58,7 +58,7 @@ type StageLabels = Dictionary["common"]["repairStage"];
 // garage members only for vehicles booked with this garage (vehicles RLS,
 // 0036/0038); null when the appointment has no vehicle attached.
 const APPOINTMENT_SELECT =
-  "id, client_id, start_time, end_time, status, repair_stage, assigned_mechanic_id, services(name), profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name, phone), vehicle:vehicles(model, year, license_plate, brands(name))";
+  "id, client_id, start_time, end_time, status, repair_stage, assigned_mechanic_id, services(name), profiles!appointments_client_id_fkey(full_name, phone), walk_in:garage_customers(full_name, phone), vehicle:vehicles(model, year, license_plate, brands(name))";
 
 // Statuses the agenda lists: pending_payment is an unfinished checkout and
 // cancelled jobs are noise on a "what's on today" view (the calendar still
@@ -109,7 +109,7 @@ type AgendaAppointment = {
   repair_stage: string | null;
   assigned_mechanic_id: string | null;
   services: { name: string } | null;
-  profiles: { full_name: string } | null;
+  profiles: { full_name: string; phone: string | null } | null;
   // Walk-in customer (0038) when the job isn't for a registered client.
   walk_in: { full_name: string; phone: string | null } | null;
   client_id: string | null;
@@ -320,9 +320,8 @@ function AppointmentList({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Phone per appointment: a walk-in customer's own, or the one the garage
- * noted for a registered client (0042, readable by garage members only).
- * RDV client profiles carry no phone number.
+ * Phone per appointment: a walk-in customer's own; for a registered client,
+ * the one the garage noted (0042) or else the one on their profile (0044).
  */
 async function phonesFor(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -346,7 +345,10 @@ async function phonesFor(
   }
   const phones = new Map<string, string>();
   for (const row of rows) {
-    const phone = row.walk_in?.phone ?? (row.client_id ? noted.get(row.client_id) : undefined);
+    const phone =
+      row.walk_in?.phone ??
+      (row.client_id ? noted.get(row.client_id) : undefined) ??
+      row.profiles?.phone;
     if (phone) phones.set(row.id, phone);
   }
   return phones;

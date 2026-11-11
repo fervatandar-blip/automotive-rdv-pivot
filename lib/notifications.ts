@@ -27,6 +27,23 @@ async function isGarageNotificationEnabled(
   return data ? Boolean((data as Record<string, boolean>)[column]) : true;
 }
 
+type ClientNotificationColumn = "notify_repair_updates" | "notify_waitlist";
+
+// A client's opt-out for the two non-essential notifications (0044).
+// Same service-role read and fail-open behavior as the garage check above.
+async function isClientNotificationEnabled(
+  profileId: string,
+  column: ClientNotificationColumn
+): Promise<boolean> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("profiles")
+    .select(column)
+    .eq("id", profileId)
+    .maybeSingle();
+  return data ? (data as Record<string, boolean | null>)[column] !== false : true;
+}
+
 const STATUS_COPY: Record<string, { subject: string; verb: string }> = {
   confirmed: { subject: "Your appointment is confirmed", verb: "confirmed" },
   cancelled: { subject: "Your appointment was cancelled", verb: "cancelled" },
@@ -124,6 +141,7 @@ export async function notifyRepairStageChange({
 }) {
   const copy = REPAIR_STAGE_COPY[stage];
   if (!copy) return;
+  if (!(await isClientNotificationEnabled(recipientProfileId, "notify_repair_updates"))) return;
 
   if (recipientEmail) {
     await sendEmail({
@@ -329,6 +347,8 @@ export async function notifyWaitlistSlotOpened({
   serviceName: string;
   date: string;
 }) {
+  if (!(await isClientNotificationEnabled(recipientProfileId, "notify_waitlist"))) return;
+
   const when = dateKeyToDisplayDate(date).toLocaleDateString(undefined, {
     timeZone: APP_TIME_ZONE,
     weekday: "long",
