@@ -27,10 +27,16 @@ import {
   X,
 } from "lucide-react";
 import { logout } from "@/app/actions/auth";
-import { locales, type Locale } from "@/lib/i18n/config";
+import { LOCALE_COOKIE, locales, type Locale } from "@/lib/i18n/config";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { AnimatedLogo } from "@/components/animated-logo";
 
 const LOCALE_LABELS: Record<Locale, string> = { fr: "FR", en: "EN" };
+const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+
+function rememberLocale(locale: Locale) {
+  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; samesite=lax`;
+}
 const COLLAPSE_STORAGE_KEY = "garage-sidebar-collapsed";
 
 // Tiny external store for the collapsed preference: localStorage has no
@@ -264,7 +270,10 @@ function MobileNav({
             </div>
           )}
 
-          <div className="mt-auto flex flex-col gap-0.5 border-t border-zinc-800/60 pt-4">
+          <div className="mt-auto pt-6">
+            <SidebarUtilityBar lang={lang} pathname={pathname} labels={labels} collapsed={false} />
+          </div>
+          <div className="flex flex-col gap-0.5 border-t border-zinc-800/60 pt-4">
             {footerLinks.map((item) => (
               <div key={item.href} onClick={close}>
                 <NavLink
@@ -283,9 +292,6 @@ function MobileNav({
                 {labels.logOut}
               </button>
             </form>
-            <div className="mt-3">
-              <SidebarLocaleToggle lang={lang} pathname={pathname} />
-            </div>
           </div>
         </div>
       </dialog>
@@ -407,34 +413,71 @@ export function GarageTopBar({
   );
 }
 
-function SidebarLocaleToggle({
+/**
+ * Theme and language, just above the account links. The language links
+ * keep the current page and remember the choice in a cookie (proxy.ts uses
+ * it for unprefixed URLs).
+ */
+function SidebarUtilityBar({
   lang,
   pathname,
+  labels,
+  collapsed,
 }: {
   lang: Locale;
   pathname: string;
+  labels: NavLabels;
+  collapsed: boolean;
 }) {
   const rest = pathname.split("/").slice(2).join("/");
+  const hrefFor = (locale: Locale) => `/${locale}${rest ? `/${rest}` : ""}`;
+  const themeLabels = {
+    light: labels.themeLight,
+    dark: labels.themeDark,
+    switchToLight: labels.switchToLight,
+    switchToDark: labels.switchToDark,
+  };
+
+  if (collapsed) {
+    const other = locales.find((locale) => locale !== lang) ?? lang;
+    return (
+      <div className="mb-3 flex flex-col items-center gap-1">
+        <ThemeToggle labels={themeLabels} collapsed />
+        <Link
+          href={hrefFor(other)}
+          onClick={() => rememberLocale(other)}
+          title={labels.language}
+          aria-label={`${labels.language}: ${LOCALE_LABELS[other]}`}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-zinc-400 transition-colors hover:bg-zinc-800/60 hover:text-zinc-50"
+        >
+          {LOCALE_LABELS[other]}
+        </Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex items-center gap-2 px-3 text-sm font-medium">
-      {locales.map((locale, index) => (
-        <span key={locale} className="flex items-center gap-2">
-          <Link
-            href={`/${locale}${rest ? `/${rest}` : ""}`}
-            className={
-              locale === lang
-                ? "text-zinc-50"
-                : "text-zinc-500 transition-colors hover:text-zinc-200"
-            }
-          >
-            {LOCALE_LABELS[locale]}
-          </Link>
-          {index < locales.length - 1 && (
-            <span className="text-zinc-700">|</span>
-          )}
-        </span>
-      ))}
+    <div className="mb-3 flex items-center justify-between gap-2 px-1">
+      <ThemeToggle labels={themeLabels} />
+      <div role="group" aria-label={labels.language} className="flex rounded-full bg-zinc-900 p-0.5 ring-1 ring-zinc-800">
+        {locales.map((locale) => {
+          const active = locale === lang;
+          return (
+            <Link
+              key={locale}
+              href={hrefFor(locale)}
+              onClick={() => rememberLocale(locale)}
+              aria-current={active ? "true" : undefined}
+              lang={locale}
+              className={`rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide transition-colors ${
+                active ? "bg-zinc-700 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-50"
+              }`}
+            >
+              {LOCALE_LABELS[locale]}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -534,6 +577,8 @@ export function GarageSidebar({
         ))}
       </nav>
 
+      <SidebarUtilityBar lang={lang} pathname={pathname} labels={labels} collapsed={collapsed} />
+
       <div className="flex flex-col gap-0.5 border-t border-zinc-800/60 pt-4">
         {footerLinks.map((item) => (
           <NavLink
@@ -556,11 +601,6 @@ export function GarageSidebar({
             {!collapsed && labels.logOut}
           </button>
         </form>
-        {!collapsed && (
-          <div className="mt-3">
-            <SidebarLocaleToggle lang={lang} pathname={pathname} />
-          </div>
-        )}
       </div>
     </aside>
   );

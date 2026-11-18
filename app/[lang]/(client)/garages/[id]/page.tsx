@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAvailableSlotsForDate } from "@/lib/availability";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
+import { formatServicePrice } from "@/lib/service-pricing";
 import { GarageMapDisplay } from "@/components/garage-map-display";
 import { bookAppointment } from "@/app/actions/appointments";
 import { joinWaitlist } from "@/app/actions/waitlist";
@@ -72,11 +73,6 @@ function BookingStepIndicator({ steps }: { steps: { label: string; status: StepS
     </div>
   );
 }
-
-const currencyFormatter = new Intl.NumberFormat("fr-LU", {
-  style: "currency",
-  currency: "EUR",
-});
 
 function toDateKey(date: Date) {
   const year = date.getFullYear();
@@ -211,7 +207,7 @@ export default async function GarageDetailPage({
 
   const { data: services } = await supabase
     .from("services")
-    .select("id, name, description, duration_minutes, price")
+    .select("id, name, description, duration_minutes, pricing_type, price")
     .eq("garage_id", garageId)
     .order("created_at", { ascending: true });
 
@@ -532,7 +528,7 @@ export default async function GarageDetailPage({
                     </span>
                     <span className="text-sm text-zinc-600 dark:text-zinc-400">
                       {service.duration_minutes} {d.min} &middot;{" "}
-                      {currencyFormatter.format(Number(service.price))}
+                      {formatServicePrice(service, dictionary.servicePrice)}
                     </span>
                   </div>
                   {service.description && (
@@ -708,7 +704,7 @@ export default async function GarageDetailPage({
                         </dd>
                         <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewPrice}</dt>
                         <dd className="font-medium tabular-nums text-black dark:text-zinc-50">
-                          {currencyFormatter.format(Number(selectedService.price))}
+                          {formatServicePrice(selectedService, dictionary.servicePrice)}
                         </dd>
                       </dl>
 

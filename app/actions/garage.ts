@@ -9,6 +9,7 @@ import {
   GARAGE_LANGUAGES,
   GARAGE_PROFILE_SECTIONS,
   GarageCapabilitiesFormSchema,
+  GarageAddressFormSchema,
   GarageDetailsFormSchema,
   GarageOnboardingFormSchema,
   type GarageOnboardingFormState,
@@ -278,18 +279,6 @@ export async function updateGarageProfile(
 
   const supabase = await createClient();
 
-  if (section === "catalog") {
-    const catalogError = await replaceGarageCatalog(
-      supabase,
-      garage.id,
-      readUuidList(formData, "brandIds"),
-      readUuidList(formData, "specialtyIds")
-    );
-    if (catalogError) return { message: catalogError };
-    revalidateGarageViews(garage.id);
-    return { savedAt: Date.now() };
-  }
-
   let update: Record<string, unknown>;
 
   if (section === "details") {
@@ -301,8 +290,6 @@ export async function updateGarageProfile(
     const validatedFields = GarageDetailsFormSchema.safeParse({
       name: formData.get("name"),
       description: formData.get("description") || undefined,
-      address: formData.get("address") || undefined,
-      city: formData.get("city") || undefined,
       phone: formData.get("phone") || undefined,
       email: formData.get("email") || undefined,
       website: formData.get("website") || undefined,
@@ -321,8 +308,6 @@ export async function updateGarageProfile(
     update = {
       name: data.name,
       description: data.description ?? null,
-      address: data.address ?? null,
-      city: data.city ?? null,
       phone: data.phone ?? null,
       email: data.email ?? null,
       website: data.website ?? null,
@@ -335,7 +320,21 @@ export async function updateGarageProfile(
           }),
     };
   } else if (section === "location") {
-    update = readLocation(formData);
+    // Street address and city live with the map pin on the profile page.
+    const validatedFields = GarageAddressFormSchema.safeParse({
+      address: formData.get("address") || undefined,
+      city: formData.get("city") || undefined,
+    });
+
+    if (!validatedFields.success) {
+      return { errors: validatedFields.error.flatten().fieldErrors };
+    }
+
+    update = {
+      address: validatedFields.data.address ?? null,
+      city: validatedFields.data.city ?? null,
+      ...readLocation(formData),
+    };
   } else {
     const validatedFields = GarageCapabilitiesFormSchema.safeParse({
       pricingCategory: formData.get("pricingCategory") || undefined,

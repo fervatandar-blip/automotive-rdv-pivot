@@ -3,40 +3,33 @@
 import { useParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { deleteService, updateService } from "@/app/actions/services";
-
-const currencyFormatter = new Intl.NumberFormat("fr-LU", {
-  style: "currency",
-  currency: "EUR",
-});
+import { formatServicePrice } from "@/lib/service-pricing";
+import type { Dictionary } from "@/lib/i18n/get-dictionary";
+import { ServiceFields } from "./service-fields";
 
 export type Service = {
   id: string;
   name: string;
   description: string | null;
   duration_minutes: number;
-  price: number;
+  pricing_type: string;
+  price: number | string | null;
 };
 
-type ServiceRowDictionary = {
-  edit: string;
-  delete: string;
-  nameLabel: string;
-  descriptionLabel: string;
-  durationLabel: string;
-  priceLabel: string;
-  save: string;
-  savePending: string;
-  cancel: string;
-};
+const GHOST_BUTTON =
+  "rounded-full px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
 
 export function ServiceRow({
   service,
-  dictionary,
+  d,
+  priceLabels,
 }: {
   service: Service;
-  dictionary: ServiceRowDictionary;
+  d: Dictionary["garageServices"];
+  priceLabels: Dictionary["servicePrice"];
 }) {
   const [editing, setEditing] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [state, action, pending] = useActionState(updateService, undefined);
   const wasPending = useRef(false);
   const { lang } = useParams<{ lang: string }>();
@@ -50,135 +43,92 @@ export function ServiceRow({
 
   if (!editing) {
     return (
-      <div className="flex items-start justify-between gap-4 rounded-xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40">
-        <div>
-          <h3 className="font-semibold text-black dark:text-zinc-50">
-            {service.name}
-          </h3>
+      <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h3 className="font-medium text-black dark:text-zinc-50">{service.name}</h3>
           {service.description && (
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {service.description}
-            </p>
+            <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{service.description}</p>
           )}
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            {service.duration_minutes} min &middot;{" "}
-            {currencyFormatter.format(Number(service.price))}
+          <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-400">
+            {service.duration_minutes} min ·{" "}
+            <span className="font-medium tabular-nums text-black dark:text-zinc-50">
+              {formatServicePrice(service, priceLabels)}
+            </span>
           </p>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <button
-            onClick={() => setEditing(true)}
-            className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-          >
-            {dictionary.edit}
-          </button>
-          <form action={deleteService}>
-            <input type="hidden" name="id" value={service.id} />
-            <input type="hidden" name="lang" value={lang} />
-            <button
-              type="submit"
-              className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-            >
-              {dictionary.delete}
-            </button>
-          </form>
+        <div className="flex shrink-0 items-center gap-1">
+          {confirmingDelete ? (
+            <>
+              <button type="button" onClick={() => setConfirmingDelete(false)} className={GHOST_BUTTON}>
+                {d.keep}
+              </button>
+              <form action={deleteService}>
+                <input type="hidden" name="id" value={service.id} />
+                <input type="hidden" name="lang" value={lang} />
+                <button
+                  type="submit"
+                  className="rounded-full bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 dark:bg-red-500/90 dark:hover:bg-red-500"
+                >
+                  {d.confirmDelete}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={() => setEditing(true)} className={GHOST_BUTTON}>
+                {d.edit}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="rounded-full px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+              >
+                {d.delete}
+              </button>
+            </>
+          )}
         </div>
-      </div>
+      </li>
     );
   }
 
   return (
-    <form
-      action={action}
-      className="flex flex-col gap-4 rounded-xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40"
-    >
-      <input type="hidden" name="id" value={service.id} />
-      <input type="hidden" name="lang" value={lang} />
+    <li className="py-4">
+      <form action={action} className="flex flex-col gap-5">
+        <input type="hidden" name="id" value={service.id} />
+        <input type="hidden" name="lang" value={lang} />
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium">{dictionary.nameLabel}</label>
-        <input
-          name="name"
-          defaultValue={service.name}
-          className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+        <ServiceFields
+          d={d.fields}
+          errors={state?.errors}
+          defaults={{
+            name: service.name,
+            description: service.description,
+            durationMinutes: service.duration_minutes,
+            pricingType: service.pricing_type,
+            price: service.price,
+          }}
         />
-        {state?.errors?.name && (
-          <p className="text-sm text-red-600">{state.errors.name[0]}</p>
-        )}
-      </div>
 
-      <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium">
-          {dictionary.descriptionLabel}
-        </label>
-        <textarea
-          name="description"
-          rows={2}
-          defaultValue={service.description ?? ""}
-          className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-        />
-        {state?.errors?.description && (
-          <p className="text-sm text-red-600">
-            {state.errors.description[0]}
+        {state?.message && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {state.message}
           </p>
         )}
-      </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium">
-            {dictionary.durationLabel}
-          </label>
-          <input
-            name="durationMinutes"
-            type="number"
-            min="1"
-            defaultValue={service.duration_minutes}
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-          />
-          {state?.errors?.durationMinutes && (
-            <p className="text-sm text-red-600">
-              {state.errors.durationMinutes[0]}
-            </p>
-          )}
+        <div className="flex gap-2">
+          <button
+            disabled={pending}
+            type="submit"
+            className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-600"
+          >
+            {pending ? d.saving : d.save}
+          </button>
+          <button type="button" onClick={() => setEditing(false)} className={GHOST_BUTTON}>
+            {d.cancel}
+          </button>
         </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium">{dictionary.priceLabel}</label>
-          <input
-            name="price"
-            type="number"
-            min="0"
-            step="0.01"
-            defaultValue={service.price}
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-          />
-          {state?.errors?.price && (
-            <p className="text-sm text-red-600">{state.errors.price[0]}</p>
-          )}
-        </div>
-      </div>
-
-      {state?.message && (
-        <p className="text-sm text-red-600">{state.message}</p>
-      )}
-
-      <div className="flex gap-2">
-        <button
-          disabled={pending}
-          type="submit"
-          className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
-        >
-          {pending ? dictionary.savePending : dictionary.save}
-        </button>
-        <button
-          type="button"
-          onClick={() => setEditing(false)}
-          className="rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-        >
-          {dictionary.cancel}
-        </button>
-      </div>
-    </form>
+      </form>
+    </li>
   );
 }

@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Theme is a class on <html> (set before paint by the script in
+   app/[lang]/layout.tsx): the stored Light/Dark choice, or the OS setting
+   when there is none. Every dark: utility keys off it. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -23,11 +28,10 @@
   --color-brand-950: #172554;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  color-scheme: dark;
 }
 
 body {

@@ -498,33 +498,36 @@
     "resizeHandle": "Faites glisser pour changer la durée"
   },
   "garageServices": {
-    "servicesSuffix": "services",
-    "calendar": "Calendrier",
-    "manageAvailability": "Gérer les disponibilités",
-    "noServicesYet": "Aucune prestation configurée.",
-    "row": {
-      "edit": "Modifier",
-      "delete": "Supprimer",
+    "title": "Prestations & tarifs",
+    "subtitle": "Ce que les clients peuvent réserver en ligne, la durée et le mode de tarification.",
+    "listTitle": "Vos prestations",
+    "noServicesYet": "Aucune prestation pour l’instant. Ajoutez la première ci-dessous.",
+    "addTitle": "Ajouter une prestation",
+    "add": "Ajouter la prestation",
+    "adding": "Ajout…",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "keep": "Conserver",
+    "confirmDelete": "Supprimer la prestation",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "fields": {
       "nameLabel": "Nom",
+      "namePlaceholder": "Vidange",
       "descriptionLabel": "Description",
+      "descriptionPlaceholder": "Ce que comprend la prestation",
+      "optional": "facultatif",
       "durationLabel": "Durée (minutes)",
+      "pricingTypeLabel": "Tarification",
+      "pricingFixed": "Prix fixe",
+      "pricingFrom": "À partir de",
+      "pricingOnInspection": "Sur devis",
+      "pricingFixedHint": "Les clients voient le prix exact, par ex. 89,00 €.",
+      "pricingFromHint": "Les clients voient un prix de départ, par ex. « À partir de 89,00 € ». Le prix final dépend du véhicule.",
+      "pricingOnInspectionHint": "Aucun prix affiché : les clients voient « Prix sur devis ». Vous établissez le devis après avoir vu le véhicule.",
       "priceLabel": "Prix",
-      "save": "Enregistrer",
-      "savePending": "Enregistrement...",
-      "cancel": "Annuler"
-    },
-    "addForm": {
-      "title": "Ajouter un service",
-      "nameLabel": "Nom",
-      "namePlaceholder": "Coupe de cheveux",
-      "descriptionLabel": "Description",
-      "descriptionPlaceholder": "Ce qui est inclus dans ce service",
-      "durationLabel": "Durée (minutes)",
-      "durationPlaceholder": "30",
-      "priceLabel": "Prix",
-      "pricePlaceholder": "45,00",
-      "submit": "Ajouter le service",
-      "submitPending": "Ajout en cours..."
+      "startingPriceLabel": "Prix de départ"
     }
   },
   "garageAvailability": {
@@ -583,7 +586,10 @@
       "datePast": "Cette date est déjà passée.",
       "toBeforeFrom": "« Au » doit être le même jour ou après « Du ».",
       "rangeTooLong": "Fermez au maximum 92 jours à la fois."
-    }
+    },
+    "addLunchBreak": "Ajouter une pause déjeuner",
+    "addLunchBreakFor": "Ajouter une pause déjeuner le {day}",
+    "removeLunchBreak": "Supprimer la pause déjeuner du {day}"
   },
   "garageDocuments": {
     "backToDashboard": "Retour au tableau de bord",
@@ -615,11 +621,13 @@
     "noHours": "Aucun horaire défini. La réservation en ligne est indisponible tant que les horaires hebdomadaires ne sont pas configurés.",
     "locationDescription": "Placez le repère sur l'entrée pour guider les clients.",
     "capabilitiesDescription": "Aide les clients à filtrer les garages et à trouver le bon.",
-    "catalogTitle": "Marques et spécialités",
-    "catalogDescription": "Marques entretenues et domaines de spécialité.",
     "save": "Enregistrer",
     "saving": "Enregistrement...",
-    "saved": "Enregistré"
+    "saved": "Enregistré",
+    "detailsTitle": "Entreprise & contact",
+    "addressTitle": "Adresse & carte",
+    "capacityTitle": "Langues & capacité",
+    "servicesOfferedLabel": "Également proposé"
   },
   "walkIn": {
     "openButton": "Client sans RDV",
@@ -1259,7 +1267,12 @@
     "logOut": "Déconnexion",
     "servicesGroup": "Prestations",
     "openMenu": "Ouvrir le menu",
-    "closeMenu": "Fermer le menu"
+    "closeMenu": "Fermer le menu",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "switchToLight": "Passer au thème clair",
+    "switchToDark": "Passer au thème sombre",
+    "language": "Langue"
   },
   "clientNav": {
     "mainNav": "Navigation principale",
@@ -1271,5 +1284,9 @@
     "account": "Compte",
     "garageDetails": "Détails du garage",
     "logOut": "Déconnexion"
+  },
+  "servicePrice": {
+    "priceFrom": "À partir de {price}",
+    "priceOnInspection": "Prix sur devis"
   }
 }

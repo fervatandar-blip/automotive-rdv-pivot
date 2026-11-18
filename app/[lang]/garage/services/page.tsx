@@ -1,9 +1,7 @@
-import Link from "next/link";
 import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { LanguageSwitcher } from "@/components/language-switcher";
 import { AddServiceForm } from "./add-service-form";
 import { ServiceRow, type Service } from "./service-row";
 
@@ -21,41 +19,36 @@ export default async function GarageServicesPage({
 
   const { data: services } = await supabase
     .from("services")
-    .select("id, name, description, duration_minutes, price")
+    .select("id, name, description, duration_minutes, pricing_type, price")
     .eq("garage_id", garage.id)
     .order("created_at", { ascending: true });
 
+  const rows = (services ?? []) as Service[];
+
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-            {garage.name} &mdash; {d.servicesSuffix}
-          </h1>
-          <div className="flex items-center gap-4 text-sm font-medium">
-            <div className="flex gap-4 underline">
-              <Link href={`/${lang}/garage/calendar`}>{d.calendar}</Link>
-              <Link href={`/${lang}/garage/availability`}>
-                {d.manageAvailability}
-              </Link>
-            </div>
-            <LanguageSwitcher lang={lang} />
-          </div>
-        </div>
+    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-8 sm:py-10">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+        <header>
+          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">{d.title}</h1>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{d.subtitle}</p>
+        </header>
 
-        <AddServiceForm dictionary={d.addForm} />
-
-        <div className="flex flex-col gap-4">
-          {services && services.length > 0 ? (
-            (services as Service[]).map((service) => (
-              <ServiceRow key={service.id} service={service} dictionary={d.row} />
-            ))
+        <section aria-labelledby="service-list-title" className="flex flex-col">
+          <h2 id="service-list-title" className="text-base font-semibold text-black dark:text-zinc-50">
+            {d.listTitle}
+          </h2>
+          {rows.length > 0 ? (
+            <ul className="mt-2 divide-y divide-zinc-200/80 dark:divide-zinc-800/50">
+              {rows.map((service) => (
+                <ServiceRow key={service.id} service={service} d={d} priceLabels={dictionary.servicePrice} />
+              ))}
+            </ul>
           ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {d.noServicesYet}
-            </p>
+            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{d.noServicesYet}</p>
           )}
-        </div>
+        </section>
+
+        <AddServiceForm d={d} />
       </div>
     </div>
   );

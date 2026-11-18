@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthedUser, requireGarageMember, requireGarageOwner } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
 import { getStripe } from "@/lib/stripe";
+import { isInvoiceablePrice } from "@/lib/service-pricing";
 import { getAvailableSlotsForDate } from "@/lib/availability";
 import { dateKeyInAppZone, todayKeyInAppZone, zonedDateTimeToUtc } from "@/lib/timezone";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -457,7 +458,7 @@ async function generateInvoice(
     const { data: appointment } = await supabase
       .from("appointments")
       .select(
-        "start_time, client_id, garage_customer_id, client:profiles!appointments_client_id_fkey(full_name, email), walk_in:garage_customers(full_name, email, phone), garage:garages!appointments_garage_id_fkey(name, address, city, email, vat_number, registration_number), services(name, duration_minutes, price)"
+        "start_time, client_id, garage_customer_id, client:profiles!appointments_client_id_fkey(full_name, email), walk_in:garage_customers(full_name, email, phone), garage:garages!appointments_garage_id_fkey(name, address, city, email, vat_number, registration_number), services(name, duration_minutes, pricing_type, price)"
       )
       .eq("id", appointmentId)
       .single();
@@ -491,10 +492,16 @@ async function generateInvoice(
     const service = appointment.services as unknown as {
       name: string;
       duration_minutes: number;
-      price: number;
+      pricing_type: string;
+      price: number | null;
     } | null;
 
     if (!recipient || !garageInfo || !service) return;
+
+    // A "from" or "on inspection" list price (0045) is not what the client
+    // owes, so no invoice is issued automatically for those services --
+    // the invoices page doesn't list them as missing either.
+    if (!isInvoiceablePrice(service)) return;
 
     // increment_invoice_number must run before rendering (the number is
     // printed inside the PDF itself, so it has to be known first) --
@@ -536,7 +543,7 @@ async function generateInvoice(
       service: {
         name: service.name,
         durationMinutes: service.duration_minutes,
-        price: service.price,
+        price: Number(service.price),
       },
       appointmentDate: appointment.start_time,
       currency: "EUR",
@@ -561,7 +568,7 @@ async function generateInvoice(
       client_id: appointment.client_id,
       garage_customer_id: appointment.garage_customer_id,
       invoice_number: invoiceNumber,
-      amount: service.price,
+      amount: Number(service.price),
       currency: "EUR",
       file_path: filePath,
       issued_at: issuedAt,

@@ -133,6 +133,7 @@ describe("updateGarageProfile: details section", () => {
     const update = garageUpdate();
     expect(update).not.toHaveProperty("ev_capable");
     expect(update).not.toHaveProperty("latitude");
+    expect(update).not.toHaveProperty("address");
     expect(update).not.toHaveProperty("status");
   });
 });
@@ -153,23 +154,31 @@ describe("updateGarageProfile: other sections", () => {
 
   it("clears a half-set or out-of-range map pin instead of saving it", async () => {
     await updateGarageProfile(undefined, form({ section: "location", latitude: "49.6", longitude: "" }));
-    expect(garageUpdate()).toEqual({ latitude: null, longitude: null });
+    expect(garageUpdate()).toMatchObject({ latitude: null, longitude: null });
 
     ops = [];
     await updateGarageProfile(undefined, form({ section: "location", latitude: "999", longitude: "6.1" }));
-    expect(garageUpdate()).toEqual({ latitude: null, longitude: null });
+    expect(garageUpdate()).toMatchObject({ latitude: null, longitude: null });
   });
 
-  it("replaces brands/specialties with de-duplicated, well-formed ids only", async () => {
-    const brand = "11111111-1111-4111-8111-111111111111";
+  it("saves the street address and city with the map pin", async () => {
     await updateGarageProfile(
       undefined,
-      form({ section: "catalog", brandIds: [brand, brand, "not-a-uuid"], specialtyIds: [] })
+      form({ section: "location", address: " 12 Rue de Hollerich ", city: "Luxembourg", latitude: "49.6", longitude: "6.1" })
     );
+    expect(garageUpdate()).toEqual({
+      address: "12 Rue de Hollerich",
+      city: "Luxembourg",
+      latitude: 49.6,
+      longitude: 6.1,
+    });
+  });
 
-    const brandInsert = ops.find((op) => op.table === "garage_brands" && op.method === "insert");
-    expect(brandInsert?.args[0]).toEqual([{ garage_id: "garage-1", brand_id: brand }]);
-    expect(garageUpdate()).toBeUndefined();
+  it("no longer edits brands/specialties from the profile page", async () => {
+    const brand = "11111111-1111-4111-8111-111111111111";
+    const result = await updateGarageProfile(undefined, form({ section: "catalog", brandIds: [brand] }));
+    expect(result?.message).toMatch(/unknown/i);
+    expect(ops).toHaveLength(0);
   });
 
   it("refuses an unknown section", async () => {

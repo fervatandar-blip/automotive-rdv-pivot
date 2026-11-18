@@ -117,9 +117,16 @@ export default async function GarageAvailabilityPage({
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{d.subtitle}</p>
         </header>
 
-        <Panel id="weekly-hours" title={d.weeklyTitle} description={d.weeklyDescription}>
+        {/* The schedule is the page's main form: plain rows, no card. */}
+        <section aria-labelledby="weekly-hours" className="flex flex-col gap-1">
+          <div>
+            <h2 id="weekly-hours" className="text-base font-semibold text-black dark:text-zinc-50">
+              {d.weeklyTitle}
+            </h2>
+            <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{d.weeklyDescription}</p>
+          </div>
           <WeeklyHoursForm lang={lang} d={d} initialDays={weekFormFromWindows(availability ?? [])} />
-        </Panel>
+        </section>
 
         <Panel id="closed-dates" title={d.closedTitle} description={d.closedDescription}>
           <div className="flex flex-col gap-5 px-4 py-4 sm:px-5">

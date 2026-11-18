@@ -32,6 +32,12 @@ describe("WeeklyHoursForm", () => {
     expect(html).toContain('value="13:30"');
     expect(html).not.toContain('aria-label="Tuesday lunch break start"');
     expect(html).toContain('aria-label="Tuesday opening time"');
+    // Days without a break offer the pill; days with one offer removal.
+    expect(html).toContain('aria-label="Add a lunch break on Tuesday"');
+    expect(html).not.toContain('aria-label="Add a lunch break on Monday"');
+    expect(html).toContain('aria-label="Remove the Monday lunch break"');
+    // Closed days show neither.
+    expect(html).not.toContain('aria-label="Add a lunch break on Sunday"');
   });
 
   it("warns about days with more ranges than the form shows", () => {

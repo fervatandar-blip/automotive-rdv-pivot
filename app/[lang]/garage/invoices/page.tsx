@@ -4,6 +4,7 @@ import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { retryInvoiceGeneration } from "@/app/actions/appointments";
 import { APP_TIME_ZONE } from "@/lib/timezone";
+import { isInvoiceablePrice } from "@/lib/service-pricing";
 
 type InvoiceRow = {
   id: string;
@@ -23,7 +24,7 @@ type InvoiceRow = {
 type CompletedAppointmentRow = {
   id: string;
   start_time: string;
-  services: { name: string } | null;
+  services: { name: string; pricing_type: string; price: number | null } | null;
   client: { full_name: string } | null;
   walk_in?: { full_name: string } | null;
 };
@@ -88,7 +89,7 @@ export default async function GarageInvoicesPage({
       supabase
         .from("appointments")
         .select(
-          "id, start_time, services(name), client:profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name)"
+          "id, start_time, services(name, pricing_type, price), client:profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name)"
         )
         .eq("garage_id", garage.id)
         .eq("status", "completed")
@@ -109,8 +110,13 @@ export default async function GarageInvoicesPage({
   const invoicedAppointmentIds = new Set(
     invoiceRows.map((invoice) => invoice.appointment_id)
   );
+  // Services without a fixed price (0045) are never auto-invoiced, so
+  // they're not "missing" one either.
   const missingInvoiceAppointments = completedAppointmentRows.filter(
-    (appointment) => !invoicedAppointmentIds.has(appointment.id)
+    (appointment) =>
+      !invoicedAppointmentIds.has(appointment.id) &&
+      appointment.services !== null &&
+      isInvoiceablePrice(appointment.services)
   );
 
   // One batched Storage call instead of one sequential round-trip per

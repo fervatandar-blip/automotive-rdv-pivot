@@ -498,33 +498,36 @@
     "resizeHandle": "Drag to change the length"
   },
   "garageServices": {
-    "servicesSuffix": "services",
-    "calendar": "Calendar",
-    "manageAvailability": "Manage availability",
-    "noServicesYet": "No services configured.",
-    "row": {
-      "edit": "Edit",
-      "delete": "Delete",
+    "title": "Services & pricing",
+    "subtitle": "What clients can book online, how long it takes and how it is priced.",
+    "listTitle": "Your services",
+    "noServicesYet": "No services yet. Add your first one below.",
+    "addTitle": "Add a service",
+    "add": "Add service",
+    "adding": "Adding…",
+    "edit": "Edit",
+    "delete": "Delete",
+    "keep": "Keep",
+    "confirmDelete": "Delete service",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "fields": {
       "nameLabel": "Name",
+      "namePlaceholder": "Oil change",
       "descriptionLabel": "Description",
+      "descriptionPlaceholder": "What the service includes",
+      "optional": "optional",
       "durationLabel": "Duration (minutes)",
+      "pricingTypeLabel": "Pricing",
+      "pricingFixed": "Fixed price",
+      "pricingFrom": "Starting from",
+      "pricingOnInspection": "On inspection",
+      "pricingFixedHint": "Clients see the exact price, e.g. 89,00 €.",
+      "pricingFromHint": "Clients see a starting price, e.g. “From 89,00 €”. The final price depends on the vehicle.",
+      "pricingOnInspectionHint": "No price is shown; clients see “Price on inspection”. You quote after looking at the car.",
       "priceLabel": "Price",
-      "save": "Save",
-      "savePending": "Saving...",
-      "cancel": "Cancel"
-    },
-    "addForm": {
-      "title": "Add a service",
-      "nameLabel": "Name",
-      "namePlaceholder": "Haircut",
-      "descriptionLabel": "Description",
-      "descriptionPlaceholder": "What's included in this service",
-      "durationLabel": "Duration (minutes)",
-      "durationPlaceholder": "30",
-      "priceLabel": "Price",
-      "pricePlaceholder": "45.00",
-      "submit": "Add service",
-      "submitPending": "Adding..."
+      "startingPriceLabel": "Starting price"
     }
   },
   "garageAvailability": {
@@ -583,7 +586,10 @@
       "datePast": "That date has already passed.",
       "toBeforeFrom": "“To” must be on or after “From”.",
       "rangeTooLong": "Close at most 92 days at a time."
-    }
+    },
+    "addLunchBreak": "Add lunch break",
+    "addLunchBreakFor": "Add a lunch break on {day}",
+    "removeLunchBreak": "Remove the {day} lunch break"
   },
   "garageDocuments": {
     "backToDashboard": "Back to dashboard",
@@ -615,11 +621,13 @@
     "noHours": "No opening hours set. Online booking is unavailable until weekly hours are configured.",
     "locationDescription": "Place the pin at the entrance to guide clients.",
     "capabilitiesDescription": "Helps clients filter garages and find the right one.",
-    "catalogTitle": "Brands & specialties",
-    "catalogDescription": "Vehicle makes serviced and areas of specialisation.",
     "save": "Save",
     "saving": "Saving...",
-    "saved": "Saved"
+    "saved": "Saved",
+    "detailsTitle": "Business & contact",
+    "addressTitle": "Address & map",
+    "capacityTitle": "Languages & capacity",
+    "servicesOfferedLabel": "Also offered"
   },
   "walkIn": {
     "openButton": "Unscheduled visit",
@@ -1259,7 +1267,12 @@
     "logOut": "Log out",
     "servicesGroup": "Services",
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme",
+    "language": "Language"
   },
   "clientNav": {
     "mainNav": "Main navigation",
@@ -1271,5 +1284,9 @@
     "account": "Account",
     "garageDetails": "Garage details",
     "logOut": "Log out"
+  },
+  "servicePrice": {
+    "priceFrom": "From {price}",
+    "priceOnInspection": "Price on inspection"
   }
 }

@@ -2,6 +2,10 @@ export const locales = ["fr", "en"] as const;
 export type Locale = (typeof locales)[number];
 export const defaultLocale: Locale = "fr";
 
+// Remembers the language picked in the app, so an unprefixed URL ("/")
+// opens in it rather than the browser's language (lib/i18n/get-locale.ts).
+export const LOCALE_COOKIE = "NEXT_LOCALE";
+
 export function isLocale(value: string): value is Locale {
   return (locales as readonly string[]).includes(value);
 }

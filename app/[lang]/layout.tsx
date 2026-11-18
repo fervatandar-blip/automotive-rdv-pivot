@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { locales, resolveLocale } from "@/lib/i18n/config";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,10 +35,16 @@ export default async function RootLayout({
   const lang = resolveLocale(rawLang);
 
   return (
+    // suppressHydrationWarning: THEME_INIT_SCRIPT adds the `dark` class
+    // before React hydrates, so <html>'s class differs from the server's.
     <html
       lang={lang}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );

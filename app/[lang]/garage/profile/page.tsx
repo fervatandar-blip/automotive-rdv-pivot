@@ -36,33 +36,21 @@ export default async function GarageProfilePage({
   const p = dictionary.garageProfile;
   const supabase = await createClient();
 
-  const [
-    { data: brands },
-    { data: specialties },
-    { data: selectedBrands },
-    { data: selectedSpecialties },
-    { data: availability },
-  ] = await Promise.all([
-    supabase.from("brands").select("id, name").order("name"),
-    supabase.from("specialties").select("id, name").order("name"),
-    supabase.from("garage_brands").select("brand_id").eq("garage_id", garage.id),
-    supabase.from("garage_specialties").select("specialty_id").eq("garage_id", garage.id),
-    supabase
-      .from("availability")
-      .select("day_of_week, start_time, end_time")
-      .eq("garage_id", garage.id),
-  ]);
+  const { data: availability } = await supabase
+    .from("availability")
+    .select("day_of_week, start_time, end_time")
+    .eq("garage_id", garage.id);
 
   const status = garage.status as "approved" | "pending" | "rejected";
   const statusLabel =
     status === "approved" ? p.statusApproved : status === "rejected" ? p.statusRejected : p.statusPending;
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-4 py-10 dark:bg-black sm:px-12 sm:py-12">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-        <header className="flex flex-col gap-3">
+    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-8 sm:py-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+        <header className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">{p.title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">{p.title}</h1>
             <span
               className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[status] ?? STATUS_STYLES.pending}`}
             >
@@ -95,10 +83,6 @@ export default async function GarageProfilePage({
           d={dictionary.garageOnboarding}
           garage={garage}
           identityLocked={status === "approved"}
-          brands={brands ?? []}
-          specialties={specialties ?? []}
-          selectedBrandIds={(selectedBrands ?? []).map((row) => row.brand_id)}
-          selectedSpecialtyIds={(selectedSpecialties ?? []).map((row) => row.specialty_id)}
           weeklyHours={summarizeWeeklyHours(availability ?? [])}
         />
       </div>

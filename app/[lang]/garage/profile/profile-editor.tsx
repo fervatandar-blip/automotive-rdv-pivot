@@ -47,7 +47,10 @@ export type ProfileGarage = {
 };
 
 const inputClass =
-  "w-full rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black";
+  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-black placeholder:text-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-brand-500";
+const labelClass = "text-sm font-medium text-black dark:text-zinc-50";
+const CARD =
+  "flex flex-col gap-4 rounded-xl border border-zinc-200/80 bg-white p-5 dark:border-zinc-800/60 dark:bg-zinc-900/40";
 
 /**
  * One independently-saved profile section: its own form, its own action
@@ -59,7 +62,6 @@ function ProfileSection({
   title,
   description,
   p,
-  hideSave = false,
   children,
 }: {
   section: GarageProfileSection;
@@ -67,52 +69,41 @@ function ProfileSection({
   title: string;
   description: string;
   p: ProfileDictionary;
-  hideSave?: boolean;
   children: (errors: Record<string, string[] | undefined>) => ReactNode;
 }) {
   const [state, action, pending] = useActionState(updateGarageProfile, undefined);
   const errors = (state?.errors ?? {}) as Record<string, string[] | undefined>;
 
   return (
-    <form
-      action={action}
-      aria-labelledby={`section-${section}-title`}
-      className="flex flex-col gap-5 rounded-xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40"
-    >
+    <form action={action} aria-labelledby={`section-${section}-title`} className={CARD}>
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="section" value={section} />
 
       <div>
-        <h2
-          id={`section-${section}-title`}
-          className="font-semibold text-black dark:text-zinc-50"
-        >
+        <h2 id={`section-${section}-title`} className="font-semibold text-black dark:text-zinc-50">
           {title}
         </h2>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
+        <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
       </div>
 
       {children(errors)}
 
-      <div hidden={hideSave} className="flex flex-wrap items-center gap-3 border-t border-black/[.06] pt-4 dark:border-white/[.1]">
+      <div className="flex flex-wrap items-center gap-3 pt-1">
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+          className="rounded-full bg-brand-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
         >
           {pending ? p.saving : p.save}
         </button>
         {!pending && state?.savedAt && (
-          <span
-            role="status"
-            className="flex items-center gap-1 text-sm text-green-700 dark:text-green-500"
-          >
+          <span role="status" className="flex items-center gap-1 text-sm text-green-700 dark:text-green-500">
             <Check className="h-4 w-4" strokeWidth={2.5} />
             {p.saved}
           </span>
         )}
         {!pending && state?.message && (
-          <span role="alert" className="text-sm text-red-600">
+          <span role="alert" className="text-sm text-red-600 dark:text-red-400">
             {state.message}
           </span>
         )}
@@ -123,9 +114,32 @@ function ProfileSection({
 
 function FieldError({ messages }: { messages?: string[] }) {
   if (!messages?.length) return null;
-  return <p className="text-sm text-red-600">{messages[0]}</p>;
+  return <p className="text-xs text-red-600 dark:text-red-400">{messages[0]}</p>;
 }
 
+function Field({
+  id,
+  label,
+  error,
+  children,
+}: {
+  id: string;
+  label: string;
+  error?: string[];
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className={labelClass}>
+        {label}
+      </label>
+      {children}
+      <FieldError messages={error} />
+    </div>
+  );
+}
+
+/** Left column: identity, contact and legal details. */
 function DetailsFields({
   garage,
   d,
@@ -142,31 +156,23 @@ function DetailsFields({
   const [country, setCountry] = useState<Country>(
     COUNTRIES.includes(garage.country as Country) ? (garage.country as Country) : "LU"
   );
-  const [descriptionLength, setDescriptionLength] = useState(
-    garage.description?.length ?? 0
-  );
+  const [descriptionLength, setDescriptionLength] = useState(garage.description?.length ?? 0);
   const registrationConfig = REGISTRATION_CONFIG[country];
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="name" className="text-sm font-medium">
-          {d.nameLabel}
-        </label>
+      <Field id="name" label={d.nameLabel} error={errors.name}>
         <input id="name" name="name" required minLength={2} defaultValue={garage.name} className={inputClass} />
-        <FieldError messages={errors.name} />
-      </div>
+      </Field>
 
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-1.5">
         <div className="flex items-baseline justify-between">
-          <label htmlFor="description" className="text-sm font-medium">
+          <label htmlFor="description" className={labelClass}>
             {d.descriptionLabel}
           </label>
           <span
-            className={`text-xs ${
-              descriptionLength > GARAGE_DESCRIPTION_MAX_LENGTH
-                ? "text-red-600"
-                : "text-zinc-500 dark:text-zinc-400"
+            className={`text-xs tabular-nums ${
+              descriptionLength > GARAGE_DESCRIPTION_MAX_LENGTH ? "text-red-600" : "text-zinc-500 dark:text-zinc-400"
             }`}
           >
             {descriptionLength}/{GARAGE_DESCRIPTION_MAX_LENGTH}
@@ -175,7 +181,7 @@ function DetailsFields({
         <textarea
           id="description"
           name="description"
-          rows={4}
+          rows={3}
           defaultValue={garage.description ?? ""}
           onChange={(event) => setDescriptionLength(event.target.value.length)}
           placeholder={p.descriptionPlaceholder}
@@ -185,37 +191,15 @@ function DetailsFields({
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="address" className="text-sm font-medium">
-            {d.addressLabel}
-          </label>
-          <input id="address" name="address" autoComplete="street-address" defaultValue={garage.address ?? ""} className={inputClass} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="city" className="text-sm font-medium">
-            {d.cityLabel}
-          </label>
-          <input id="city" name="city" autoComplete="address-level2" defaultValue={garage.city ?? ""} className={inputClass} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="phone" className="text-sm font-medium">
-            {d.phoneLabel}
-          </label>
+        <Field id="phone" label={d.phoneLabel} error={errors.phone}>
           <input id="phone" name="phone" type="tel" autoComplete="tel" defaultValue={garage.phone ?? ""} className={inputClass} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="email" className="text-sm font-medium">
-            {d.businessEmailLabel}
-          </label>
+        </Field>
+        <Field id="email" label={d.businessEmailLabel} error={errors.email}>
           <input id="email" name="email" type="email" autoComplete="email" defaultValue={garage.email ?? ""} className={inputClass} />
-          <FieldError messages={errors.email} />
-        </div>
+        </Field>
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="website" className="text-sm font-medium">
-          {d.websiteLabel}
-        </label>
+      <Field id="website" label={d.websiteLabel} error={errors.website}>
         <input
           id="website"
           name="website"
@@ -224,26 +208,22 @@ function DetailsFields({
           defaultValue={garage.website ?? ""}
           className={inputClass}
         />
-        <FieldError messages={errors.website} />
-      </div>
+      </Field>
 
-      <fieldset className="flex flex-col gap-4 rounded-lg bg-zinc-50 p-4 dark:bg-white/[.03]">
-        <legend className="float-left w-full text-sm font-medium text-black dark:text-zinc-50">
+      <fieldset className="flex flex-col gap-3 border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60">
+        <legend className="float-left mb-1 w-full text-sm font-semibold text-black dark:text-zinc-50">
           {p.legalTitle}
         </legend>
         {identityLocked && (
-          <p className="flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-            <Lock className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
+          <p className="flex items-start gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+            <Lock className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
             {p.legalLockedNote}
           </p>
         )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="flex flex-col gap-1">
-            <label htmlFor="country" className="text-sm font-medium">
-              {d.countryLabel}
-            </label>
+          <Field id="country" label={d.countryLabel} error={errors.country}>
             {identityLocked ? (
-              <input id="country" readOnly value={COUNTRY_NAMES[country]} className={`${inputClass} text-zinc-500`} />
+              <input id="country" readOnly value={COUNTRY_NAMES[country]} className={`${inputClass} text-zinc-500 dark:text-zinc-400`} />
             ) : (
               <StyledSelect
                 id="country"
@@ -258,10 +238,9 @@ function DetailsFields({
                 ))}
               </StyledSelect>
             )}
-            <FieldError messages={errors.country} />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="registrationNumber" className="text-sm font-medium">
+          </Field>
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="registrationNumber" className={labelClass}>
               {registrationConfig.label}
             </label>
             <input
@@ -270,7 +249,7 @@ function DetailsFields({
               readOnly={identityLocked}
               defaultValue={garage.registration_number ?? ""}
               placeholder={registrationConfig.placeholder}
-              className={`${inputClass} ${identityLocked ? "text-zinc-500" : ""}`}
+              className={`${inputClass} ${identityLocked ? "text-zinc-500 dark:text-zinc-400" : ""}`}
             />
             {!identityLocked && (
               <p className="text-xs text-zinc-500 dark:text-zinc-400">{registrationConfig.hint}</p>
@@ -278,17 +257,11 @@ function DetailsFields({
             <FieldError messages={errors.registrationNumber} />
           </div>
         </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="vatNumber" className="text-sm font-medium">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="vatNumber" className={labelClass}>
             {d.vatNumberLabel}
           </label>
-          <input
-            id="vatNumber"
-            name="vatNumber"
-            defaultValue={garage.vat_number ?? ""}
-            placeholder="LU12345678"
-            className={inputClass}
-          />
+          <input id="vatNumber" name="vatNumber" defaultValue={garage.vat_number ?? ""} placeholder="LU12345678" className={inputClass} />
           <p className="text-xs text-zinc-500 dark:text-zinc-400">{d.vatNumberHint}</p>
         </div>
       </fieldset>
@@ -296,16 +269,68 @@ function DetailsFields({
   );
 }
 
+function OpeningHoursSummary({
+  lang,
+  d,
+  p,
+  weeklyHours,
+}: {
+  lang: Locale;
+  d: FieldDictionary;
+  p: ProfileDictionary;
+  weeklyHours: DayHours[];
+}) {
+  const hasHours = weeklyHours.some((day) => day.ranges.length > 0);
+  // Monday first, like the Working hours page.
+  const week = [...weeklyHours].sort((a, b) => ((a.dayOfWeek + 6) % 7) - ((b.dayOfWeek + 6) % 7));
+
+  return (
+    <section aria-labelledby="section-hours-title" className={CARD}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 id="section-hours-title" className="font-semibold text-black dark:text-zinc-50">
+            {d.openingHoursTitle}
+          </h2>
+          <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{p.hoursDescription}</p>
+        </div>
+        <Link
+          href={`/${lang}/garage/availability`}
+          className="shrink-0 rounded-full border border-zinc-200 px-3 py-1 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+        >
+          {p.manageHours}
+        </Link>
+      </div>
+      {hasHours ? (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
+          {week.map((day) => (
+            <div key={day.dayOfWeek} className="contents">
+              <dt className="text-zinc-600 dark:text-zinc-400">{d.days[day.dayOfWeek]}</dt>
+              <dd className="font-medium tabular-nums text-black dark:text-zinc-50">
+                {day.ranges.length > 0 ? day.ranges.join(", ") : d.closed}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
+          {p.noHours}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Two columns from lg up: who you are and how to reach you on the left;
+ * where you are, languages and workshop capacity on the right. One column
+ * on smaller screens, in the same order.
+ */
 export function ProfileEditor({
   lang,
   p,
   d,
   garage,
   identityLocked,
-  brands,
-  specialties,
-  selectedBrandIds,
-  selectedSpecialtyIds,
   weeklyHours,
 }: {
   lang: Locale;
@@ -313,170 +338,94 @@ export function ProfileEditor({
   d: FieldDictionary;
   garage: ProfileGarage;
   identityLocked: boolean;
-  brands: { id: string; name: string }[];
-  specialties: { id: string; name: string }[];
-  selectedBrandIds: string[];
-  selectedSpecialtyIds: string[];
   weeklyHours: DayHours[];
 }) {
   const languages = garage.languages_spoken ?? [];
-  const hasHours = weeklyHours.some((day) => day.ranges.length > 0);
 
   return (
-    <div className="flex flex-col gap-6">
-      <ProfileSection section="details" lang={lang} title={d.garageDetails} description={p.detailsDescription} p={p}>
-        {(errors) => (
-          <DetailsFields garage={garage} d={d} p={p} identityLocked={identityLocked} errors={errors} />
-        )}
-      </ProfileSection>
+    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+      <div className="flex flex-col gap-5">
+        <ProfileSection section="details" lang={lang} title={p.detailsTitle} description={p.detailsDescription} p={p}>
+          {(errors) => <DetailsFields garage={garage} d={d} p={p} identityLocked={identityLocked} errors={errors} />}
+        </ProfileSection>
+        <OpeningHoursSummary lang={lang} d={d} p={p} weeklyHours={weeklyHours} />
+      </div>
 
-      <section
-        aria-labelledby="section-hours-title"
-        className="flex flex-col gap-4 rounded-xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40"
-      >
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 id="section-hours-title" className="font-semibold text-black dark:text-zinc-50">
-              {d.openingHoursTitle}
-            </h2>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{p.hoursDescription}</p>
-          </div>
-          <Link
-            href={`/${lang}/garage/availability`}
-            className="shrink-0 rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
-          >
-            {p.manageHours}
-          </Link>
-        </div>
-        {hasHours ? (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5 text-sm">
-            {weeklyHours.map((day) => (
-              <div key={day.dayOfWeek} className="contents">
-                <dt className="text-zinc-600 dark:text-zinc-400">{d.days[day.dayOfWeek]}</dt>
-                <dd className="font-medium text-black dark:text-zinc-50">
-                  {day.ranges.length > 0 ? day.ranges.join(", ") : d.closed}
-                </dd>
+      <div className="flex flex-col gap-5">
+        <ProfileSection section="location" lang={lang} title={p.addressTitle} description={p.locationDescription} p={p}>
+          {(errors) => (
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-[2fr_1fr]">
+                <Field id="address" label={d.addressLabel} error={errors.address}>
+                  <input id="address" name="address" autoComplete="street-address" defaultValue={garage.address ?? ""} className={inputClass} />
+                </Field>
+                <Field id="city" label={d.cityLabel} error={errors.city}>
+                  <input id="city" name="city" autoComplete="address-level2" defaultValue={garage.city ?? ""} className={inputClass} />
+                </Field>
               </div>
-            ))}
-          </dl>
-        ) : (
-          <p className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400">
-            {p.noHours}
-          </p>
-        )}
-      </section>
-
-      {/* Without a Maps key there's nothing to edit here, so no Save button
-          (the picker still round-trips the stored pin either way). */}
-      <ProfileSection
-        section="location"
-        lang={lang}
-        title={d.locationTitle}
-        description={p.locationDescription}
-        p={p}
-        hideSave={!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
-      >
-        {() => (
-          <GarageMapPicker initialLatitude={garage.latitude} initialLongitude={garage.longitude} />
-        )}
-      </ProfileSection>
-
-      <ProfileSection
-        section="capabilities"
-        lang={lang}
-        title={d.servicesCapabilitiesTitle}
-        description={p.capabilitiesDescription}
-        p={p}
-      >
-        {(errors) => (
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-wrap gap-x-6 gap-y-3">
-              <CheckboxChip name="evCapable" label={d.evCapableLabel} defaultChecked={garage.ev_capable} />
-              <CheckboxChip name="mobileService" label={d.mobileServiceLabel} defaultChecked={garage.mobile_service} />
-              <CheckboxChip name="emergencyService" label={d.emergencyServiceLabel} defaultChecked={garage.emergency_service} />
+              <GarageMapPicker initialLatitude={garage.latitude} initialLongitude={garage.longitude} />
             </div>
+          )}
+        </ProfileSection>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1">
-                <label htmlFor="pricingCategory" className="text-sm font-medium">
-                  {d.pricingCategoryLabel}
-                </label>
-                <StyledSelect id="pricingCategory" name="pricingCategory" defaultValue={garage.pricing_category ?? ""}>
-                  <option value="">{d.pricingNotSet}</option>
-                  <option value="budget">{d.pricingBudget}</option>
-                  <option value="standard">{d.pricingStandard}</option>
-                  <option value="premium">{d.pricingPremium}</option>
-                </StyledSelect>
+        <ProfileSection
+          section="capabilities"
+          lang={lang}
+          title={p.capacityTitle}
+          description={p.capabilitiesDescription}
+          p={p}
+        >
+          {(errors) => (
+            <div className="flex flex-col gap-5">
+              <fieldset className="flex flex-col gap-2.5">
+                <legend className={`${labelClass} mb-2`}>{d.languagesSpokenLabel}</legend>
+                <div className="flex flex-wrap gap-x-5 gap-y-2.5">
+                  {GARAGE_LANGUAGES.map((language) => (
+                    <CheckboxChip
+                      key={language}
+                      name="languages"
+                      value={language}
+                      label={d.languageLabels[language]}
+                      defaultChecked={languages.includes(language)}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Field id="technicianCount" label={d.technicianCountLabel} error={errors.technicianCount}>
+                  <input
+                    id="technicianCount"
+                    name="technicianCount"
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    defaultValue={garage.technician_count ?? ""}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field id="pricingCategory" label={d.pricingCategoryLabel} error={errors.pricingCategory}>
+                  <StyledSelect id="pricingCategory" name="pricingCategory" defaultValue={garage.pricing_category ?? ""}>
+                    <option value="">{d.pricingNotSet}</option>
+                    <option value="budget">{d.pricingBudget}</option>
+                    <option value="standard">{d.pricingStandard}</option>
+                    <option value="premium">{d.pricingPremium}</option>
+                  </StyledSelect>
+                </Field>
               </div>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="technicianCount" className="text-sm font-medium">
-                  {d.technicianCountLabel}
-                </label>
-                <input
-                  id="technicianCount"
-                  name="technicianCount"
-                  type="number"
-                  min="0"
-                  inputMode="numeric"
-                  defaultValue={garage.technician_count ?? ""}
-                  className={inputClass}
-                />
-                <FieldError messages={errors.technicianCount} />
-              </div>
+
+              <fieldset className="flex flex-col gap-2.5">
+                <legend className={`${labelClass} mb-2`}>{p.servicesOfferedLabel}</legend>
+                <div className="flex flex-wrap gap-x-5 gap-y-2.5">
+                  <CheckboxChip name="evCapable" label={d.evCapableLabel} defaultChecked={garage.ev_capable} />
+                  <CheckboxChip name="mobileService" label={d.mobileServiceLabel} defaultChecked={garage.mobile_service} />
+                  <CheckboxChip name="emergencyService" label={d.emergencyServiceLabel} defaultChecked={garage.emergency_service} />
+                </div>
+              </fieldset>
             </div>
-
-            <fieldset className="flex flex-col gap-2">
-              <legend className="text-sm font-medium">{d.languagesSpokenLabel}</legend>
-              <div className="flex flex-wrap gap-x-6 gap-y-3">
-                {GARAGE_LANGUAGES.map((language) => (
-                  <CheckboxChip
-                    key={language}
-                    name="languages"
-                    value={language}
-                    label={d.languageLabels[language]}
-                    defaultChecked={languages.includes(language)}
-                  />
-                ))}
-              </div>
-            </fieldset>
-          </div>
-        )}
-      </ProfileSection>
-
-      <ProfileSection section="catalog" lang={lang} title={p.catalogTitle} description={p.catalogDescription} p={p}>
-        {() => (
-          <div className="flex flex-col gap-6">
-            <fieldset className="flex flex-col gap-3">
-              <legend className="text-sm font-medium">{d.brandsSupportedTitle}</legend>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
-                {brands.map((brand) => (
-                  <CheckboxChip
-                    key={brand.id}
-                    name="brandIds"
-                    value={brand.id}
-                    label={brand.name}
-                    defaultChecked={selectedBrandIds.includes(brand.id)}
-                  />
-                ))}
-              </div>
-            </fieldset>
-            <fieldset className="flex flex-col gap-3">
-              <legend className="text-sm font-medium">{d.specialtiesTitle}</legend>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
-                {specialties.map((specialty) => (
-                  <CheckboxChip
-                    key={specialty.id}
-                    name="specialtyIds"
-                    value={specialty.id}
-                    label={specialty.name}
-                    defaultChecked={selectedSpecialtyIds.includes(specialty.id)}
-                  />
-                ))}
-              </div>
-            </fieldset>
-          </div>
-        )}
-      </ProfileSection>
+          )}
+        </ProfileSection>
+      </div>
     </div>
   );
 }

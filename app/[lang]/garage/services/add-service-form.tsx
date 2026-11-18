@@ -1,132 +1,51 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createService } from "@/app/actions/services";
+import type { Dictionary } from "@/lib/i18n/get-dictionary";
+import { ServiceFields } from "./service-fields";
 
-type AddServiceFormDictionary = {
-  title: string;
-  nameLabel: string;
-  namePlaceholder: string;
-  descriptionLabel: string;
-  descriptionPlaceholder: string;
-  durationLabel: string;
-  durationPlaceholder: string;
-  priceLabel: string;
-  pricePlaceholder: string;
-  submit: string;
-  submitPending: string;
-};
-
-export function AddServiceForm({
-  dictionary,
-}: {
-  dictionary: AddServiceFormDictionary;
-}) {
+export function AddServiceForm({ d }: { d: Dictionary["garageServices"] }) {
   const [state, action, pending] = useActionState(createService, undefined);
   const formRef = useRef<HTMLFormElement>(null);
+  const wasPending = useRef(false);
+  // Remounting the fields after a successful add also resets the pricing
+  // type selector, which form.reset() alone can't (it's React state).
+  const [resetKey, setResetKey] = useState(0);
   const { lang } = useParams<{ lang: string }>();
 
   useEffect(() => {
-    if (!pending && !state?.errors && !state?.message) {
+    if (wasPending.current && !pending && !state?.errors && !state?.message) {
       formRef.current?.reset();
+      setResetKey((key) => key + 1);
     }
+    wasPending.current = pending;
   }, [pending, state]);
 
   return (
     <form
       ref={formRef}
       action={action}
-      className="flex flex-col gap-4 rounded-xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40"
+      className="flex flex-col gap-5 rounded-xl border border-zinc-200/80 bg-white p-5 sm:p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40"
     >
       <input type="hidden" name="lang" value={lang} />
+      <h2 className="text-base font-semibold text-black dark:text-zinc-50">{d.addTitle}</h2>
 
-      <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-        {dictionary.title}
-      </h2>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="name" className="text-sm font-medium">
-          {dictionary.nameLabel}
-        </label>
-        <input
-          id="name"
-          name="name"
-          placeholder={dictionary.namePlaceholder}
-          className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-        />
-        {state?.errors?.name && (
-          <p className="text-sm text-red-600">{state.errors.name[0]}</p>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="description" className="text-sm font-medium">
-          {dictionary.descriptionLabel}
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          rows={2}
-          placeholder={dictionary.descriptionPlaceholder}
-          className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-        />
-        {state?.errors?.description && (
-          <p className="text-sm text-red-600">
-            {state.errors.description[0]}
-          </p>
-        )}
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="durationMinutes" className="text-sm font-medium">
-            {dictionary.durationLabel}
-          </label>
-          <input
-            id="durationMinutes"
-            name="durationMinutes"
-            type="number"
-            min="1"
-            placeholder={dictionary.durationPlaceholder}
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-          />
-          {state?.errors?.durationMinutes && (
-            <p className="text-sm text-red-600">
-              {state.errors.durationMinutes[0]}
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="price" className="text-sm font-medium">
-            {dictionary.priceLabel}
-          </label>
-          <input
-            id="price"
-            name="price"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder={dictionary.pricePlaceholder}
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-          />
-          {state?.errors?.price && (
-            <p className="text-sm text-red-600">{state.errors.price[0]}</p>
-          )}
-        </div>
-      </div>
+      <ServiceFields key={resetKey} d={d.fields} errors={state?.errors} />
 
       {state?.message && (
-        <p className="text-sm text-red-600">{state.message}</p>
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {state.message}
+        </p>
       )}
 
       <button
         disabled={pending}
         type="submit"
-        className="self-start rounded-full bg-foreground px-5 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
+        className="self-start rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-600"
       >
-        {pending ? dictionary.submitPending : dictionary.submit}
+        {pending ? d.adding : d.add}
       </button>
     </form>
   );

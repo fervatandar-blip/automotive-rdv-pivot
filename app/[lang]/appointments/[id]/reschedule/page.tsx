@@ -44,7 +44,7 @@ export default async function RescheduleAppointmentPage({
   const { data: appointment } = await supabase
     .from("appointments")
     .select(
-      "id, status, start_time, services(name, duration_minutes, price), garages(id, name, city)"
+      "id, status, start_time, services(name, duration_minutes), garages(id, name, city)"
     )
     .eq("id", appointmentId)
     .single();
@@ -56,7 +56,6 @@ export default async function RescheduleAppointmentPage({
   const service = appointment.services as unknown as {
     name: string;
     duration_minutes: number;
-    price: number;
   } | null;
   const garage = appointment.garages as unknown as {
     id: string;

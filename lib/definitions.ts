@@ -127,9 +127,29 @@ export const ServiceFormSchema = z.object({
     .number({ error: "Enter a duration in minutes." })
     .int()
     .positive({ error: "Duration must be a positive number of minutes." }),
-  price: z.coerce
-    .number({ error: "Enter a price." })
-    .nonnegative({ error: "Price can't be negative." }),
+  // 0045: fixed / from / on_inspection.
+  pricingType: z.enum(["fixed", "from", "on_inspection"], {
+    error: "Choose how this service is priced.",
+  }),
+  // Raw form text; the refinement below turns it into a number or null.
+  // (z.coerce.number would read an empty field as 0 and silently list the
+  // service at 0,00 €.)
+  price: z.string().trim().optional(),
+}).transform((data, ctx) => {
+  if (data.pricingType === "on_inspection") {
+    return { ...data, price: null };
+  }
+  const raw = (data.price ?? "").replace(",", ".");
+  if (raw === "") {
+    ctx.addIssue({ code: "custom", path: ["price"], message: "Enter a price, or choose “Price on inspection”." });
+    return z.NEVER;
+  }
+  const price = Number(raw);
+  if (!Number.isFinite(price) || price < 0 || price > 100_000) {
+    ctx.addIssue({ code: "custom", path: ["price"], message: "Enter a valid price in euros." });
+    return z.NEVER;
+  }
+  return { ...data, price: Math.round(price * 100) / 100 };
 });
 
 export type ServiceFormState =
@@ -138,6 +158,7 @@ export type ServiceFormState =
         name?: string[];
         description?: string[];
         durationMinutes?: string[];
+        pricingType?: string[];
         price?: string[];
       };
       message?: string;
@@ -327,8 +348,8 @@ const garageDetailsShape = {
       error: `Keep the description under ${GARAGE_DESCRIPTION_MAX_LENGTH} characters.`,
     })
     .optional(),
-  address: z.string().trim().optional(),
-  city: z.string().trim().optional(),
+  address: z.string().trim().max(200, { error: "Keep the address under 200 characters." }).optional(),
+  city: z.string().trim().max(100, { error: "Keep the city under 100 characters." }).optional(),
   phone: z.string().trim().optional(),
   email: z.email({ error: "Please enter a valid email." }).optional(),
   // Matches the garages_website_check constraint (0031): http(s) only, so a
@@ -379,12 +400,15 @@ export const GarageDetailsFormSchema = z
 
 export const GarageCapabilitiesFormSchema = z.object(garageCapabilitiesShape);
 
-export const GARAGE_PROFILE_SECTIONS = [
-  "details",
-  "location",
-  "capabilities",
-  "catalog",
-] as const;
+// The profile editor's Location section: address and city with the map pin.
+export const GarageAddressFormSchema = z.object({
+  address: garageDetailsShape.address,
+  city: garageDetailsShape.city,
+});
+
+// Brands and specialties are no longer edited from the profile page; the
+// onboarding wizard still collects them (replaceGarageCatalog).
+export const GARAGE_PROFILE_SECTIONS = ["details", "location", "capabilities"] as const;
 export type GarageProfileSection = (typeof GARAGE_PROFILE_SECTIONS)[number];
 
 export type GarageProfileFormState =

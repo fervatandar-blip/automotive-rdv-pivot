@@ -1,7 +1,10 @@
 import { type NextRequest } from "next/server";
-import { defaultLocale, locales, type Locale } from "@/lib/i18n/config";
+import { defaultLocale, isLocale, LOCALE_COOKIE, locales, type Locale } from "@/lib/i18n/config";
 
 export function getLocaleFromRequest(request: NextRequest): Locale {
+  const chosen = request.cookies.get(LOCALE_COOKIE)?.value;
+  if (chosen && isLocale(chosen)) return chosen;
+
   const acceptLanguage = request.headers.get("accept-language");
   if (!acceptLanguage) return defaultLocale;
 

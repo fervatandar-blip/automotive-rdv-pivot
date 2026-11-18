@@ -23,14 +23,15 @@ export async function createService(
     name: formData.get("name"),
     description: formData.get("description") || undefined,
     durationMinutes: formData.get("durationMinutes"),
-    price: formData.get("price"),
+    pricingType: formData.get("pricingType") ?? "fixed",
+    price: formData.get("price") ?? undefined,
   });
 
   if (!validatedFields.success) {
     return { errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { name, description, durationMinutes, price } = validatedFields.data;
+  const { name, description, durationMinutes, pricingType, price } = validatedFields.data;
   const supabase = await createClient();
 
   const { error } = await supabase.from("services").insert({
@@ -38,6 +39,7 @@ export async function createService(
     name,
     description,
     duration_minutes: durationMinutes,
+    pricing_type: pricingType,
     price,
   });
 
@@ -65,14 +67,15 @@ export async function updateService(
     name: formData.get("name"),
     description: formData.get("description") || undefined,
     durationMinutes: formData.get("durationMinutes"),
-    price: formData.get("price"),
+    pricingType: formData.get("pricingType") ?? "fixed",
+    price: formData.get("price") ?? undefined,
   });
 
   if (!validatedFields.success) {
     return { errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { name, description, durationMinutes, price } = validatedFields.data;
+  const { name, description, durationMinutes, pricingType, price } = validatedFields.data;
   const supabase = await createClient();
 
   const { error } = await supabase
@@ -81,6 +84,7 @@ export async function updateService(
       name,
       description,
       duration_minutes: durationMinutes,
+      pricing_type: pricingType,
       price,
     })
     .eq("id", id)
