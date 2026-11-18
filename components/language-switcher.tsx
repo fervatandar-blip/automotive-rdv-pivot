@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { locales, type Locale } from "@/lib/i18n/config";
+import { rememberLocale } from "@/lib/i18n/remember-locale";
 
 const LABELS: Record<Locale, string> = { fr: "FR", en: "EN" };
 
@@ -16,6 +17,9 @@ export function LanguageSwitcher({ lang }: { lang: Locale }) {
         <span key={locale} className="flex items-center gap-1">
           <Link
             href={`/${locale}${rest ? `/${rest}` : ""}`}
+            onClick={() => {
+              if (locale !== lang) rememberLocale(locale);
+            }}
             className={
               locale === lang
                 ? "font-semibold text-black dark:text-zinc-50"

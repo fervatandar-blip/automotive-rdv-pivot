@@ -347,13 +347,21 @@ async function notifyWaitlistOnCancellation(garageId: string, date: string) {
   }
 }
 
-export async function cancelAppointment(formData: FormData) {
+// "failed": the call itself errored, worth retrying. "notCancellable": the
+// RPC's own guard refused (already cancelled/completed, past the window, not
+// this client's booking) -- retrying won't help.
+export type CancelAppointmentState = { error?: "failed" | "notCancellable" } | undefined;
+
+export async function cancelAppointment(
+  _state: CancelAppointmentState,
+  formData: FormData
+): Promise<CancelAppointmentState> {
   const lang = parseLocale(formData.get("lang"));
   const user = await getAuthedUser(lang);
   const id = formData.get("id");
 
-  if (typeof id !== "string" || !id) {
-    return;
+  if (typeof id !== "string" || !UUID_PATTERN.test(id)) {
+    return { error: "notCancellable" };
   }
 
   const supabase = await createClient();
@@ -361,24 +369,34 @@ export async function cancelAppointment(formData: FormData) {
   // Auth + status-transition check happens inside cancel_appointment_as_client
   // (SECURITY DEFINER) -- appointments has no general UPDATE policy for the
   // authenticated role, see 0027_appointment_write_integrity.sql.
-  const { data: cancelled } = await supabase.rpc("cancel_appointment_as_client", {
+  const { data: cancelled, error } = await supabase.rpc("cancel_appointment_as_client", {
     target_appointment_id: id,
   });
 
-  if (cancelled) {
-    const appointment = await fetchAppointmentParties(supabase, id);
-    if (appointment && appointment.client_id === user.id) {
-      await notifyStatusChange(appointment, "cancelled", "client");
-      await refundIfPaid(id);
-      await notifyWaitlistOnCancellation(
-        appointment.garage_id,
-        dateKeyInAppZone(new Date(appointment.start_time))
-      );
-    }
+  if (error) {
+    console.error("[appointments] client cancel failed:", error);
+    return { error: "failed" };
+  }
+  if (!cancelled) {
+    // The status may have moved on since the page was rendered; refresh it.
+    revalidateLocalizedPath("/dashboard");
+    return { error: "notCancellable" };
+  }
+
+  const appointment = await fetchAppointmentParties(supabase, id);
+  if (appointment && appointment.client_id === user.id) {
+    await notifyStatusChange(appointment, "cancelled", "client");
+    await refundIfPaid(id);
+    await notifyWaitlistOnCancellation(
+      appointment.garage_id,
+      dateKeyInAppZone(new Date(appointment.start_time))
+    );
   }
 
   revalidateLocalizedPath("/dashboard");
   revalidateLocalizedPath("/garage/calendar");
+  revalidateLocalizedPath("/garage/dashboard");
+  return undefined;
 }
 
 export async function confirmAppointment(formData: FormData) {

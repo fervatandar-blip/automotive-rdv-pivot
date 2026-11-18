@@ -27,16 +27,12 @@ import {
   X,
 } from "lucide-react";
 import { logout } from "@/app/actions/auth";
-import { LOCALE_COOKIE, locales, type Locale } from "@/lib/i18n/config";
+import { locales, type Locale } from "@/lib/i18n/config";
+import { rememberLocale } from "@/lib/i18n/remember-locale";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AnimatedLogo } from "@/components/animated-logo";
 
 const LOCALE_LABELS: Record<Locale, string> = { fr: "FR", en: "EN" };
-const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
-
-function rememberLocale(locale: Locale) {
-  document.cookie = `${LOCALE_COOKIE}=${locale}; path=/; max-age=${LOCALE_COOKIE_MAX_AGE}; samesite=lax`;
-}
 const COLLAPSE_STORAGE_KEY = "garage-sidebar-collapsed";
 
 // Tiny external store for the collapsed preference: localStorage has no
@@ -415,8 +411,8 @@ export function GarageTopBar({
 
 /**
  * Theme and language, just above the account links. The language links
- * keep the current page and remember the choice in a cookie (proxy.ts uses
- * it for unprefixed URLs).
+ * keep the current page; rememberLocale records the choice for unprefixed
+ * URLs and for the user's notifications.
  */
 function SidebarUtilityBar({
   lang,

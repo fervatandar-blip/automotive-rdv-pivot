@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Locale } from "@/lib/i18n/config";
+import { LOCALE_COOKIE_MAX_AGE, LOCALE_SYNC_COOKIE, localeSyncValue } from "@/lib/i18n/locale-sync";
 
 // "/garages" (plural) is deliberately absent: /garages and /garages/[id] are
 // the public discovery/booking pages -- an anonymous visitor must be able to
@@ -80,6 +81,31 @@ export async function updateSession(request: NextRequest, locale: Locale) {
 
   const pathWithoutLocale =
     request.nextUrl.pathname.replace(`/${locale}`, "") || "/";
+
+  // Notification language follows the language the user browses in
+  // (lib/i18n/locale-sync.ts). Full page loads only: Next strips its
+  // prefetch headers before proxy, so an RSC request for a link that is
+  // merely visible (e.g. the other language in a switcher) is
+  // indistinguishable from a visit -- a document load never is a prefetch.
+  if (user && request.headers.get("sec-fetch-dest") === "document") {
+    const synced = localeSyncValue(user.id, locale);
+    if (request.cookies.get(LOCALE_SYNC_COOKIE)?.value !== synced) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ preferred_locale: locale })
+        .eq("id", user.id);
+      if (error) {
+        console.error("[proxy] preferred_locale sync failed:", error);
+      } else {
+        supabaseResponse.cookies.set(LOCALE_SYNC_COOKIE, synced, {
+          path: "/",
+          maxAge: LOCALE_COOKIE_MAX_AGE,
+          sameSite: "lax",
+          httpOnly: true,
+        });
+      }
+    }
+  }
 
   if (isProtectedPath(pathWithoutLocale) && !user) {
     const url = request.nextUrl.clone();

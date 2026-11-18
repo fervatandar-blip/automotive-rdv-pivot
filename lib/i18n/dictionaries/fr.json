@@ -127,7 +127,10 @@
       "3": "3 – Moyen",
       "2": "2 – Mauvais",
       "1": "1 – Très mauvais"
-    }
+    },
+    "cancelling": "Annulation…",
+    "cancelFailed": "La réservation n'a pas pu être annulée. Vérifiez votre connexion et réessayez.",
+    "cancelNotAllowed": "Cette réservation ne peut plus être annulée ici. Elle a peut-être déjà été annulée ou terminée ; actualisez la page pour voir son statut."
   },
   "garageDiscovery": {
     "title": "Trouvez un garage de confiance",

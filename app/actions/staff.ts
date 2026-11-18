@@ -5,10 +5,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthedUser, requireGarageOwner } from "@/lib/dal";
-import { locales, parseLocale, defaultLocale } from "@/lib/i18n/config";
+import { locales, parseLocale, defaultLocale, isLocale } from "@/lib/i18n/config";
 import { getOrigin } from "@/lib/origin";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { escapeHtml, sendEmail } from "@/lib/email";
+import { NOTIFICATION_COPY } from "@/lib/notification-copy";
 import {
   InviteMechanicFormSchema,
   type InviteMechanicFormState,
@@ -122,22 +123,26 @@ export async function inviteMechanic(
   } else if (authInviteError && isEmailAlreadyRegistered(authInviteError)) {
     // Existing account: tell them about the invite, but only if it's a
     // mécanicien account -- a client account can't accept one anyway.
-    // profiles.email is editable by its owner, so this lookup only decides
-    // whether to send a courtesy email to the address the garage typed; it
+    // This lookup only decides whether to send a courtesy email to the
+    // address the garage typed, in that mechanic's language (0046); it
     // never grants anything (accept_garage_invite checks auth.users).
     const { data: matches } = await admin
       .from("profiles")
-      .select("role")
+      .select("role, preferred_locale")
       .eq("email", email)
       .eq("role", "mecanicien")
       .is("deleted_at", null)
       .limit(1);
 
     if (matches && matches.length > 0) {
+      const preferred = matches[0].preferred_locale;
+      const recipientLocale = typeof preferred === "string" && isLocale(preferred) ? preferred : lang;
+      const copy = NOTIFICATION_COPY[recipientLocale].staffInvite;
+      const loginUrl = `${origin}/${recipientLocale}/garage/login`;
       await sendEmail({
         to: email,
-        subject: `${garage.name.replace(/[\r\n]+/g, " ")} invited you to join their team on RDV`,
-        html: `<p>Hi,</p><p><strong>${escapeHtml(garage.name)}</strong> has invited you to join their team as a mécanicien on RDV.</p><p>Sign in at <a href="${origin}/${lang}/garage/login">${origin}/${lang}/garage/login</a> to accept or decline. The invitation expires in 14 days.</p><p>If you weren't expecting this, you can ignore this email -- nothing changes unless you accept.</p>`,
+        subject: copy.subject(garage.name.replace(/[\r\n]+/g, " ")),
+        html: copy.html({ garage: escapeHtml(garage.name), loginUrl }),
       });
     }
   } else {

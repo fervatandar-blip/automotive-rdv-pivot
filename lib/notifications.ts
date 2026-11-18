@@ -3,7 +3,16 @@
 import { escapeHtml, sendEmail } from "@/lib/email";
 import { sendPushToProfile } from "@/lib/push";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
+import { defaultLocale, isLocale, type Locale } from "@/lib/i18n/config";
+import {
+  formatDay,
+  formatWhen,
+  NOTIFICATION_COPY,
+  type Message,
+  type RepairStage,
+  type StatusChange,
+  type Vars,
+} from "@/lib/notification-copy";
 
 type GarageNotificationColumn = "notify_new_booking" | "notify_cancellation";
 
@@ -27,28 +36,61 @@ async function isGarageNotificationEnabled(
   return data ? Boolean((data as Record<string, boolean>)[column]) : true;
 }
 
-type ClientNotificationColumn = "notify_repair_updates" | "notify_waitlist";
+type RecipientPrefs = {
+  locale: Locale;
+  // Client opt-outs for the two non-essential notifications (0044).
+  repairUpdates: boolean;
+  waitlist: boolean;
+};
 
-// A client's opt-out for the two non-essential notifications (0044).
-// Same service-role read and fail-open behavior as the garage check above.
-async function isClientNotificationEnabled(
-  profileId: string,
-  column: ClientNotificationColumn
-): Promise<boolean> {
+// The recipient's language (0046) and opt-outs in one service-role read.
+// Fails open like the garage check: default language, everything on.
+async function getRecipientPrefs(profileId: string): Promise<RecipientPrefs> {
   const admin = createAdminClient();
   const { data } = await admin
     .from("profiles")
-    .select(column)
+    .select("preferred_locale, notify_repair_updates, notify_waitlist")
     .eq("id", profileId)
     .maybeSingle();
-  return data ? (data as Record<string, boolean | null>)[column] !== false : true;
+  const locale = data?.preferred_locale;
+  return {
+    locale: typeof locale === "string" && isLocale(locale) ? locale : defaultLocale,
+    repairUpdates: data?.notify_repair_updates !== false,
+    waitlist: data?.notify_waitlist !== false,
+  };
 }
 
-const STATUS_COPY: Record<string, { subject: string; verb: string }> = {
-  confirmed: { subject: "Your appointment is confirmed", verb: "confirmed" },
-  cancelled: { subject: "Your appointment was cancelled", verb: "cancelled" },
-  completed: { subject: "Your appointment is complete", verb: "marked complete" },
-};
+/** Email (when there's an address) and push, from one localized message. */
+async function deliver({
+  message,
+  vars,
+  recipientProfileId,
+  recipientEmail,
+}: {
+  message: Message;
+  vars: Vars;
+  recipientProfileId: string;
+  recipientEmail: string | null;
+}) {
+  if (recipientEmail) {
+    await sendEmail({
+      to: recipientEmail,
+      subject: message.subject,
+      html: message.html({
+        name: escapeHtml(vars.name),
+        service: escapeHtml(vars.service),
+        other: escapeHtml(vars.other),
+        when: escapeHtml(vars.when),
+      }),
+    });
+  }
+
+  await sendPushToProfile({
+    profileId: recipientProfileId,
+    title: message.pushTitle,
+    body: message.push(vars),
+  });
+}
 
 export async function notifyAppointmentStatusChange({
   status,
@@ -60,7 +102,7 @@ export async function notifyAppointmentStatusChange({
   startTime,
   recipientGarageId,
 }: {
-  status: "confirmed" | "cancelled" | "completed";
+  status: StatusChange;
   recipientProfileId: string;
   recipientEmail: string | null;
   recipientName: string;
@@ -73,56 +115,23 @@ export async function notifyAppointmentStatusChange({
   // does.
   recipientGarageId?: string;
 }) {
-  const copy = STATUS_COPY[status];
-  if (!copy) return;
-
-  const when = new Date(startTime).toLocaleString(undefined, {
-    timeZone: APP_TIME_ZONE,
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
   const notificationAllowed =
     !recipientGarageId ||
     status !== "cancelled" ||
     (await isGarageNotificationEnabled(recipientGarageId, "notify_cancellation"));
+  if (!notificationAllowed) return;
 
-  if (recipientEmail && notificationAllowed) {
-    await sendEmail({
-      to: recipientEmail,
-      subject: copy.subject,
-      html: `<p>Hi ${escapeHtml(recipientName)},</p><p>Your <strong>${escapeHtml(serviceName)}</strong> appointment with ${escapeHtml(otherPartyName)} on ${when} has been ${copy.verb}.</p>`,
-    });
-  }
+  const { locale } = await getRecipientPrefs(recipientProfileId);
+  const message = NOTIFICATION_COPY[locale].status[status];
+  if (!message) return;
 
-  if (notificationAllowed) {
-    await sendPushToProfile({
-      profileId: recipientProfileId,
-      title: copy.subject,
-      body: `${serviceName} with ${otherPartyName} — ${copy.verb}.`,
-    });
-  }
+  await deliver({
+    message,
+    vars: { name: recipientName, service: serviceName, other: otherPartyName, when: formatWhen(startTime, locale) },
+    recipientProfileId,
+    recipientEmail,
+  });
 }
-
-const REPAIR_STAGE_COPY: Record<string, { subject: string; label: string }> = {
-  received: { subject: "Your vehicle has been received", label: "received" },
-  diagnosis: {
-    subject: "Your vehicle is being diagnosed",
-    label: "in diagnosis",
-  },
-  in_repair: { subject: "Your vehicle is being repaired", label: "in repair" },
-  quality_check: {
-    subject: "Your vehicle is in quality check",
-    label: "in quality check",
-  },
-  ready_for_pickup: {
-    subject: "Your vehicle is ready for pickup",
-    label: "ready for pickup",
-  },
-};
 
 export async function notifyRepairStageChange({
   stage,
@@ -139,22 +148,16 @@ export async function notifyRepairStageChange({
   otherPartyName: string;
   serviceName: string;
 }) {
-  const copy = REPAIR_STAGE_COPY[stage];
-  if (!copy) return;
-  if (!(await isClientNotificationEnabled(recipientProfileId, "notify_repair_updates"))) return;
+  const prefs = await getRecipientPrefs(recipientProfileId);
+  if (!prefs.repairUpdates) return;
+  const message = NOTIFICATION_COPY[prefs.locale].repairStage[stage as RepairStage];
+  if (!message) return;
 
-  if (recipientEmail) {
-    await sendEmail({
-      to: recipientEmail,
-      subject: copy.subject,
-      html: `<p>Hi ${escapeHtml(recipientName)},</p><p>Your <strong>${escapeHtml(serviceName)}</strong> service with ${escapeHtml(otherPartyName)} is now <strong>${copy.label}</strong>.</p>`,
-    });
-  }
-
-  await sendPushToProfile({
-    profileId: recipientProfileId,
-    title: copy.subject,
-    body: `${serviceName} with ${otherPartyName} is now ${copy.label}.`,
+  await deliver({
+    message,
+    vars: { name: recipientName, service: serviceName, other: otherPartyName, when: "" },
+    recipientProfileId,
+    recipientEmail,
   });
 }
 
@@ -178,49 +181,21 @@ export async function notifyBookingReceived({
   // Required in practice when recipient === "garage".
   recipientGarageId?: string;
 }) {
-  const when = new Date(startTime).toLocaleString(undefined, {
-    timeZone: APP_TIME_ZONE,
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  if (recipient === "client") {
-    if (recipientEmail) {
-      await sendEmail({
-        to: recipientEmail,
-        subject: "Your booking request was received",
-        html: `<p>Hi ${escapeHtml(recipientName)},</p><p>We've received your <strong>${escapeHtml(serviceName)}</strong> booking with ${escapeHtml(otherPartyName)} on ${when}. You'll hear from us as soon as it's confirmed.</p>`,
-      });
-    }
-    await sendPushToProfile({
-      profileId: recipientProfileId,
-      title: "Booking request received",
-      body: `${serviceName} with ${otherPartyName} on ${when}.`,
-    });
+  if (
+    recipient === "garage" &&
+    recipientGarageId &&
+    !(await isGarageNotificationEnabled(recipientGarageId, "notify_new_booking"))
+  ) {
     return;
   }
 
-  const notificationAllowed =
-    !recipientGarageId ||
-    (await isGarageNotificationEnabled(recipientGarageId, "notify_new_booking"));
-
-  if (recipientEmail && notificationAllowed) {
-    await sendEmail({
-      to: recipientEmail,
-      subject: "New booking request",
-      html: `<p>Hello ${escapeHtml(recipientName)},</p><p>New booking request: <strong>${escapeHtml(serviceName)}</strong> for ${escapeHtml(otherPartyName)} on ${when}. Confirmation is required from the dashboard.</p>`,
-    });
-  }
-  if (notificationAllowed) {
-    await sendPushToProfile({
-      profileId: recipientProfileId,
-      title: "New booking request",
-      body: `${serviceName} from ${otherPartyName} on ${when}.`,
-    });
-  }
+  const { locale } = await getRecipientPrefs(recipientProfileId);
+  await deliver({
+    message: NOTIFICATION_COPY[locale].bookingReceived[recipient],
+    vars: { name: recipientName, service: serviceName, other: otherPartyName, when: formatWhen(startTime, locale) },
+    recipientProfileId,
+    recipientEmail,
+  });
 }
 
 /**
@@ -249,47 +224,20 @@ export async function notifyBookingConfirmed({
   // Required in practice when recipient === "garage".
   recipientGarageId?: string;
 }) {
-  const when = new Date(startTime).toLocaleString(undefined, {
-    timeZone: APP_TIME_ZONE,
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  if (recipient === "client") {
-    if (recipientEmail) {
-      await sendEmail({
-        to: recipientEmail,
-        subject: "Your booking is confirmed",
-        html: `<p>Hi ${escapeHtml(recipientName)},</p><p>Your <strong>${escapeHtml(serviceName)}</strong> appointment with ${escapeHtml(otherPartyName)} on ${when} is confirmed. You'll pay at the garage (cash or card).</p>`,
-      });
-    }
-    await sendPushToProfile({
-      profileId: recipientProfileId,
-      title: "Booking confirmed",
-      body: `${serviceName} with ${otherPartyName} on ${when}. Pay at the garage.`,
-    });
+  if (
+    recipient === "garage" &&
+    recipientGarageId &&
+    !(await isGarageNotificationEnabled(recipientGarageId, "notify_new_booking"))
+  ) {
     return;
   }
 
-  const notificationAllowed =
-    !recipientGarageId ||
-    (await isGarageNotificationEnabled(recipientGarageId, "notify_new_booking"));
-  if (!notificationAllowed) return;
-
-  if (recipientEmail) {
-    await sendEmail({
-      to: recipientEmail,
-      subject: "New booking",
-      html: `<p>Hello ${escapeHtml(recipientName)},</p><p>New booking: <strong>${escapeHtml(serviceName)}</strong> for ${escapeHtml(otherPartyName)} on ${when}. The appointment has been added to the agenda; payment is collected on site.</p>`,
-    });
-  }
-  await sendPushToProfile({
-    profileId: recipientProfileId,
-    title: "New booking",
-    body: `${serviceName} from ${otherPartyName} on ${when}.`,
+  const { locale } = await getRecipientPrefs(recipientProfileId);
+  await deliver({
+    message: NOTIFICATION_COPY[locale].bookingConfirmed[recipient],
+    vars: { name: recipientName, service: serviceName, other: otherPartyName, when: formatWhen(startTime, locale) },
+    recipientProfileId,
+    recipientEmail,
   });
 }
 
@@ -308,27 +256,12 @@ export async function notifyAppointmentRescheduled({
   serviceName: string;
   startTime: string;
 }) {
-  const when = new Date(startTime).toLocaleString(undefined, {
-    timeZone: APP_TIME_ZONE,
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-
-  if (recipientEmail) {
-    await sendEmail({
-      to: recipientEmail,
-      subject: "Your appointment was rescheduled",
-      html: `<p>Hi ${escapeHtml(recipientName)},</p><p>Your <strong>${escapeHtml(serviceName)}</strong> appointment with ${escapeHtml(otherPartyName)} has been moved to ${when}.</p>`,
-    });
-  }
-
-  await sendPushToProfile({
-    profileId: recipientProfileId,
-    title: "Appointment rescheduled",
-    body: `${serviceName} with ${otherPartyName} is now ${when}.`,
+  const { locale } = await getRecipientPrefs(recipientProfileId);
+  await deliver({
+    message: NOTIFICATION_COPY[locale].rescheduled,
+    vars: { name: recipientName, service: serviceName, other: otherPartyName, when: formatWhen(startTime, locale) },
+    recipientProfileId,
+    recipientEmail,
   });
 }
 
@@ -347,24 +280,13 @@ export async function notifyWaitlistSlotOpened({
   serviceName: string;
   date: string;
 }) {
-  if (!(await isClientNotificationEnabled(recipientProfileId, "notify_waitlist"))) return;
+  const prefs = await getRecipientPrefs(recipientProfileId);
+  if (!prefs.waitlist) return;
 
-  const when = dateKeyToDisplayDate(date).toLocaleDateString(undefined, {
-    timeZone: APP_TIME_ZONE,
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-
-  await sendEmail({
-    to: recipientEmail,
-    subject: "A slot may have opened up",
-    html: `<p>Hi ${escapeHtml(recipientName)},</p><p>A booking for <strong>${escapeHtml(serviceName)}</strong> at ${escapeHtml(garageName)} on ${when} was just cancelled. If you're still interested, book now -- it's first come, first served.</p>`,
-  });
-
-  await sendPushToProfile({
-    profileId: recipientProfileId,
-    title: "A slot may have opened up",
-    body: `${serviceName} at ${garageName} on ${when}.`,
+  await deliver({
+    message: NOTIFICATION_COPY[prefs.locale].waitlistSlot,
+    vars: { name: recipientName, service: serviceName, other: garageName, when: formatDay(date, prefs.locale) },
+    recipientProfileId,
+    recipientEmail,
   });
 }

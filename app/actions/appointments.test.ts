@@ -98,6 +98,8 @@ const {
   assignMechanic,
 } = await import("./appointments");
 
+const APPT_2 = "22222222-2222-4222-8222-222222222222";
+
 function formDataWith(fields: Record<string, string>) {
   const formData = new FormData();
   for (const [key, value] of Object.entries(fields)) {
@@ -129,11 +131,33 @@ describe("appointment transition RPC delegation", () => {
   it("cancelAppointment (client) calls cancel_appointment_as_client", async () => {
     rpcResult = { data: true, error: null };
 
-    await cancelAppointment(formDataWith({ lang: "en", id: "appt-2" }));
+    await cancelAppointment(undefined, formDataWith({ lang: "en", id: APPT_2 }));
 
     expect(rpcCalls).toHaveLength(1);
     expect(rpcCalls[0].name).toBe("cancel_appointment_as_client");
-    expect(rpcCalls[0].params).toEqual({ target_appointment_id: "appt-2" });
+    expect(rpcCalls[0].params).toEqual({ target_appointment_id: APPT_2 });
+  });
+
+  it("cancelAppointment reports a failed call so the client can retry", async () => {
+    rpcResult = { data: null, error: { message: "network" } };
+    expect(await cancelAppointment(undefined, formDataWith({ lang: "en", id: APPT_2 }))).toEqual({
+      error: "failed",
+    });
+  });
+
+  it("cancelAppointment reports a refused transition without notifying anyone", async () => {
+    rpcResult = { data: false, error: null };
+    expect(await cancelAppointment(undefined, formDataWith({ lang: "en", id: APPT_2 }))).toEqual({
+      error: "notCancellable",
+    });
+    expect(fakeSupabase.from).not.toHaveBeenCalled();
+  });
+
+  it("cancelAppointment refuses a malformed id before calling the database", async () => {
+    expect(await cancelAppointment(undefined, formDataWith({ lang: "en", id: "nope" }))).toEqual({
+      error: "notCancellable",
+    });
+    expect(rpcCalls).toHaveLength(0);
   });
 
   it("does not attempt a follow-up read when the RPC reports no row changed", async () => {

@@ -282,7 +282,15 @@ function AppointmentCard({
           <CancelBookingButton
             appointmentId={appointment.id}
             lang={lang}
-            labels={{ cancel: d.cancel, confirm: d.cancelConfirm, yes: d.cancelConfirmYes, keep: d.cancelKeep }}
+            labels={{
+              cancel: d.cancel,
+              confirm: d.cancelConfirm,
+              yes: d.cancelConfirmYes,
+              keep: d.cancelKeep,
+              cancelling: d.cancelling,
+              failed: d.cancelFailed,
+              notAllowed: d.cancelNotAllowed,
+            }}
           />
         )}
       </div>

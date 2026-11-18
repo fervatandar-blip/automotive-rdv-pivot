@@ -127,7 +127,10 @@
       "3": "3 – Average",
       "2": "2 – Poor",
       "1": "1 – Very poor"
-    }
+    },
+    "cancelling": "Cancelling…",
+    "cancelFailed": "The booking could not be cancelled. Check your connection and try again.",
+    "cancelNotAllowed": "This booking can no longer be cancelled here. It may already have been cancelled or completed; refresh the page to see its status."
   },
   "garageDiscovery": {
     "title": "Find a Trusted Garage",
