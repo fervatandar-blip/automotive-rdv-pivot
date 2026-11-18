@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { GarageDiscoveryMap } from "@/components/garage-discovery-map";
-import { BrandLogoBadge } from "@/components/brand-logo-badge";
 import { StyledSelect } from "@/components/styled-select";
 import { CheckboxChip } from "@/components/checkbox-chip";
 import { NearMeButton } from "@/components/near-me-button";
@@ -13,19 +12,6 @@ import { averageRating, formatRating } from "@/lib/ratings";
 import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
 
 const RADIUS_OPTIONS_KM = [5, 10, 25, 50];
-
-const CURATED_BRANDS: { name: string; slug: string }[] = [
-  { name: "Volkswagen", slug: "volkswagen" },
-  { name: "Audi", slug: "audi" },
-  { name: "BMW", slug: "bmw" },
-  { name: "Tesla", slug: "tesla" },
-  { name: "Renault", slug: "renault" },
-];
-
-function toArray(value: string | string[] | undefined): string[] {
-  if (!value) return [];
-  return Array.isArray(value) ? value : [value];
-}
 
 type GarageRow = {
   id: string;
@@ -38,8 +24,6 @@ type GarageRow = {
   emergency_service: boolean;
   pricing_category: string | null;
   services: { id: string }[];
-  garage_brands: { brand_id: string }[];
-  garage_specialties: { specialty_id: string }[];
   reviews: { rating: number }[];
 };
 
@@ -48,8 +32,6 @@ type GarageWithDistance = GarageRow & { distanceKm: number | null };
 type SearchParams = {
   q?: string;
   city?: string;
-  brand?: string | string[];
-  specialty?: string | string[];
   ev?: string;
   mobile?: string;
   emergency?: string;
@@ -77,27 +59,22 @@ export default async function GaragesPage({
 
   const supabase = await createClient();
 
-  const [{ data: garages }, { data: brands }, { data: specialties }] =
-    await Promise.all([
-      supabase
-        .from("garages")
-        .select(
-          "id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, services(id), garage_brands(brand_id), garage_specialties(specialty_id), reviews(rating)"
-        )
-        .eq("status", "approved")
-        .is("deleted_at", null)
-        .order("name", { ascending: true }),
-      supabase.from("brands").select("id, name").order("name"),
-      supabase.from("specialties").select("id, name").order("name"),
-    ]);
+  // No brand or specialty filters: garages don't maintain that data after
+  // onboarding, so the filters would go stale.
+  const { data: garages } = await supabase
+    .from("garages")
+    .select(
+      "id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, services(id), reviews(rating)"
+    )
+    .eq("status", "approved")
+    .is("deleted_at", null)
+    .order("name", { ascending: true });
 
   const rows = (garages ?? []) as unknown as GarageRow[];
   const cities = Array.from(
     new Set(rows.map((garage) => garage.city).filter((city): city is string => !!city))
   ).sort();
 
-  const selectedBrandIds = toArray(filters.brand);
-  const selectedSpecialtyIds = toArray(filters.specialty);
   const minRating = filters.minRating ? Number(filters.minRating) : 0;
   const query = filters.q?.trim().toLowerCase() ?? "";
 
@@ -124,20 +101,6 @@ export default async function GaragesPage({
     if (filters.ev === "1" && !garage.ev_capable) return false;
     if (filters.mobile === "1" && !garage.mobile_service) return false;
     if (filters.emergency === "1" && !garage.emergency_service) return false;
-    if (
-      selectedBrandIds.length > 0 &&
-      !garage.garage_brands.some((link) =>
-        selectedBrandIds.includes(link.brand_id)
-      )
-    )
-      return false;
-    if (
-      selectedSpecialtyIds.length > 0 &&
-      !garage.garage_specialties.some((link) =>
-        selectedSpecialtyIds.includes(link.specialty_id)
-      )
-    )
-      return false;
     if (minRating > 0) {
       const average = averageRating(garage.reviews.map((review) => review.rating));
       if (average === null || average < minRating) return false;
@@ -163,16 +126,6 @@ export default async function GaragesPage({
     }
     return a.name.localeCompare(b.name);
   });
-
-  const curatedBrands = CURATED_BRANDS.map((curated) => {
-    const brand = (brands ?? []).find(
-      (row) => row.name.toLowerCase() === curated.name.toLowerCase()
-    );
-    return brand ? { ...brand, slug: curated.slug } : null;
-  }).filter(
-    (brand): brand is { id: string; name: string; slug: string } =>
-      Boolean(brand)
-  );
 
   return (
     <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
@@ -310,67 +263,6 @@ export default async function GaragesPage({
               defaultChecked={filters.emergency === "1"}
             />
           </div>
-
-          {brands && brands.length > 0 && (
-            <div className="flex flex-col gap-3 border-t border-black/[.08] pt-4 dark:border-white/[.145]">
-              {curatedBrands.length > 0 ? (
-                <span className="text-sm font-medium">{d.popularBrands}</span>
-              ) : (
-                <span className="text-sm font-medium">{d.brands}</span>
-              )}
-
-              {curatedBrands.length > 0 && (
-                <div className="flex flex-wrap gap-3">
-                  {curatedBrands.map((brand) => (
-                    <BrandLogoBadge
-                      key={brand.id}
-                      htmlFor={`brand-${brand.id}`}
-                      slug={brand.slug}
-                      name={brand.name}
-                      selected={selectedBrandIds.includes(brand.id)}
-                    />
-                  ))}
-                </div>
-              )}
-
-              <details className="text-sm">
-                <summary className="cursor-pointer select-none font-medium text-zinc-600 dark:text-zinc-400">
-                  {d.moreBrands}
-                </summary>
-                <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {brands.map((brand) => (
-                    <CheckboxChip
-                      key={brand.id}
-                      id={`brand-${brand.id}`}
-                      name="brand"
-                      value={brand.id}
-                      label={brand.name}
-                      defaultChecked={selectedBrandIds.includes(brand.id)}
-                    />
-                  ))}
-                </div>
-              </details>
-            </div>
-          )}
-
-          {specialties && specialties.length > 0 && (
-            <div className="flex flex-col gap-3 border-t border-black/[.08] pt-4 dark:border-white/[.145]">
-              <span className="text-sm font-medium">{d.specialties}</span>
-              <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-                {specialties.map((specialty) => (
-                  <CheckboxChip
-                    key={specialty.id}
-                    name="specialty"
-                    value={specialty.id}
-                    label={specialty.name}
-                    defaultChecked={selectedSpecialtyIds.includes(
-                      specialty.id
-                    )}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="flex items-center gap-4">
             <button
