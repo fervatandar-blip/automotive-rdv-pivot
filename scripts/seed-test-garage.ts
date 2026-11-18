@@ -1,6 +1,6 @@
 /**
  * One-off local script: fully populates a test garage account (profile
- * fields, hours, brands, specialties, services, availability, and
+ * fields, hours, services, availability, and
  * placeholder documents) so it's ready to browse/book against without
  * manually filling out every onboarding form.
  *
@@ -12,7 +12,7 @@
  *
  * WARNING: this uses the Supabase service-role key to bypass RLS entirely,
  * force-approves the garage and every document, and overwrites existing
- * services/availability/brand/specialty rows for the target garage. Local
+ * services/availability rows for the target garage. Local
  * and staging test data ONLY -- never point this at a production Supabase
  * project.
  */
@@ -68,14 +68,6 @@ const OPENING_HOURS: OpeningHours = {
   5: { closed: false, open: "08:00", close: "18:00" },
   6: { closed: false, open: "09:00", close: "13:00" },
 };
-
-const BRAND_NAMES = ["Volkswagen", "BMW", "Audi", "Mercedes-Benz", "Toyota"];
-const SPECIALTY_NAMES = [
-  "General Maintenance",
-  "Brakes",
-  "Tires & Wheels",
-  "Electrical & Diagnostics",
-];
 
 const SERVICES = [
   {
@@ -180,39 +172,7 @@ async function main() {
 
   if (updateError) fail(`Failed to update garage profile: ${updateError.message}`);
 
-  // 3. Brands & specialties.
-  const { data: brands, error: brandsError } = await supabase
-    .from("brands")
-    .select("id, name")
-    .in("name", BRAND_NAMES);
-  if (brandsError) fail(`Failed to look up brands: ${brandsError.message}`);
-
-  const { data: specialties, error: specialtiesError } = await supabase
-    .from("specialties")
-    .select("id, name")
-    .in("name", SPECIALTY_NAMES);
-  if (specialtiesError) fail(`Failed to look up specialties: ${specialtiesError.message}`);
-
-  await supabase.from("garage_brands").delete().eq("garage_id", garage.id);
-  if (brands && brands.length > 0) {
-    const { error } = await supabase
-      .from("garage_brands")
-      .insert(brands.map((brand) => ({ garage_id: garage.id, brand_id: brand.id })));
-    if (error) fail(`Failed to insert garage_brands: ${error.message}`);
-  }
-
-  await supabase.from("garage_specialties").delete().eq("garage_id", garage.id);
-  if (specialties && specialties.length > 0) {
-    const { error } = await supabase.from("garage_specialties").insert(
-      specialties.map((specialty) => ({
-        garage_id: garage.id,
-        specialty_id: specialty.id,
-      }))
-    );
-    if (error) fail(`Failed to insert garage_specialties: ${error.message}`);
-  }
-
-  // 4. Services.
+  // 3. Services.
   await supabase.from("services").delete().eq("garage_id", garage.id);
   const { data: insertedServices, error: servicesError } = await supabase
     .from("services")
@@ -220,7 +180,7 @@ async function main() {
     .select("id");
   if (servicesError) fail(`Failed to insert services: ${servicesError.message}`);
 
-  // 5. Weekly availability, mirroring the opening hours set in step 2.
+  // 4. Weekly availability, mirroring the opening hours set in step 2.
   const availabilityRows: {
     garage_id: string;
     day_of_week: number;
@@ -243,7 +203,7 @@ async function main() {
     .insert(availabilityRows);
   if (availabilityError) fail(`Failed to insert availability: ${availabilityError.message}`);
 
-  // 6. Placeholder documents, uploaded and approved directly.
+  // 5. Placeholder documents, uploaded and approved directly.
   let documentsUploaded = 0;
   for (const { documentType, category } of DOCUMENTS) {
     const filePath = `${garage.id}/${category}/${documentType}`;
@@ -281,12 +241,10 @@ async function main() {
     documentsUploaded++;
   }
 
-  // 7. Summary.
+  // 6. Summary.
   console.log("=== Seed complete ===");
   console.log(`Garage:      RDV Demo Garage (test) (${garage.id})`);
   console.log(`Status:      approved`);
-  console.log(`Brands:      ${brands?.length ?? 0} linked (${BRAND_NAMES.join(", ")})`);
-  console.log(`Specialties: ${specialties?.length ?? 0} linked (${SPECIALTY_NAMES.join(", ")})`);
   console.log(`Services:    ${insertedServices?.length ?? 0} created`);
   console.log(`Availability: ${availabilityRows.length} weekly windows`);
   console.log(`Documents:   ${documentsUploaded}/${DOCUMENTS.length} uploaded & approved`);
