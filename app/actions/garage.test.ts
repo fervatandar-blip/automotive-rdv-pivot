@@ -234,6 +234,12 @@ describe("completeOnboarding", () => {
     expect(ops.some((op) => op.table === "availability" && op.method === "insert")).toBe(false);
   });
 
+  it("no longer collects brands or specialties, even if posted", async () => {
+    const brand = "11111111-1111-4111-8111-111111111111";
+    await redirectedTo(completeOnboarding(undefined, form({ ...wizardFields, brandIds: [brand], specialtyIds: [brand] })));
+    expect(ops.some((op) => op.table === "garage_brands" || op.table === "garage_specialties")).toBe(false);
+  });
+
   it("no longer writes the unused opening_hours column", async () => {
     await redirectedTo(completeOnboarding(undefined, form(wizardFields)));
     expect(garageUpdate()).not.toHaveProperty("opening_hours");

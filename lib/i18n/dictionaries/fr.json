@@ -881,7 +881,6 @@
       "Localisation",
       "Horaires",
       "Services",
-      "Marques et spécialités",
       "Vérification"
     ],
     "days": [
@@ -929,8 +928,6 @@
     "pricingPremium": "Premium",
     "technicianCountLabel": "Nombre de techniciens",
     "languagesSpokenLabel": "Langues parlées",
-    "brandsSupportedTitle": "Marques prises en charge",
-    "specialtiesTitle": "Spécialités",
     "reviewTitle": "Vérification des informations",
     "reviewName": "Nom",
     "reviewAddress": "Adresse",
@@ -951,9 +948,6 @@
     "technicianSuffix": "technicien(s)",
     "reviewLanguages": "Langues parlées",
     "noneLanguages": "Aucune sélectionnée",
-    "reviewBrandsSpecialties": "Marques et spécialités",
-    "brandCountSuffix": "marque(s),",
-    "specialtyCountSuffix": "spécialité(s)",
     "platformTermsTitle": "Conditions de vérification de la plateforme",
     "platformTermsBody": "J'accepte de téléverser les factures/services, d'accepter les protocoles de service vérifié de RDV, de consentir au système de vérification des clients, et d'accepter les règles anti-fraude et de transparence qui assurent la confiance entre RDV, les clients et les garages.",
     "back": "Retour",

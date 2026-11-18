@@ -19,9 +19,9 @@ import { GARAGE_LANGUAGES } from "@/lib/definitions";
 
 type D = Dictionary["garageOnboarding"];
 
-const LAST_STEP = 5;
+const LAST_STEP = 4;
 
-// Steps 1-4 (0-indexed) have no required fields per GarageOnboardingFormSchema
+// Steps 1-3 (0-indexed) have no required fields per GarageOnboardingFormSchema
 // -- only name/description/email/country/registrationNumber (step 0) and
 // technicianCount (step 3) can carry server-side errors.
 const STEP_FOR_ERROR_FIELD: Record<string, number> = {
@@ -122,26 +122,16 @@ type Summary = {
   pricingCategory: string;
   technicianCount: string;
   languages: string[];
-  brandCount: number;
-  specialtyCount: number;
 };
 
 export function OnboardingForm({
   lang,
   dictionary: d,
   garage,
-  brands,
-  specialties,
-  selectedBrandIds,
-  selectedSpecialtyIds,
 }: {
   lang: Locale;
   dictionary: D;
   garage: Garage;
-  brands: { id: string; name: string }[];
-  specialties: { id: string; name: string }[];
-  selectedBrandIds: string[];
-  selectedSpecialtyIds: string[];
 }) {
   const [state, action, pending] = useActionState(
     completeOnboarding,
@@ -203,8 +193,6 @@ export function OnboardingForm({
       pricingCategory: (data.get("pricingCategory") as string) || "",
       technicianCount: (data.get("technicianCount") as string) || "",
       languages: data.getAll("languages") as string[],
-      brandCount: data.getAll("brandIds").length,
-      specialtyCount: data.getAll("specialtyIds").length,
     });
   }, [step, d.days]);
 
@@ -579,42 +567,6 @@ export function OnboardingForm({
           </section>
         </div>
 
-        <div hidden={step !== 4} className="flex flex-col gap-8">
-          <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-            <h2 className="font-semibold text-black dark:text-zinc-50">
-              {d.brandsSupportedTitle}
-            </h2>
-            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-              {brands.map((brand) => (
-                <CheckboxChip
-                  key={brand.id}
-                  name="brandIds"
-                  value={brand.id}
-                  label={brand.name}
-                  defaultChecked={selectedBrandIds.includes(brand.id)}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-            <h2 className="font-semibold text-black dark:text-zinc-50">
-              {d.specialtiesTitle}
-            </h2>
-            <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-              {specialties.map((specialty) => (
-                <CheckboxChip
-                  key={specialty.id}
-                  name="specialtyIds"
-                  value={specialty.id}
-                  label={specialty.name}
-                  defaultChecked={selectedSpecialtyIds.includes(specialty.id)}
-                />
-              ))}
-            </div>
-          </section>
-        </div>
-
         <div hidden={step !== LAST_STEP} className="flex flex-col gap-8">
           {summary && (
             <div className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
@@ -704,15 +656,6 @@ export function OnboardingForm({
                           )
                           .join(", ")
                       : d.noneLanguages}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">
-                    {d.reviewBrandsSpecialties}
-                  </dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
-                    {summary.brandCount} {d.brandCountSuffix} {summary.specialtyCount}{" "}
-                    {d.specialtyCountSuffix}
                   </dd>
                 </div>
               </dl>

@@ -406,8 +406,6 @@ export const GarageAddressFormSchema = z.object({
   city: garageDetailsShape.city,
 });
 
-// Brands and specialties are no longer edited from the profile page; the
-// onboarding wizard still collects them (replaceGarageCatalog).
 export const GARAGE_PROFILE_SECTIONS = ["details", "location", "capabilities"] as const;
 export type GarageProfileSection = (typeof GARAGE_PROFILE_SECTIONS)[number];
 

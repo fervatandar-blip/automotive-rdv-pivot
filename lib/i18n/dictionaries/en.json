@@ -881,7 +881,6 @@
       "Location",
       "Hours",
       "Services",
-      "Brands & Specialties",
       "Review"
     ],
     "days": [
@@ -929,8 +928,6 @@
     "pricingPremium": "Premium",
     "technicianCountLabel": "Number of technicians",
     "languagesSpokenLabel": "Languages spoken",
-    "brandsSupportedTitle": "Brands supported",
-    "specialtiesTitle": "Specialties",
     "reviewTitle": "Review details",
     "reviewName": "Name",
     "reviewAddress": "Address",
@@ -951,9 +948,6 @@
     "technicianSuffix": "technician(s)",
     "reviewLanguages": "Languages spoken",
     "noneLanguages": "None selected",
-    "reviewBrandsSpecialties": "Brands & specialties",
-    "brandCountSuffix": "brand(s),",
-    "specialtyCountSuffix": "specialty/ies",
     "platformTermsTitle": "Platform verification terms",
     "platformTermsBody": "I agree to upload invoices/services, accept RDV's verified service protocols, consent to the customer verification system, and agree to the anti-fraud and transparency rules that keep RDV trustworthy for clients and garages alike.",
     "back": "Back",

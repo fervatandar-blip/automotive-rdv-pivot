@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { requireGarageOwner } from "@/lib/dal";
-import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { OnboardingForm } from "./onboarding-form";
@@ -24,25 +23,6 @@ export default async function GarageOnboardingPage({
   }
 
   const dictionary = await getDictionary(lang);
-  const supabase = await createClient();
 
-  const [{ data: brands }, { data: specialties }, { data: selectedBrands }, { data: selectedSpecialties }] =
-    await Promise.all([
-      supabase.from("brands").select("id, name").order("name"),
-      supabase.from("specialties").select("id, name").order("name"),
-      supabase.from("garage_brands").select("brand_id").eq("garage_id", garage.id),
-      supabase.from("garage_specialties").select("specialty_id").eq("garage_id", garage.id),
-    ]);
-
-  return (
-    <OnboardingForm
-      lang={lang}
-      dictionary={dictionary.garageOnboarding}
-      garage={garage}
-      brands={brands ?? []}
-      specialties={specialties ?? []}
-      selectedBrandIds={(selectedBrands ?? []).map((row) => row.brand_id)}
-      selectedSpecialtyIds={(selectedSpecialties ?? []).map((row) => row.specialty_id)}
-    />
-  );
+  return <OnboardingForm lang={lang} dictionary={dictionary.garageOnboarding} garage={garage} />;
 }

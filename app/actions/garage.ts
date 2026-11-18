@@ -17,10 +17,6 @@ import {
   type GarageProfileSection,
 } from "@/lib/definitions";
 
-type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 function revalidateLocalizedPath(path: string) {
@@ -74,19 +70,6 @@ function readCapabilityFlags(formData: FormData) {
   };
 }
 
-function readUuidList(formData: FormData, field: string) {
-  return [
-    ...new Set(
-      formData
-        .getAll(field)
-        .filter(
-          (value): value is string =>
-            typeof value === "string" && UUID_PATTERN.test(value)
-        )
-    ),
-  ];
-}
-
 /**
  * Weekly hours from the onboarding wizard's hours step, as availability
  * windows. Days marked closed, or with an empty/inverted range, produce no
@@ -114,44 +97,6 @@ function readWizardHours(formData: FormData) {
   }
 
   return windows;
-}
-
-async function replaceGarageCatalog(
-  supabase: SupabaseClient,
-  garageId: string,
-  brandIds: string[],
-  specialtyIds: string[]
-) {
-  const { error: brandDeleteError } = await supabase
-    .from("garage_brands")
-    .delete()
-    .eq("garage_id", garageId);
-  if (brandDeleteError) return brandDeleteError.message;
-
-  if (brandIds.length > 0) {
-    const { error } = await supabase
-      .from("garage_brands")
-      .insert(brandIds.map((brandId) => ({ garage_id: garageId, brand_id: brandId })));
-    if (error) return error.message;
-  }
-
-  const { error: specialtyDeleteError } = await supabase
-    .from("garage_specialties")
-    .delete()
-    .eq("garage_id", garageId);
-  if (specialtyDeleteError) return specialtyDeleteError.message;
-
-  if (specialtyIds.length > 0) {
-    const { error } = await supabase.from("garage_specialties").insert(
-      specialtyIds.map((specialtyId) => ({
-        garage_id: garageId,
-        specialty_id: specialtyId,
-      }))
-    );
-    if (error) return error.message;
-  }
-
-  return null;
 }
 
 /**
@@ -220,16 +165,6 @@ export async function completeOnboarding(
 
   if (error) {
     return { message: error.message };
-  }
-
-  const catalogError = await replaceGarageCatalog(
-    supabase,
-    garage.id,
-    readUuidList(formData, "brandIds"),
-    readUuidList(formData, "specialtyIds")
-  );
-  if (catalogError) {
-    return { message: catalogError };
   }
 
   // Opening hours live in one place: the availability table, which is what

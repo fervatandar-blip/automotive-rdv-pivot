@@ -155,7 +155,7 @@ export default async function GarageDetailPage({
   const { data: garage } = await supabase
     .from("garages")
     .select(
-      "id, name, description, address, city, phone, email, website, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, languages_spoken, garage_brands(brands(name)), garage_specialties(specialties(name))"
+      "id, name, description, address, city, phone, email, website, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, languages_spoken"
     )
     .eq("id", garageId)
     .eq("status", "approved")
@@ -165,19 +165,6 @@ export default async function GarageDetailPage({
   if (!garage) {
     notFound();
   }
-
-  const profile = garage as unknown as {
-    garage_brands: { brands: { name: string } | null }[] | null;
-    garage_specialties: { specialties: { name: string } | null }[] | null;
-  };
-  const brandNames = (profile.garage_brands ?? [])
-    .map((row) => row.brands?.name)
-    .filter((name): name is string => Boolean(name))
-    .sort((a, b) => a.localeCompare(b));
-  const specialtyNames = (profile.garage_specialties ?? [])
-    .map((row) => row.specialties?.name)
-    .filter((name): name is string => Boolean(name))
-    .sort((a, b) => a.localeCompare(b));
 
   // Opening hours = the weekly availability windows bookings are made from
   // (one source of truth; see lib/opening-hours.ts).
@@ -450,38 +437,10 @@ export default async function GarageDetailPage({
           </section>
         </div>
 
-        {(brandNames.length > 0 || specialtyNames.length > 0 || languageLabels.length > 0) && (
-          <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
-            {specialtyNames.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{fields.specialtiesTitle}</h2>
-                <ul className="flex flex-wrap gap-1.5">
-                  {specialtyNames.map((name) => (
-                    <li key={name} className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-black dark:bg-white/[.08] dark:text-zinc-50">
-                      {name}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {brandNames.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{fields.brandsSupportedTitle}</h2>
-                <ul className="flex flex-wrap gap-1.5">
-                  {brandNames.map((name) => (
-                    <li key={name} className="rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-black dark:bg-white/[.08] dark:text-zinc-50">
-                      {name}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {languageLabels.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{fields.languagesSpokenLabel}</h2>
-                <p className="text-sm text-black dark:text-zinc-50">{languageLabels.join(", ")}</p>
-              </div>
-            )}
+        {languageLabels.length > 0 && (
+          <section className="flex flex-col gap-2 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
+            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{fields.languagesSpokenLabel}</h2>
+            <p className="text-sm text-black dark:text-zinc-50">{languageLabels.join(", ")}</p>
           </section>
         )}
 
