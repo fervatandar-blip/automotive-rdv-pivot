@@ -4,9 +4,16 @@ import { useParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { createService } from "@/app/actions/services";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
+import type { ServiceCategoryLabels } from "@/lib/service-categories";
 import { ServiceFields } from "./service-fields";
 
-export function AddServiceForm({ d }: { d: Dictionary["garageServices"] }) {
+export function AddServiceForm({
+  d,
+  categoryLabels,
+}: {
+  d: Dictionary["garageServices"];
+  categoryLabels: ServiceCategoryLabels;
+}) {
   const [state, action, pending] = useActionState(createService, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
@@ -32,7 +39,7 @@ export function AddServiceForm({ d }: { d: Dictionary["garageServices"] }) {
       <input type="hidden" name="lang" value={lang} />
       <h2 className="text-base font-semibold text-black dark:text-zinc-50">{d.addTitle}</h2>
 
-      <ServiceFields key={resetKey} d={d.fields} errors={state?.errors} />
+      <ServiceFields key={resetKey} d={d.fields} categoryLabels={categoryLabels} errors={state?.errors} />
 
       {state?.message && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">

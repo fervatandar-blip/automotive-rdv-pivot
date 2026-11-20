@@ -517,6 +517,8 @@
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "What the service includes",
       "optional": "optional",
+      "categoryLabel": "Category",
+      "categoryPlaceholder": "Choose a category",
       "durationLabel": "Duration (minutes)",
       "pricingTypeLabel": "Pricing",
       "pricingFixed": "Fixed price",
@@ -1281,5 +1283,34 @@
   "servicePrice": {
     "priceFrom": "From {price}",
     "priceOnInspection": "Price on inspection"
+  },
+  "serviceCategories": {
+    "maintenance": "Maintenance",
+    "brakes": "Brakes",
+    "tires": "Tires & wheels",
+    "diagnostics": "Diagnostics",
+    "engine": "Engine & transmission",
+    "electrical": "Electrical & battery",
+    "air_conditioning": "Air conditioning",
+    "bodywork": "Bodywork & glass",
+    "other": "Other services"
+  },
+  "verificationLevels": {
+    "basic": {
+      "label": "Basic",
+      "description": "Business registration and contact details checked by RDV."
+    },
+    "verified": {
+      "label": "Verified",
+      "description": "Insurance and the owner’s identity checked by RDV."
+    },
+    "ev_certified": {
+      "label": "EV Certified",
+      "description": "High-voltage and electric vehicle certifications validated by RDV."
+    },
+    "trusted_partner": {
+      "label": "Trusted Partner",
+      "description": "A proven record of reliable work and customer trust on RDV."
+    }
   }
 }

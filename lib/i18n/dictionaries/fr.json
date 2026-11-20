@@ -517,6 +517,8 @@
       "descriptionLabel": "Description",
       "descriptionPlaceholder": "Ce que comprend la prestation",
       "optional": "facultatif",
+      "categoryLabel": "Catégorie",
+      "categoryPlaceholder": "Choisir une catégorie",
       "durationLabel": "Durée (minutes)",
       "pricingTypeLabel": "Tarification",
       "pricingFixed": "Prix fixe",
@@ -1281,5 +1283,34 @@
   "servicePrice": {
     "priceFrom": "À partir de {price}",
     "priceOnInspection": "Prix sur devis"
+  },
+  "serviceCategories": {
+    "maintenance": "Entretien",
+    "brakes": "Freinage",
+    "tires": "Pneus et roues",
+    "diagnostics": "Diagnostic",
+    "engine": "Moteur et transmission",
+    "electrical": "Électricité et batterie",
+    "air_conditioning": "Climatisation",
+    "bodywork": "Carrosserie et vitrage",
+    "other": "Autres services"
+  },
+  "verificationLevels": {
+    "basic": {
+      "label": "Basique",
+      "description": "Immatriculation de l’entreprise et coordonnées vérifiées par RDV."
+    },
+    "verified": {
+      "label": "Vérifié",
+      "description": "Assurances et identité du gérant vérifiées par RDV."
+    },
+    "ev_certified": {
+      "label": "Certifié VE",
+      "description": "Certifications haute tension et véhicules électriques validées par RDV."
+    },
+    "trusted_partner": {
+      "label": "Partenaire de confiance",
+      "description": "Un historique avéré de travail fiable et de confiance client sur RDV."
+    }
   }
 }

@@ -72,24 +72,28 @@ const OPENING_HOURS: OpeningHours = {
 const SERVICES = [
   {
     name: "Oil change",
+    category: "maintenance",
     description: "Full synthetic oil and filter replacement.",
     duration_minutes: 45,
     price: 89.0,
   },
   {
     name: "Brake inspection",
+    category: "brakes",
     description: "Front and rear brake pad, disc and fluid check.",
     duration_minutes: 30,
     price: 59.0,
   },
   {
     name: "Tire rotation",
+    category: "tires",
     description: "Rotate and rebalance all four tires.",
     duration_minutes: 40,
     price: 49.0,
   },
   {
     name: "Full diagnostic",
+    category: "diagnostics",
     description: "Complete OBD scan and multi-point inspection.",
     duration_minutes: 60,
     price: 79.0,

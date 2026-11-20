@@ -5,12 +5,14 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { deleteService, updateService } from "@/app/actions/services";
 import { formatServicePrice } from "@/lib/service-pricing";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
+import type { ServiceCategoryLabels } from "@/lib/service-categories";
 import { ServiceFields } from "./service-fields";
 
 export type Service = {
   id: string;
   name: string;
   description: string | null;
+  category: string;
   duration_minutes: number;
   pricing_type: string;
   price: number | string | null;
@@ -23,10 +25,12 @@ export function ServiceRow({
   service,
   d,
   priceLabels,
+  categoryLabels,
 }: {
   service: Service;
   d: Dictionary["garageServices"];
   priceLabels: Dictionary["servicePrice"];
+  categoryLabels: ServiceCategoryLabels;
 }) {
   const [editing, setEditing] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -45,7 +49,7 @@ export function ServiceRow({
     return (
       <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h3 className="font-medium text-black dark:text-zinc-50">{service.name}</h3>
+          <h4 className="font-medium text-black dark:text-zinc-50">{service.name}</h4>
           {service.description && (
             <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{service.description}</p>
           )}
@@ -100,10 +104,12 @@ export function ServiceRow({
 
         <ServiceFields
           d={d.fields}
+          categoryLabels={categoryLabels}
           errors={state?.errors}
           defaults={{
             name: service.name,
             description: service.description,
+            category: service.category,
             durationMinutes: service.duration_minutes,
             pricingType: service.pricing_type,
             price: service.price,

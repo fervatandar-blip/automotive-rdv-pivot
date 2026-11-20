@@ -6,6 +6,7 @@ import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { DOCUMENT_CATEGORIES } from "@/lib/documents";
+import { VERIFICATION_LEVELS } from "@/lib/verification";
 import {
   reviewDocument,
   setGarageStatus,
@@ -19,13 +20,6 @@ const STATUS_BADGE_CLASSNAME: Record<string, string> = {
     "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-400",
   rejected: "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-400",
 };
-
-const VERIFICATION_LEVELS = [
-  "basic",
-  "verified",
-  "ev_certified",
-  "trusted_partner",
-];
 
 type DocRow = {
   id: string;
@@ -159,7 +153,7 @@ export default async function AdminGarageDetailPage({
             >
               {VERIFICATION_LEVELS.map((level) => (
                 <option key={level} value={level}>
-                  {level}
+                  {dictionary.verificationLevels[level].label}
                 </option>
               ))}
             </select>

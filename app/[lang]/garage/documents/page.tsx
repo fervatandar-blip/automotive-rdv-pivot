@@ -5,6 +5,7 @@ import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { DOCUMENT_CATEGORIES } from "@/lib/documents";
+import { VerificationBadge } from "@/components/verification-badge";
 import { uploadDocument } from "@/app/actions/documents";
 
 const STATUS_BADGE_CLASS: Record<string, string> = {
@@ -66,9 +67,9 @@ export default async function GarageDocumentsPage({
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
               {garage.name} &mdash; {d.verificationDocumentsSuffix}
             </h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {d.verificationLevel}{" "}
-              <span className="font-medium">{garage.verification_level}</span>
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+              {d.verificationLevel}
+              <VerificationBadge level={garage.verification_level} labels={dictionary.verificationLevels} />
             </p>
           </div>
           <LanguageSwitcher lang={lang} />

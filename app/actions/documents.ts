@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireGarageOwner, requireSuperAdmin } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
+import { isVerificationLevel } from "@/lib/verification";
 import {
   ALL_DOCUMENT_TYPES,
   ALLOWED_DOCUMENT_MIME_TYPES,
@@ -136,10 +137,9 @@ export async function setVerificationLevel(formData: FormData) {
 
   const garageId = formData.get("garageId");
   const level = formData.get("verificationLevel");
-  const validLevels = ["basic", "verified", "ev_certified", "trusted_partner"];
 
   if (typeof garageId !== "string" || !garageId) return;
-  if (typeof level !== "string" || !validLevels.includes(level)) return;
+  if (!isVerificationLevel(level)) return;
 
   // Service role, as in setGarageStatus: verification_level is not writable
   // by API roles since 0034.

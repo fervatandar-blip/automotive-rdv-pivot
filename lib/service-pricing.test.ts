@@ -34,7 +34,7 @@ describe("isInvoiceablePrice", () => {
 });
 
 describe("ServiceFormSchema pricing", () => {
-  const base = { name: "Oil change", durationMinutes: "60" };
+  const base = { name: "Oil change", durationMinutes: "60", category: "maintenance" };
 
   it("requires a price for fixed and starting prices instead of saving 0", () => {
     const fixed = ServiceFormSchema.safeParse({ ...base, pricingType: "fixed", price: "" });

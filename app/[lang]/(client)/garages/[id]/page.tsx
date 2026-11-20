@@ -19,6 +19,9 @@ import { getAvailableSlotsForDate } from "@/lib/availability";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { formatServicePrice } from "@/lib/service-pricing";
+import { groupServicesByCategory } from "@/lib/service-categories";
+import { normalizeVerificationLevel } from "@/lib/verification";
+import { VerificationBadge } from "@/components/verification-badge";
 import { GarageMapDisplay } from "@/components/garage-map-display";
 import { bookAppointment } from "@/app/actions/appointments";
 import { joinWaitlist } from "@/app/actions/waitlist";
@@ -155,7 +158,7 @@ export default async function GarageDetailPage({
   const { data: garage } = await supabase
     .from("garages")
     .select(
-      "id, name, description, address, city, phone, email, website, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, languages_spoken"
+      "id, name, description, address, city, phone, email, website, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, languages_spoken, verification_level"
     )
     .eq("id", garageId)
     .eq("status", "approved")
@@ -194,9 +197,11 @@ export default async function GarageDetailPage({
 
   const { data: services } = await supabase
     .from("services")
-    .select("id, name, description, duration_minutes, pricing_type, price")
+    .select("id, name, description, category, duration_minutes, pricing_type, price")
     .eq("garage_id", garageId)
     .order("created_at", { ascending: true });
+  const serviceGroups = groupServicesByCategory(services ?? []);
+  const verificationLevel = normalizeVerificationLevel(garage.verification_level);
 
   const { data: reviews } = await supabase
     .from("reviews")
@@ -213,7 +218,9 @@ export default async function GarageDetailPage({
   }[];
 
   const selectedService =
-    services?.find((service) => service.id === serviceParam) ?? services?.[0];
+    services?.find((service) => service.id === serviceParam) ??
+    // Default to the first service as displayed (grouped), not as stored.
+    serviceGroups[0]?.services[0];
 
   // "Today" is the garage's local date, not the server's (UTC on Vercel),
   // or between 00:00 and 01:00/02:00 local time the picker would still offer
@@ -326,6 +333,12 @@ export default async function GarageDetailPage({
           <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
             {garage.name}
           </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <VerificationBadge level={verificationLevel} labels={dictionary.verificationLevels} />
+            <span aria-hidden className="text-xs text-zinc-600 dark:text-zinc-400">
+              {dictionary.verificationLevels[verificationLevel].description}
+            </span>
+          </div>
           {(garage.address || garage.city) && (
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {[garage.address, garage.city].filter(Boolean).join(", ")}
@@ -469,33 +482,47 @@ export default async function GarageDetailPage({
           <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
             {d.chooseService}
           </h2>
-          <div className="flex flex-col gap-2">
-            {services && services.length > 0 ? (
-              services.map((service) => (
-                <Link
-                  key={service.id}
-                  href={`/${lang}/garages/${garageId}?service=${service.id}&date=${selectedDate}`}
-                  className={`rounded-xl border p-4 transition-colors ${
-                    selectedService?.id === service.id
-                      ? "border-black bg-white dark:border-white dark:bg-zinc-950"
-                      : "border-black/[.08] bg-white hover:bg-black/[.02] dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.03]"
-                  }`}
+          <div className="flex flex-col gap-5">
+            {serviceGroups.length > 0 ? (
+              serviceGroups.map((group) => (
+                <section
+                  key={group.category}
+                  aria-labelledby={`service-category-${group.category}`}
+                  className="flex flex-col gap-2"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium text-black dark:text-zinc-50">
-                      {service.name}
-                    </span>
-                    <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                      {service.duration_minutes} {d.min} &middot;{" "}
-                      {formatServicePrice(service, dictionary.servicePrice)}
-                    </span>
-                  </div>
-                  {service.description && (
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      {service.description}
-                    </p>
-                  )}
-                </Link>
+                  <h3
+                    id={`service-category-${group.category}`}
+                    className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+                  >
+                    {dictionary.serviceCategories[group.category]}
+                  </h3>
+                  {group.services.map((service) => (
+                    <Link
+                      key={service.id}
+                      href={`/${lang}/garages/${garageId}?service=${service.id}&date=${selectedDate}`}
+                      className={`rounded-xl border p-4 transition-colors ${
+                        selectedService?.id === service.id
+                          ? "border-black bg-white dark:border-white dark:bg-zinc-950"
+                          : "border-black/[.08] bg-white hover:bg-black/[.02] dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.03]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-black dark:text-zinc-50">
+                          {service.name}
+                        </span>
+                        <span className="text-sm text-zinc-600 dark:text-zinc-400">
+                          {service.duration_minutes} {d.min} &middot;{" "}
+                          {formatServicePrice(service, dictionary.servicePrice)}
+                        </span>
+                      </div>
+                      {service.description && (
+                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                          {service.description}
+                        </p>
+                      )}
+                    </Link>
+                  ))}
+                </section>
               ))
             ) : (
               <p className="text-sm text-zinc-600 dark:text-zinc-400">

@@ -1,7 +1,9 @@
 "use client";
 
 import { useId, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { normalizePricingType, PRICING_TYPES, type PricingType } from "@/lib/service-pricing";
+import { SERVICE_CATEGORIES, type ServiceCategoryLabels } from "@/lib/service-categories";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import type { ServiceFormState } from "@/lib/definitions";
 
@@ -27,14 +29,17 @@ function FieldError({ messages }: { messages?: string[] }) {
  */
 export function ServiceFields({
   d,
+  categoryLabels,
   errors,
   defaults,
 }: {
   d: ServiceFieldsDictionary;
+  categoryLabels: ServiceCategoryLabels;
   errors?: NonNullable<ServiceFormState>["errors"];
   defaults?: {
     name: string;
     description: string | null;
+    category: string;
     durationMinutes: number;
     pricingType: string | null;
     price: number | string | null;
@@ -66,6 +71,36 @@ export function ServiceFields({
           className={SERVICE_INPUT}
         />
         <FieldError messages={errors?.name} />
+      </div>
+
+      <div className="flex flex-col gap-1.5 sm:max-w-xs">
+        <label htmlFor={`${id}-category`} className={LABEL}>
+          {d.categoryLabel}
+        </label>
+        <div className="relative">
+          <select
+            id={`${id}-category`}
+            name="category"
+            required
+            // New services must pick one; there's no sensible default.
+            defaultValue={defaults?.category ?? ""}
+            className={`${SERVICE_INPUT} appearance-none pr-9`}
+          >
+            <option value="" disabled>
+              {d.categoryPlaceholder}
+            </option>
+            {SERVICE_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {categoryLabels[category]}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            aria-hidden
+            className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500 dark:text-zinc-400"
+          />
+        </div>
+        <FieldError messages={errors?.category} />
       </div>
 
       <div className="flex flex-col gap-1.5">

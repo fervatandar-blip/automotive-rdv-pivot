@@ -1,6 +1,7 @@
 import * as z from "zod";
 import { COUNTRIES, REGISTRATION_CONFIG } from "@/lib/business-registration";
 import { normalizeVin, VIN_PATTERN } from "@/lib/vehicle-identifiers";
+import { SERVICE_CATEGORIES } from "@/lib/service-categories";
 
 export const SignupFormSchema = z.object({
   fullName: z
@@ -127,6 +128,10 @@ export const ServiceFormSchema = z.object({
     .number({ error: "Enter a duration in minutes." })
     .int()
     .positive({ error: "Duration must be a positive number of minutes." }),
+  // 0048: one of the fixed categories in lib/service-categories.ts.
+  category: z.enum(SERVICE_CATEGORIES, {
+    error: "Choose a category for this service.",
+  }),
   // 0045: fixed / from / on_inspection.
   pricingType: z.enum(["fixed", "from", "on_inspection"], {
     error: "Choose how this service is priced.",
@@ -158,6 +163,7 @@ export type ServiceFormState =
         name?: string[];
         description?: string[];
         durationMinutes?: string[];
+        category?: string[];
         pricingType?: string[];
         price?: string[];
       };

@@ -10,6 +10,7 @@ import { CheckboxChip } from "@/components/checkbox-chip";
 import { NearMeButton } from "@/components/near-me-button";
 import { averageRating, formatRating } from "@/lib/ratings";
 import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
+import { VerificationBadge } from "@/components/verification-badge";
 
 const RADIUS_OPTIONS_KM = [5, 10, 25, 50];
 
@@ -23,6 +24,7 @@ type GarageRow = {
   mobile_service: boolean;
   emergency_service: boolean;
   pricing_category: string | null;
+  verification_level: string | null;
   services: { id: string }[];
   reviews: { rating: number }[];
 };
@@ -64,7 +66,7 @@ export default async function GaragesPage({
   const { data: garages } = await supabase
     .from("garages")
     .select(
-      "id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, services(id), reviews(rating)"
+      "id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, verification_level, services(id), reviews(rating)"
     )
     .eq("status", "approved")
     .is("deleted_at", null)
@@ -303,9 +305,15 @@ export default async function GaragesPage({
                 href={`/${lang}/garages/${garage.id}`}
                 className="rounded-xl border border-black/[.08] bg-white p-6 transition-colors hover:bg-black/[.02] dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.03]"
               >
-                <h2 className="font-semibold text-black dark:text-zinc-50">
-                  {garage.name}
-                </h2>
+                <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
+                  <h2 className="font-semibold text-black dark:text-zinc-50">
+                    {garage.name}
+                  </h2>
+                  <VerificationBadge
+                    level={garage.verification_level}
+                    labels={dictionary.verificationLevels}
+                  />
+                </div>
                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                   {garage.city ? `${garage.city} · ` : ""}
                   {garage.services.length}{" "}
