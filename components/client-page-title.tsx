@@ -9,16 +9,9 @@ export function ClientPageTitle({ labels }: { labels: Labels }) {
   const pathname = usePathname();
   const [section, detail] = pathname.split("/").filter(Boolean).slice(1);
 
-  const titles: Record<string, string> = {
-    garages: labels.findGarage,
-  };
-  // These pages open with their own large heading ("Welcome, <name>",
-  // "Messages", "My vehicles", "Account"); repeating it in the top bar is
-  // clutter.
-  if (section === "dashboard" || section === "messages" || section === "vehicles" || section === "account") {
-    return null;
-  }
-  const title = section === "garages" && detail ? labels.garageDetails : titles[section] ?? "RDV";
+  // Every client page opens with its own large heading; repeating it in the
+  // top bar is clutter. Only a workshop's detail page gets a top-bar title.
+  if (section !== "garages" || !detail) return null;
 
-  return <p className="truncate text-base font-semibold text-black dark:text-zinc-50">{title}</p>;
+  return <p className="truncate text-base font-semibold text-black dark:text-zinc-50">{labels.garageDetails}</p>;
 }

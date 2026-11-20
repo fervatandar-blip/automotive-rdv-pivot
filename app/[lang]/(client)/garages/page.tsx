@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Search, MapPin } from "lucide-react";
+import { Search, MapPin, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
@@ -12,6 +12,16 @@ import { averageRating, formatRating } from "@/lib/ratings";
 import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
 import { VerificationBadge } from "@/components/verification-badge";
 import { parseBookingVehicle, withBookingVehicle } from "@/lib/booking-vehicle";
+import { InstantFilterForm } from "@/components/instant-filter-form";
+import { SERVICE_CATEGORIES, normalizeServiceCategory, type ServiceCategory } from "@/lib/service-categories";
+
+const MAX_CATEGORY_TAGS = 3;
+
+/** A workshop's service categories in display order, "other" left out. */
+function categoriesOf(services: { category: string | null }[]): ServiceCategory[] {
+  const present = new Set(services.map((service) => normalizeServiceCategory(service.category)));
+  return SERVICE_CATEGORIES.filter((category) => category !== "other" && present.has(category));
+}
 
 const RADIUS_OPTIONS_KM = [5, 10, 25, 50];
 
@@ -26,7 +36,7 @@ type GarageRow = {
   emergency_service: boolean;
   pricing_category: string | null;
   verification_level: string | null;
-  services: { id: string }[];
+  services: { id: string; category: string | null }[];
   reviews: { rating: number }[];
 };
 
@@ -69,7 +79,7 @@ export default async function GaragesPage({
   const { data: garages } = await supabase
     .from("garages")
     .select(
-      "id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, verification_level, services(id), reviews(rating)"
+      "id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, verification_level, services(id, category), reviews(rating)"
     )
     .eq("status", "approved")
     .is("deleted_at", null)
@@ -139,6 +149,17 @@ export default async function GaragesPage({
   });
 
   const effectiveSort = filters.sort ?? (hasOrigin ? "distance" : "name");
+  const filtersActive = Boolean(
+    query ||
+      filters.city ||
+      filters.ev === "1" ||
+      filters.mobile === "1" ||
+      filters.emergency === "1" ||
+      minRating > 0 ||
+      filters.sort ||
+      hasOrigin ||
+      filters.radius
+  );
 
   const sorted = [...filtered].sort((a, b) => {
     if (effectiveSort === "distance" && hasOrigin) {
@@ -155,9 +176,9 @@ export default async function GaragesPage({
   });
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-        <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8 sm:py-10">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50 sm:text-3xl">
           {d.title}
         </h1>
 
@@ -170,9 +191,11 @@ export default async function GaragesPage({
           </p>
         )}
 
-        <form
-          method="GET"
-          className="flex flex-col gap-8 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+        <InstantFilterForm
+          className="flex flex-col gap-5 rounded-xl border border-zinc-200/80 bg-white p-5 sm:p-6 dark:border-zinc-800/60 dark:bg-zinc-950/40"
+          resetLabel={d.clear}
+          showReset={filtersActive}
+          keepOnReset={["vehicle"]}
         >
           <div className="flex flex-col gap-4">
             {hasOrigin && (
@@ -280,7 +303,7 @@ export default async function GaragesPage({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-4 border-t border-black/[.08] pt-4 dark:border-white/[.145]">
+          <div className="flex flex-wrap gap-x-5 gap-y-3 border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60">
             <CheckboxChip
               name="ev"
               value="1"
@@ -301,21 +324,7 @@ export default async function GaragesPage({
             />
           </div>
 
-          <div className="flex items-center gap-4">
-            <button
-              type="submit"
-              className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
-            >
-              {d.applyFilters}
-            </button>
-            <Link
-              href={withBookingVehicle(`/${lang}/garages`, vehicleId)}
-              className="text-sm font-medium underline"
-            >
-              {d.clear}
-            </Link>
-          </div>
-        </form>
+        </InstantFilterForm>
 
         <GarageDiscoveryMap
           garages={sorted
@@ -333,45 +342,77 @@ export default async function GaragesPage({
           vehicleId={vehicleId}
         />
 
-        <div className="flex flex-col gap-4">
-          {sorted.length > 0 ? (
-            sorted.map((garage) => (
-              <Link
-                key={garage.id}
-                href={withBookingVehicle(`/${lang}/garages/${garage.id}`, vehicleId)}
-                className="rounded-xl border border-black/[.08] bg-white p-6 transition-colors hover:bg-black/[.02] dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.03]"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">
-                  <h2 className="font-semibold text-black dark:text-zinc-50">
-                    {garage.name}
-                  </h2>
-                  <VerificationBadge
-                    level={garage.verification_level}
-                    labels={dictionary.verificationLevels}
-                  />
-                </div>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {garage.city ? `${garage.city} · ` : ""}
-                  {garage.services.length}{" "}
-                  {garage.services.length === 1 ? d.service : d.services}
-                  {garage.distanceKm !== null
-                    ? ` · ${formatDistanceKm(garage.distanceKm)}`
-                    : ""}
-                </p>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                  {formatRating(
-                    garage.reviews.map((review) => review.rating),
-                    d.noReviewsYet
-                  )}
-                </p>
-              </Link>
-            ))
-          ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {d.noGaragesMatch}
-            </p>
-          )}
-        </div>
+        {sorted.length > 0 ? (
+          <ul className="flex flex-col gap-3">
+            {sorted.map((garage) => {
+              const href = withBookingVehicle(`/${lang}/garages/${garage.id}`, vehicleId);
+              const ratings = garage.reviews.map((review) => review.rating);
+              const categories = categoriesOf(garage.services);
+              const extraCategories = categories.length - MAX_CATEGORY_TAGS;
+              // "Basic" is every workshop's starting tier: only earned tiers
+              // get a badge on the card.
+              const showBadge = garage.verification_level && garage.verification_level !== "basic";
+              return (
+                <li
+                  key={garage.id}
+                  className="relative flex items-center gap-4 rounded-xl border border-zinc-200/80 bg-white p-4 transition-colors focus-within:border-brand-600 hover:border-zinc-300 sm:p-5 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:hover:border-zinc-700"
+                >
+                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                      <h2 className="font-semibold text-black dark:text-zinc-50">
+                        {/* Stretched link: the whole card opens the profile;
+                            Book stays its own target above it. */}
+                        <Link href={href} className="after:absolute after:inset-0 after:rounded-xl focus:outline-none">
+                          {garage.name}
+                        </Link>
+                      </h2>
+                      {showBadge && (
+                        <VerificationBadge level={garage.verification_level} labels={dictionary.verificationLevels} />
+                      )}
+                    </div>
+                    <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-zinc-600 dark:text-zinc-400">
+                      {garage.city && <span>{garage.city}</span>}
+                      {garage.distanceKm !== null && <span>· {formatDistanceKm(garage.distanceKm)}</span>}
+                      {(garage.city || garage.distanceKm !== null) && <span aria-hidden>·</span>}
+                      <span className="inline-flex items-center gap-1">
+                        {ratings.length > 0 && (
+                          <Star aria-hidden className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        )}
+                        {formatRating(ratings, d.noReviewsYet)}
+                      </span>
+                    </p>
+                    {categories.length > 0 && (
+                      <ul className="mt-1 flex flex-wrap gap-1.5">
+                        {categories.slice(0, MAX_CATEGORY_TAGS).map((category) => (
+                          <li
+                            key={category}
+                            className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300"
+                          >
+                            {dictionary.serviceCategories[category]}
+                          </li>
+                        ))}
+                        {extraCategories > 0 && (
+                          <li className="px-1 py-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                            {d.moreCategories.replace("{count}", String(extraCategories))}
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                  <Link
+                    href={withBookingVehicle(`/${lang}/garages/${garage.id}#book`, vehicleId)}
+                    aria-label={d.bookAt.replace("{name}", garage.name)}
+                    className="relative z-10 inline-flex h-9 shrink-0 items-center rounded-full bg-brand-600 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:ring-offset-2 dark:bg-brand-500 dark:hover:bg-brand-600 dark:focus-visible:ring-offset-black"
+                  >
+                    {d.book}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.noGaragesMatch}</p>
+        )}
       </div>
     </div>
   );

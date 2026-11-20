@@ -487,7 +487,8 @@ export default async function GarageDetailPage({
 
         <BookingStepIndicator steps={bookingSteps} />
 
-        <div className="flex flex-col gap-3">
+        {/* "Book" on a search result card lands here. */}
+        <div id="book" className="flex scroll-mt-20 flex-col gap-3">
           <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
             {d.chooseService}
           </h2>
