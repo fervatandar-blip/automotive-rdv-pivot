@@ -11,6 +11,7 @@ import { NearMeButton } from "@/components/near-me-button";
 import { averageRating, formatRating } from "@/lib/ratings";
 import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
 import { VerificationBadge } from "@/components/verification-badge";
+import { parseBookingVehicle, withBookingVehicle } from "@/lib/booking-vehicle";
 
 const RADIUS_OPTIONS_KM = [5, 10, 25, 50];
 
@@ -42,6 +43,7 @@ type SearchParams = {
   lat?: string;
   lng?: string;
   radius?: string;
+  vehicle?: string;
 };
 
 export default async function GaragesPage({
@@ -58,6 +60,7 @@ export default async function GaragesPage({
   // Public discovery page -- no auth required to browse. Booking itself is
   // gated inside bookAppointment (app/actions/appointments.ts).
   const filters = await searchParams;
+  const bookingVehicleId = parseBookingVehicle(filters.vehicle);
 
   const supabase = await createClient();
 
@@ -73,6 +76,28 @@ export default async function GaragesPage({
     .order("name", { ascending: true });
 
   const rows = (garages ?? []) as unknown as GarageRow[];
+
+  // From a vehicle card's "Book Service": name the car being booked for.
+  // RLS returns nothing for someone else's vehicle (or a signed-out visitor),
+  // in which case the param is dropped.
+  const { data: bookingVehicle } = bookingVehicleId
+    ? await supabase
+        .from("vehicles")
+        .select("id, model, license_plate, brands(name)")
+        .eq("id", bookingVehicleId)
+        .maybeSingle()
+    : { data: null };
+  const vehicleId = bookingVehicle ? bookingVehicleId : null;
+  const bookingVehicleLabel = bookingVehicle
+    ? [
+        [(bookingVehicle.brands as unknown as { name: string } | null)?.name, bookingVehicle.model]
+          .filter(Boolean)
+          .join(" "),
+        bookingVehicle.license_plate,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
   const cities = Array.from(
     new Set(rows.map((garage) => garage.city).filter((city): city is string => !!city))
   ).sort();
@@ -136,6 +161,15 @@ export default async function GaragesPage({
           {d.title}
         </h1>
 
+        {bookingVehicleLabel && (
+          <p className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-100">
+            <span>{d.bookingFor.replace("{vehicle}", bookingVehicleLabel)}</span>
+            <Link href={`/${lang}/garages`} className="font-medium underline underline-offset-2">
+              {d.clearBookingVehicle}
+            </Link>
+          </p>
+        )}
+
         <form
           method="GET"
           className="flex flex-col gap-8 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
@@ -147,6 +181,7 @@ export default async function GaragesPage({
                 <input type="hidden" name="lng" value={filters.lng} />
               </>
             )}
+            {vehicleId && <input type="hidden" name="vehicle" value={vehicleId} />}
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="flex flex-1 flex-col overflow-hidden rounded-full border border-black/[.08] dark:border-white/[.145] sm:flex-row sm:items-center">
@@ -274,7 +309,7 @@ export default async function GaragesPage({
               {d.applyFilters}
             </button>
             <Link
-              href={`/${lang}/garages`}
+              href={withBookingVehicle(`/${lang}/garages`, vehicleId)}
               className="text-sm font-medium underline"
             >
               {d.clear}
@@ -295,6 +330,7 @@ export default async function GaragesPage({
               longitude: garage.longitude,
             }))}
           lang={lang}
+          vehicleId={vehicleId}
         />
 
         <div className="flex flex-col gap-4">
@@ -302,7 +338,7 @@ export default async function GaragesPage({
             sorted.map((garage) => (
               <Link
                 key={garage.id}
-                href={`/${lang}/garages/${garage.id}`}
+                href={withBookingVehicle(`/${lang}/garages/${garage.id}`, vehicleId)}
                 className="rounded-xl border border-black/[.08] bg-white p-6 transition-colors hover:bg-black/[.02] dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.03]"
               >
                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1.5">

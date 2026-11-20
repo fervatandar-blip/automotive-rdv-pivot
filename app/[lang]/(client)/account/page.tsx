@@ -4,27 +4,30 @@ import { getAuthedProfile } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { LanguageSwitcher } from "@/components/language-switcher";
+import { LocaleSwitch } from "@/components/client-nav";
+import { ThemeSegmentedControl } from "@/components/theme-toggle";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
 import { requestAccountDeletion, cancelAccountDeletion } from "@/app/actions/account";
 import { ACCOUNT_DELETION_GRACE_PERIOD_DAYS } from "@/lib/account-deletion";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import { NotificationPrefsForm, ProfileDetailsForm } from "./profile-forms";
 
-const SECTION =
-  "flex flex-col gap-5 rounded-xl border border-zinc-200/80 bg-white p-5 sm:p-6 dark:border-zinc-800/60 dark:bg-transparent";
-const SECTION_LABEL =
-  "text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400";
+// Flat panels: hairline border, no shadow, light surface on the zinc page.
+const PANEL =
+  "flex flex-col gap-5 rounded-xl border border-zinc-200/80 bg-white p-5 sm:p-6 dark:border-zinc-800/60 dark:bg-zinc-950/40";
+const DIVIDER = "border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60";
+const ROW_TITLE = "text-sm font-medium text-black dark:text-zinc-50";
+const ROW_TEXT = "text-sm text-zinc-500 dark:text-zinc-400";
 const SECONDARY_BUTTON =
-  "inline-flex items-center gap-1.5 self-start rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-black transition-colors hover:bg-zinc-100 dark:border-zinc-700/80 dark:text-zinc-50 dark:hover:bg-zinc-800/60";
+  "inline-flex h-9 items-center gap-1.5 self-start rounded-full border border-zinc-200 px-4 text-sm font-medium text-black transition-colors hover:bg-zinc-100 dark:border-zinc-700/80 dark:text-zinc-50 dark:hover:bg-zinc-800/60";
 
-function SectionHeader({ id, title, description }: { id: string; title: string; description?: string }) {
+function PanelHeader({ id, title, description }: { id: string; title: string; description?: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <h2 id={id} className={SECTION_LABEL}>
+      <h2 id={id} className="text-base font-semibold tracking-tight text-black dark:text-zinc-50">
         {title}
       </h2>
-      {description && <p className="text-sm text-zinc-600 dark:text-zinc-400">{description}</p>}
+      {description && <p className={ROW_TEXT}>{description}</p>}
     </div>
   );
 }
@@ -54,12 +57,12 @@ export default async function AccountPage({ params }: { params: Promise<{ lang: 
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8 sm:py-10">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <header className="flex flex-col gap-1">
           <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50 sm:text-3xl">
             {d.title}
           </h1>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.subtitle}</p>
+          <p className={ROW_TEXT}>{d.subtitle}</p>
         </header>
 
         {requestedAt && eligibleAt && (
@@ -90,79 +93,99 @@ export default async function AccountPage({ params }: { params: Promise<{ lang: 
           </div>
         )}
 
-        <section aria-labelledby="details-title" className={SECTION}>
-          <SectionHeader id="details-title" title={d.profileTitle} description={d.profileDescription} />
-          <ProfileDetailsForm
-            d={d}
-            fullName={profile.full_name ?? ""}
-            email={profile.email}
-            phone={(extra?.phone as string | null | undefined) ?? null}
-          />
-        </section>
-
-        <section aria-labelledby="notifications-title" className={SECTION}>
-          <SectionHeader
-            id="notifications-title"
-            title={d.notifications}
-            description={isClient ? d.notificationsDescriptionClient : d.notificationsDescription}
-          />
-          {isClient && (
-            <NotificationPrefsForm
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
+          <section aria-labelledby="details-title" className={PANEL}>
+            <PanelHeader id="details-title" title={d.profileTitle} description={d.profileDescription} />
+            <ProfileDetailsForm
               d={d}
-              repairUpdates={(extra?.notify_repair_updates as boolean | undefined) ?? true}
-              waitlist={(extra?.notify_waitlist as boolean | undefined) ?? true}
+              fullName={profile.full_name ?? ""}
+              email={profile.email}
+              phone={(extra?.phone as string | null | undefined) ?? null}
             />
-          )}
-          <div className="flex flex-col gap-2 border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60">
-            <p className="text-sm font-medium text-black dark:text-zinc-50">{d.pushTitle}</p>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.pushDescription}</p>
-            <PushNotificationOptIn enableLabel={d.enablePush} enablingLabel={d.enablingPush} />
-          </div>
-        </section>
-
-        {profile.role === "admin_garage" && (
-          <section aria-labelledby="team-title" className={SECTION}>
-            <SectionHeader id="team-title" title={d.teamAccess} description={d.teamAccessDescription} />
-            <Link href={`/${lang}/garage/staff`} className={SECONDARY_BUTTON}>
-              {d.manageStaff}
-              <ArrowRight aria-hidden className="h-4 w-4" />
-            </Link>
           </section>
-        )}
 
-        <section aria-labelledby="language-title" className={SECTION}>
-          <SectionHeader id="language-title" title={d.language} description={d.languageDescription} />
-          <LanguageSwitcher lang={lang} />
-        </section>
+          <div className="flex flex-col gap-6">
+            <section aria-labelledby="notifications-title" className={PANEL}>
+              <PanelHeader
+                id="notifications-title"
+                title={d.notifications}
+                description={isClient ? d.notificationsDescriptionClient : d.notificationsDescription}
+              />
+              {isClient && (
+                <NotificationPrefsForm
+                  d={d}
+                  repairUpdates={(extra?.notify_repair_updates as boolean | undefined) ?? true}
+                  waitlist={(extra?.notify_waitlist as boolean | undefined) ?? true}
+                />
+              )}
+              <div className={`flex flex-col gap-2 ${DIVIDER}`}>
+                <p className={ROW_TITLE}>{d.pushTitle}</p>
+                <p className={ROW_TEXT}>{d.pushDescription}</p>
+                <PushNotificationOptIn enableLabel={d.enablePush} enablingLabel={d.enablingPush} />
+              </div>
+            </section>
 
-        <section aria-labelledby="security-title" className={SECTION}>
-          <SectionHeader id="security-title" title={d.security} description={d.securityDescription} />
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium text-black dark:text-zinc-50">{d.changePassword}</p>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.changePasswordDescription}</p>
-            <Link href={`/${lang}/forgot-password`} className={SECONDARY_BUTTON}>
-              {d.changePasswordAction}
-            </Link>
+            <section aria-labelledby="preferences-title" className={PANEL}>
+              <PanelHeader id="preferences-title" title={d.preferences} description={d.preferencesDescription} />
+              <div className="flex flex-col divide-y divide-zinc-200/80 dark:divide-zinc-800/60">
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
+                  <div className="min-w-0">
+                    <p className={ROW_TITLE}>{d.language}</p>
+                    <p className={ROW_TEXT}>{d.languageDescription}</p>
+                  </div>
+                  <LocaleSwitch lang={lang} labels={{ language: d.language }} />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
+                  <p className={ROW_TITLE}>{d.theme}</p>
+                  <ThemeSegmentedControl
+                    labels={{ group: d.theme, light: d.themeLight, dark: d.themeDark }}
+                  />
+                </div>
+              </div>
+            </section>
+
+            {profile.role === "admin_garage" && (
+              <section aria-labelledby="team-title" className={PANEL}>
+                <PanelHeader id="team-title" title={d.teamAccess} description={d.teamAccessDescription} />
+                <Link href={`/${lang}/garage/staff`} className={SECONDARY_BUTTON}>
+                  {d.manageStaff}
+                  <ArrowRight aria-hidden className="h-4 w-4" />
+                </Link>
+              </section>
+            )}
           </div>
 
-          {!requestedAt && (
-            <div className="flex flex-col gap-2 border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60">
-              <p className="text-sm font-medium text-black dark:text-zinc-50">{d.deleteAccount}</p>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                {d.deletionExplanationPrefix} {ACCOUNT_DELETION_GRACE_PERIOD_DAYS}
-                {d.deletionExplanationSuffix}
-              </p>
-              <form action={requestAccountDeletion}>
-                <button
-                  type="submit"
-                  className="rounded-full border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
-                >
-                  {d.deleteMyAccount}
-                </button>
-              </form>
+          <section aria-labelledby="security-title" className={`${PANEL} lg:col-span-2`}>
+            <PanelHeader id="security-title" title={d.security} description={d.securityDescription} />
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
+              <div className="flex flex-col gap-2">
+                <p className={ROW_TITLE}>{d.changePassword}</p>
+                <p className={ROW_TEXT}>{d.changePasswordDescription}</p>
+                <Link href={`/${lang}/forgot-password`} className={`${SECONDARY_BUTTON} mt-1`}>
+                  {d.changePasswordAction}
+                </Link>
+              </div>
+
+              {!requestedAt && (
+                <div className="flex flex-col gap-2 border-t border-zinc-200/80 pt-6 md:border-l md:border-t-0 md:pl-8 md:pt-0 dark:border-zinc-800/60">
+                  <p className={ROW_TITLE}>{d.deleteAccount}</p>
+                  <p className={ROW_TEXT}>
+                    {d.deletionExplanationPrefix} {ACCOUNT_DELETION_GRACE_PERIOD_DAYS}
+                    {d.deletionExplanationSuffix}
+                  </p>
+                  <form action={requestAccountDeletion} className="mt-1">
+                    <button
+                      type="submit"
+                      className="inline-flex h-9 items-center rounded-full border border-red-200 px-4 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+                    >
+                      {d.deleteMyAccount}
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
-          )}
-        </section>
+          </section>
+        </div>
       </div>
     </div>
   );

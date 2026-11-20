@@ -50,7 +50,7 @@ function themeLabels(labels: ClientNavLabels) {
  * [ FR | EN ] segmented control. rememberLocale records the choice for
  * unprefixed URLs and for the language of the user's notifications.
  */
-function LocaleSwitch({ lang, labels }: { lang: Locale; labels: ClientNavLabels }) {
+export function LocaleSwitch({ lang, labels }: { lang: Locale; labels: Pick<ClientNavLabels, "language"> }) {
   const pathname = usePathname();
 
   return (

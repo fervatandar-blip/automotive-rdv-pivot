@@ -583,7 +583,9 @@ export type VehicleFormState =
         licensePlate?: string[];
         vin?: string[];
       };
+      // A raw database error, or "notFound" (vehicles.form.notFound).
       message?: string;
+      saved?: boolean;
     }
   | undefined;
 

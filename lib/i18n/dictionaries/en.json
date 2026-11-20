@@ -160,7 +160,9 @@
     "noReviewsYet": "No reviews yet",
     "service": "service",
     "services": "services",
-    "noGaragesMatch": "No garages match those filters."
+    "noGaragesMatch": "No garages match those filters.",
+    "bookingFor": "Booking for {vehicle}",
+    "clearBookingVehicle": "Book without a vehicle"
   },
   "garageDetail": {
     "backToGarages": "Back to garages",
@@ -223,11 +225,27 @@
   },
   "vehicles": {
     "title": "My vehicles",
+    "subtitle": "Your cars, their service history and one-tap rebooking.",
     "vehicleFallback": "Vehicle",
     "noDetailsAdded": "No details added",
     "delete": "Delete",
     "noVehiclesTitle": "No vehicles saved yet",
-    "noVehiclesDescription": "Add a vehicle above to speed up booking and keep your service history in one place.",
+    "noVehiclesDescription": "Add a vehicle to speed up booking and keep your service history in one place.",
+    "addVehicleButton": "Add Vehicle",
+    "plateLabel": "License plate",
+    "vinLabel": "VIN",
+    "serviceVisitsOne": "1 service visit",
+    "serviceVisitsMany": "{count} service visits",
+    "noServiceYet": "No service visits yet",
+    "lastService": "Last service {date}",
+    "bookService": "Book Service",
+    "bookServiceFor": "Book a service for {vehicle}",
+    "edit": "Edit",
+    "editVehicleNamed": "Edit {vehicle}",
+    "deleteVehicleNamed": "Delete {vehicle}",
+    "deleteConfirm": "Delete this vehicle? Past bookings stay, but will no longer show it.",
+    "deleteYes": "Yes, delete",
+    "keep": "Keep",
     "form": {
       "addVehicle": "Add a vehicle",
       "brand": "Brand",
@@ -241,7 +259,14 @@
       "submit": "Add vehicle",
       "submitPending": "Adding...",
       "vin": "VIN (optional)",
-      "vinHint": "The 17-character vehicle identification number, on your registration certificate (field E). Helps your garage order the right parts."
+      "vinHint": "The 17-character vehicle identification number, on your registration certificate (field E). Helps your service center order the right parts.",
+      "editVehicle": "Edit vehicle",
+      "saveChanges": "Save changes",
+      "savePending": "Saving…",
+      "cancel": "Cancel",
+      "close": "Close",
+      "notFound": "This vehicle no longer exists. Refresh the page.",
+      "genericError": "Something went wrong. Please try again."
     }
   },
   "account": {
@@ -265,13 +290,13 @@
     "deleteMyAccount": "Delete my account",
     "subtitle": "Your personal details, notifications and security.",
     "profileTitle": "Personal details",
-    "profileDescription": "How garages see you when you book.",
+    "profileDescription": "How workshops see you when you book.",
     "fullName": "Full name",
     "email": "Email",
     "emailHint": "Your sign-in email. Contact support to change it.",
     "phone": "Phone",
     "optional": "optional",
-    "phoneHint": "Shared only with garages you book with, so they can reach you about your car.",
+    "phoneHint": "Shared only with workshops you book with, so they can reach you about your car.",
     "save": "Save",
     "saving": "Saving…",
     "saved": "Saved",
@@ -294,7 +319,12 @@
       "nameTooShort": "Enter at least 2 characters.",
       "nameTooLong": "Use 120 characters or fewer.",
       "phoneInvalid": "Enter a valid phone number (digits, spaces and + only)."
-    }
+    },
+    "preferences": "Preferences",
+    "preferencesDescription": "Language and appearance on this device.",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark"
   },
   "appointmentMessages": {
     "backToDashboard": "Back to dashboard",

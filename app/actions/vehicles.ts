@@ -12,12 +12,26 @@ function revalidateLocalizedPath(path: string) {
   }
 }
 
-export async function addVehicle(
+function revalidateVehiclePages() {
+  // The dashboard lists vehicles too.
+  revalidateLocalizedPath("/vehicles");
+  revalidateLocalizedPath("/dashboard");
+}
+
+/**
+ * Adds a vehicle, or updates one when the form carries an `id`. On update,
+ * an emptied field is cleared (null), so a mistyped VIN can be removed.
+ * RLS ("Clients manage their own vehicles") limits both to the caller's
+ * own rows; the explicit client_id filter keeps that intent visible here.
+ */
+export async function saveVehicle(
   state: VehicleFormState,
   formData: FormData
 ): Promise<VehicleFormState> {
   const lang = parseLocale(formData.get("lang"));
   const user = await getAuthedUser(lang);
+  const rawId = formData.get("id");
+  const id = typeof rawId === "string" && rawId ? rawId : null;
 
   const validatedFields = VehicleFormSchema.safeParse({
     brandId: formData.get("brandId") || undefined,
@@ -32,23 +46,32 @@ export async function addVehicle(
   }
 
   const { brandId, model, year, licensePlate, vin } = validatedFields.data;
-  const supabase = await createClient();
-
-  const { error } = await supabase.from("vehicles").insert({
-    client_id: user.id,
+  const fields = {
     brand_id: brandId ?? null,
     model: model ?? null,
     year: year ?? null,
     license_plate: licensePlate ?? null,
     vin: vin ?? null,
-  });
+  };
+  const supabase = await createClient();
 
-  if (error) {
-    return { message: error.message };
+  if (id) {
+    const { data, error } = await supabase
+      .from("vehicles")
+      .update(fields)
+      .eq("id", id)
+      .eq("client_id", user.id)
+      .select("id");
+    if (error) return { message: error.message };
+    // Zero rows: not this user's vehicle, or it was deleted meanwhile.
+    if (!data?.length) return { message: "notFound" };
+  } else {
+    const { error } = await supabase.from("vehicles").insert({ client_id: user.id, ...fields });
+    if (error) return { message: error.message };
   }
 
-  revalidateLocalizedPath("/vehicles");
-  return {};
+  revalidateVehiclePages();
+  return { saved: true };
 }
 
 export async function deleteVehicle(formData: FormData) {
@@ -60,6 +83,8 @@ export async function deleteVehicle(formData: FormData) {
     return;
   }
 
+  // appointments.vehicle_id is ON DELETE SET NULL: past bookings stay but
+  // no longer show which vehicle they were for (the confirm text says so).
   const supabase = await createClient();
   await supabase
     .from("vehicles")
@@ -67,5 +92,5 @@ export async function deleteVehicle(formData: FormData) {
     .eq("id", id)
     .eq("client_id", user.id);
 
-  revalidateLocalizedPath("/vehicles");
+  revalidateVehiclePages();
 }

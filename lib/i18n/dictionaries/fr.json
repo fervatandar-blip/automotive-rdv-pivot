@@ -160,7 +160,9 @@
     "noReviewsYet": "Aucun avis pour le moment",
     "service": "service",
     "services": "services",
-    "noGaragesMatch": "Aucun garage ne correspond à ces filtres."
+    "noGaragesMatch": "Aucun garage ne correspond à ces filtres.",
+    "bookingFor": "Réservation pour {vehicle}",
+    "clearBookingVehicle": "Réserver sans véhicule"
   },
   "garageDetail": {
     "backToGarages": "Retour aux garages",
@@ -223,11 +225,27 @@
   },
   "vehicles": {
     "title": "Mes véhicules",
+    "subtitle": "Vos véhicules, leur historique d'entretien et une nouvelle réservation en un clic.",
     "vehicleFallback": "Véhicule",
     "noDetailsAdded": "Aucun détail ajouté",
     "delete": "Supprimer",
     "noVehiclesTitle": "Aucun véhicule pour le moment",
-    "noVehiclesDescription": "Ajoutez un véhicule ci-dessus pour accélérer vos réservations et garder votre historique d'entretien au même endroit.",
+    "noVehiclesDescription": "Ajoutez un véhicule pour accélérer vos réservations et garder votre historique d'entretien au même endroit.",
+    "addVehicleButton": "Ajouter un véhicule",
+    "plateLabel": "Plaque d'immatriculation",
+    "vinLabel": "VIN",
+    "serviceVisitsOne": "1 passage à l'atelier",
+    "serviceVisitsMany": "{count} passages à l'atelier",
+    "noServiceYet": "Aucun passage à l'atelier",
+    "lastService": "Dernier entretien le {date}",
+    "bookService": "Réserver",
+    "bookServiceFor": "Réserver un entretien pour {vehicle}",
+    "edit": "Modifier",
+    "editVehicleNamed": "Modifier {vehicle}",
+    "deleteVehicleNamed": "Supprimer {vehicle}",
+    "deleteConfirm": "Supprimer ce véhicule ? Les réservations passées restent, mais ne l'afficheront plus.",
+    "deleteYes": "Oui, supprimer",
+    "keep": "Conserver",
     "form": {
       "addVehicle": "Ajouter un véhicule",
       "brand": "Marque",
@@ -241,7 +259,14 @@
       "submit": "Ajouter le véhicule",
       "submitPending": "Ajout en cours...",
       "vin": "VIN (facultatif)",
-      "vinHint": "Le numéro d'identification du véhicule à 17 caractères, sur votre certificat d'immatriculation (champ E). Aide votre garage à commander les bonnes pièces."
+      "vinHint": "Le numéro d'identification du véhicule à 17 caractères, sur votre certificat d'immatriculation (champ E). Aide votre atelier à commander les bonnes pièces.",
+      "editVehicle": "Modifier le véhicule",
+      "saveChanges": "Enregistrer",
+      "savePending": "Enregistrement…",
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "notFound": "Ce véhicule n'existe plus. Actualisez la page.",
+      "genericError": "Une erreur est survenue. Veuillez réessayer."
     }
   },
   "account": {
@@ -265,13 +290,13 @@
     "deleteMyAccount": "Supprimer mon compte",
     "subtitle": "Vos informations personnelles, notifications et sécurité.",
     "profileTitle": "Informations personnelles",
-    "profileDescription": "Ce que voient les garages lorsque vous réservez.",
+    "profileDescription": "Ce que voient les ateliers lorsque vous réservez.",
     "fullName": "Nom complet",
     "email": "E-mail",
     "emailHint": "Votre e-mail de connexion. Contactez le support pour le modifier.",
     "phone": "Téléphone",
     "optional": "facultatif",
-    "phoneHint": "Partagé uniquement avec les garages chez qui vous réservez, pour vous joindre au sujet de votre véhicule.",
+    "phoneHint": "Partagé uniquement avec les ateliers chez qui vous réservez, pour vous joindre au sujet de votre véhicule.",
     "save": "Enregistrer",
     "saving": "Enregistrement…",
     "saved": "Enregistré",
@@ -294,7 +319,12 @@
       "nameTooShort": "Saisissez au moins 2 caractères.",
       "nameTooLong": "120 caractères maximum.",
       "phoneInvalid": "Saisissez un numéro valide (chiffres, espaces et + uniquement)."
-    }
+    },
+    "preferences": "Préférences",
+    "preferencesDescription": "Langue et apparence sur cet appareil.",
+    "theme": "Thème",
+    "themeLight": "Clair",
+    "themeDark": "Sombre"
   },
   "appointmentMessages": {
     "backToDashboard": "Retour au tableau de bord",

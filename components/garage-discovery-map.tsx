@@ -10,6 +10,7 @@ import {
   useMap,
 } from "@vis.gl/react-google-maps";
 import type { Locale } from "@/lib/i18n/config";
+import { withBookingVehicle } from "@/lib/booking-vehicle";
 
 type DiscoveryGarage = {
   id: string;
@@ -43,9 +44,12 @@ function FitBounds({ garages }: { garages: DiscoveryGarage[] }) {
 export function GarageDiscoveryMap({
   garages,
   lang,
+  vehicleId = null,
 }: {
   garages: DiscoveryGarage[];
   lang: Locale;
+  // Carried into the garage link (see lib/booking-vehicle.ts).
+  vehicleId?: string | null;
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -77,7 +81,7 @@ export function GarageDiscoveryMap({
               onCloseClick={() => setSelectedId(null)}
             >
               <Link
-                href={`/${lang}/garages/${selected.id}`}
+                href={withBookingVehicle(`/${lang}/garages/${selected.id}`, vehicleId)}
                 className="text-sm font-medium underline"
               >
                 {selected.name}

@@ -22,6 +22,7 @@ import { formatServicePrice } from "@/lib/service-pricing";
 import { groupServicesByCategory } from "@/lib/service-categories";
 import { normalizeVerificationLevel } from "@/lib/verification";
 import { VerificationBadge } from "@/components/verification-badge";
+import { parseBookingVehicle, withBookingVehicle } from "@/lib/booking-vehicle";
 import { GarageMapDisplay } from "@/components/garage-map-display";
 import { bookAppointment } from "@/app/actions/appointments";
 import { joinWaitlist } from "@/app/actions/waitlist";
@@ -132,6 +133,8 @@ export default async function GarageDetailPage({
     waitlisted?: string;
     // The slot picked for review; nothing is booked until "Confirm booking".
     time?: string;
+    // Vehicle to pre-select at the confirm step (lib/booking-vehicle.ts).
+    vehicle?: string;
   }>;
 }) {
   const { lang: rawLang, id: garageId } = await params;
@@ -151,7 +154,11 @@ export default async function GarageDetailPage({
     error,
     waitlisted,
     time: timeParam,
+    vehicle: vehicleParam,
   } = await searchParams;
+  const bookingVehicleId = parseBookingVehicle(vehicleParam);
+  // Every in-page link (service, month, day, slot) keeps the vehicle choice.
+  const keepVehicle = (href: string) => withBookingVehicle(href, bookingVehicleId);
 
   const supabase = await createClient();
 
@@ -286,9 +293,11 @@ export default async function GarageDetailPage({
     month: "long",
   });
   const slotBaseHref = selectedService
-    ? `/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}${
-        monthParam ? `&month=${monthParam}` : ""
-      }`
+    ? keepVehicle(
+        `/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}${
+          monthParam ? `&month=${monthParam}` : ""
+        }`
+      )
     : "";
 
   const { data: vehicles } = user
@@ -325,7 +334,7 @@ export default async function GarageDetailPage({
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <div>
           <Link
-            href={`/${lang}/garages`}
+            href={keepVehicle(`/${lang}/garages`)}
             className="text-sm font-medium underline"
           >
             &larr; {d.backToGarages}
@@ -499,7 +508,7 @@ export default async function GarageDetailPage({
                   {group.services.map((service) => (
                     <Link
                       key={service.id}
-                      href={`/${lang}/garages/${garageId}?service=${service.id}&date=${selectedDate}`}
+                      href={keepVehicle(`/${lang}/garages/${garageId}?service=${service.id}&date=${selectedDate}`)}
                       className={`rounded-xl border p-4 transition-colors ${
                         selectedService?.id === service.id
                           ? "border-black bg-white dark:border-white dark:bg-zinc-950"
@@ -542,7 +551,7 @@ export default async function GarageDetailPage({
                 <div className="flex items-center gap-1">
                   {canGoPrevMonth ? (
                     <Link
-                      href={`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}&month=${prevMonthKey}`}
+                      href={keepVehicle(`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}&month=${prevMonthKey}`)}
                       aria-label={d.previousMonth}
                       className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-black/[.04] dark:text-zinc-400 dark:hover:bg-white/[.06]"
                     >
@@ -558,7 +567,7 @@ export default async function GarageDetailPage({
                   </span>
                   {canGoNextMonth ? (
                     <Link
-                      href={`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}&month=${nextMonthKeyValue}`}
+                      href={keepVehicle(`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}&month=${nextMonthKeyValue}`)}
                       aria-label={d.nextMonth}
                       className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-black/[.04] dark:text-zinc-400 dark:hover:bg-white/[.06]"
                     >
@@ -597,7 +606,7 @@ export default async function GarageDetailPage({
                   return (
                     <Link
                       key={key}
-                      href={`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${key}&month=${displayedMonthKey}`}
+                      href={keepVehicle(`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${key}&month=${displayedMonthKey}`)}
                       className={
                         isSelected
                           ? "flex h-9 items-center justify-center rounded-lg bg-brand-600 text-sm font-medium text-white dark:bg-brand-500"
@@ -702,7 +711,10 @@ export default async function GarageDetailPage({
                           <select
                             id="vehicleId"
                             name="vehicleId"
-                            defaultValue={vehicleRows[0].id}
+                            defaultValue={
+                              vehicleRows.find((vehicle) => vehicle.id === bookingVehicleId)?.id ??
+                              vehicleRows[0].id
+                            }
                             className="w-full max-w-xs rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
                           >
                             <option value="">{d.noVehicleSpecified}</option>
