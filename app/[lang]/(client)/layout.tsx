@@ -7,7 +7,14 @@ import {
 } from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { ClientHeaderControls, ClientSidebar, ClientTabBar } from "@/components/client-nav";
+import {
+  ClientHeaderControls,
+  ClientSidebar,
+  ClientTabBar,
+  UnreadMessagesWatcher,
+} from "@/components/client-nav";
+import { createClient } from "@/lib/supabase/server";
+import { getClientUnreadCounts, totalUnread } from "@/lib/unread-messages";
 import { ClientPageTitle } from "@/components/client-page-title";
 import { GarageSidebar, GarageTopBar } from "@/components/garage-nav";
 import { AnimatedLogo } from "@/components/animated-logo";
@@ -105,11 +112,16 @@ export default async function ClientLayout({
   }
 
   const initials = initialsFor(profile.full_name || profile.email);
-  const { clientNav } = await getDictionary(lang);
+  const [{ clientNav }, unreadCounts] = await Promise.all([
+    getDictionary(lang),
+    getClientUnreadCounts(await createClient()),
+  ]);
+  const unread = totalUnread(unreadCounts);
 
   return (
     <div className="flex flex-1">
-      <ClientSidebar lang={lang} labels={clientNav} />
+      <ClientSidebar lang={lang} labels={clientNav} unread={unread} />
+      <UnreadMessagesWatcher userId={profile.id} />
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Push opt-in lives on the Account page; the tab bar replaces the
             old header icon row on phones. */}
@@ -136,7 +148,7 @@ export default async function ClientLayout({
           {children}
         </main>
       </div>
-      <ClientTabBar lang={lang} labels={clientNav} />
+      <ClientTabBar lang={lang} labels={clientNav} unread={unread} />
     </div>
   );
 }

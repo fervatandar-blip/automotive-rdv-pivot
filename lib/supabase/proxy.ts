@@ -21,6 +21,7 @@ const protectedRoutes = [
   "/set-password",
   "/appointments",
   "/vehicles",
+  "/messages",
   "/account",
 ];
 

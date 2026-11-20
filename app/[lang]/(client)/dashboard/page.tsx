@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  ArrowRight,
   CalendarClock,
   CalendarPlus,
-  Car,
   Check,
+  FileText,
   MapPin,
   MessageSquare,
   Navigation,
@@ -233,15 +232,11 @@ function AppointmentCard({
   lang,
   dictionary,
   cancellable = false,
-  invoiceUrl,
-  reviewable = false,
 }: {
   appointment: Appointment;
   lang: Locale;
   dictionary: Dictionary;
   cancellable?: boolean;
-  invoiceUrl?: string;
-  reviewable?: boolean;
 }) {
   const d = dictionary.clientDashboard;
   const isOpen = appointment.status === "pending" || appointment.status === "confirmed";
@@ -310,7 +305,7 @@ function AppointmentCard({
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/${lang}/appointments/${appointment.id}/messages`} className={SECONDARY_BUTTON}>
+        <Link href={`/${lang}/messages?a=${appointment.id}`} className={SECONDARY_BUTTON}>
           <MessageSquare aria-hidden className={PILL_ICON} strokeWidth={1.75} />
           {d.message}
         </Link>
@@ -332,11 +327,6 @@ function AppointmentCard({
             {d.directions}
           </a>
         )}
-        {invoiceUrl && (
-          <a href={invoiceUrl} className={SECONDARY_BUTTON}>
-            {d.downloadInvoice}
-          </a>
-        )}
         {cancellable && isOpen && (
           <CancelBookingButton
             appointmentId={appointment.id}
@@ -354,8 +344,79 @@ function AppointmentCard({
         )}
       </div>
 
-      {reviewable && <ReviewForm appointmentId={appointment.id} lang={lang} dictionary={dictionary} />}
     </article>
+  );
+}
+
+const TEXT_ACTION =
+  "inline-flex items-center gap-1 text-sm font-medium text-zinc-600 underline-offset-2 hover:text-black hover:underline dark:text-zinc-400 dark:hover:text-zinc-100";
+
+/** One line of the service history: what, where, which car, outcome. */
+function PastServiceRow({
+  appointment,
+  lang,
+  dictionary,
+  invoiceUrl,
+  reviewable,
+}: {
+  appointment: Appointment;
+  lang: Locale;
+  dictionary: Dictionary;
+  invoiceUrl?: string;
+  reviewable: boolean;
+}) {
+  const d = dictionary.clientDashboard;
+  const garageName = appointment.garages?.name ?? d.garageFallback;
+  const plate = appointment.vehicles?.license_plate?.trim();
+  const date = new Date(appointment.start_time);
+
+  return (
+    <li className="flex flex-col gap-2 px-4 py-3.5 sm:px-5">
+      <div className="flex items-start gap-4">
+        <time
+          dateTime={appointment.start_time}
+          className="w-14 shrink-0 text-center text-xs font-medium uppercase leading-tight text-zinc-500 dark:text-zinc-400"
+        >
+          <span className="block text-lg font-semibold text-black dark:text-zinc-50">
+            {date.toLocaleDateString(dateLocaleFor(lang), { timeZone: APP_TIME_ZONE, day: "numeric" })}
+          </span>
+          {date.toLocaleDateString(dateLocaleFor(lang), { timeZone: APP_TIME_ZONE, month: "short", year: "2-digit" })}
+        </time>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <p className="truncate font-medium text-black dark:text-zinc-50">
+              {appointment.services?.name ?? d.serviceFallback}
+            </p>
+            <StatusPill status={appointment.status} d={d} />
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
+            <span className="truncate">{garageName}</span>
+            {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1">
+            <Link
+              href={`/${lang}/messages?a=${appointment.id}`}
+              aria-label={d.messageWorkshop.replace("{name}", garageName)}
+              className={TEXT_ACTION}
+            >
+              <MessageSquare aria-hidden className="h-3.5 w-3.5" strokeWidth={1.75} />
+              {d.message}
+            </Link>
+            {invoiceUrl && (
+              <a href={invoiceUrl} className={TEXT_ACTION}>
+                <FileText aria-hidden className="h-3.5 w-3.5" strokeWidth={1.75} />
+                {d.downloadInvoice}
+              </a>
+            )}
+          </div>
+          {reviewable && (
+            <div className="mt-3">
+              <ReviewForm appointmentId={appointment.id} lang={lang} dictionary={dictionary} />
+            </div>
+          )}
+        </div>
+      </div>
+    </li>
   );
 }
 
@@ -482,20 +543,6 @@ export default async function DashboardPage({
     garages: { name: string } | null;
   }[];
 
-  const { data: vehicles } = await supabase
-    .from("vehicles")
-    .select("id, model, year, license_plate, brands(name)")
-    .eq("client_id", profile.id)
-    .order("created_at", { ascending: false });
-
-  const vehicleRows = (vehicles ?? []) as unknown as {
-    id: string;
-    model: string | null;
-    year: number | null;
-    license_plate: string | null;
-    brands: { name: string } | null;
-  }[];
-
   // Most recent first: last week's service matters more than last year's.
   const past = [...other].reverse();
   const firstName = (profile.full_name || "").trim().split(/\s+/)[0];
@@ -559,49 +606,6 @@ export default async function DashboardPage({
           )}
         </section>
 
-        <section aria-labelledby="vehicles-title" className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="vehicles-title" className={SECTION_LABEL}>
-              {d.myVehicles}
-            </h2>
-            {vehicleRows.length > 0 && (
-              <Link
-                href={`/${lang}/vehicles`}
-                className="inline-flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
-              >
-                {d.manageVehicles}
-                <ArrowRight aria-hidden className="h-4 w-4" />
-              </Link>
-            )}
-          </div>
-          {vehicleRows.length > 0 ? (
-            <ul className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
-              {vehicleRows.map((vehicle) => (
-                <li key={vehicle.id} className={`${CARD} flex w-56 shrink-0 snap-start flex-col gap-2 p-4`}>
-                  <p className="font-semibold text-black dark:text-zinc-50">
-                    {[vehicle.brands?.name, vehicle.model].filter(Boolean).join(" ") || d.vehicleFallback}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
-                    {vehicle.license_plate && (
-                      <LicensePlate plate={vehicle.license_plate} label={d.plateLabel} />
-                    )}
-                    {vehicle.year && <span>{vehicle.year}</span>}
-                    {!vehicle.license_plate && !vehicle.year && <span>{d.noDetailsAdded}</span>}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyStateCard
-              icon={Car}
-              title={d.noVehiclesTitle}
-              description={d.noVehiclesDescription}
-              ctaHref={`/${lang}/vehicles`}
-              ctaLabel={d.addVehicle}
-            />
-          )}
-        </section>
-
         {waitlistRows.length > 0 && (
           <section aria-labelledby="waitlist-title" className="flex flex-col gap-3">
             <h2 id="waitlist-title" className={SECTION_LABEL}>
@@ -648,18 +652,20 @@ export default async function DashboardPage({
         {past.length > 0 && (
           <section aria-labelledby="past-title" className="flex flex-col gap-3">
             <h2 id="past-title" className={SECTION_LABEL}>
-              {d.pastAndCancelled}
+              {d.pastServiceHistory}
             </h2>
-            {past.map((appointment) => (
-              <AppointmentCard
-                key={appointment.id}
-                appointment={appointment}
-                lang={lang}
-                dictionary={dictionary}
-                invoiceUrl={invoiceUrls.get(appointment.id)}
-                reviewable={appointment.status === "completed" && !reviewedAppointmentIds.has(appointment.id)}
-              />
-            ))}
+            <ol className={`${CARD} divide-y divide-zinc-200/80 dark:divide-zinc-800/60`}>
+              {past.map((appointment) => (
+                <PastServiceRow
+                  key={appointment.id}
+                  appointment={appointment}
+                  lang={lang}
+                  dictionary={dictionary}
+                  invoiceUrl={invoiceUrls.get(appointment.id)}
+                  reviewable={appointment.status === "completed" && !reviewedAppointmentIds.has(appointment.id)}
+                />
+              ))}
+            </ol>
           </section>
         )}
       </div>

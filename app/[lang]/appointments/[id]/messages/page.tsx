@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
@@ -35,6 +35,12 @@ export default async function AppointmentMessagesPage({
 
   if (!appointment) {
     notFound();
+  }
+
+  // Drivers chat from the client inbox, which groups bookings per workshop
+  // and vehicle; old links (emails, bookmarks) land on the right thread.
+  if (appointment.client_id === user.id) {
+    redirect(`/${lang}/messages?a=${appointment.id}`);
   }
 
   const service = appointment.services as unknown as { name: string } | null;

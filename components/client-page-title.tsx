@@ -13,8 +13,11 @@ export function ClientPageTitle({ labels }: { labels: Labels }) {
     garages: labels.findGarage,
   };
   // These pages open with their own large heading ("Welcome, <name>",
-  // "My vehicles", "Account"); repeating it in the top bar is clutter.
-  if (section === "dashboard" || section === "vehicles" || section === "account") return null;
+  // "Messages", "My vehicles", "Account"); repeating it in the top bar is
+  // clutter.
+  if (section === "dashboard" || section === "messages" || section === "vehicles" || section === "account") {
+    return null;
+  }
   const title = section === "garages" && detail ? labels.garageDetails : titles[section] ?? "RDV";
 
   return <p className="truncate text-base font-semibold text-black dark:text-zinc-50">{title}</p>;

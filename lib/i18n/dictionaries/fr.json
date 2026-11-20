@@ -21,18 +21,18 @@
     }
   },
   "home": {
-    "heroTitle": "Trouvez un garage de confiance au Luxembourg.",
-    "heroSubtitle": "RDV connecte les propriétaires de véhicules à des garages vérifiés — recherchez, comparez et réservez en ligne en quelques clics.",
-    "findGarageCta": "Trouver un garage",
+    "heroTitle": "Trouvez un atelier de confiance au Luxembourg.",
+    "heroSubtitle": "RDV connecte les propriétaires de véhicules à des ateliers vérifiés — recherchez, comparez et réservez en ligne en quelques clics.",
+    "findGarageCta": "Trouver un atelier",
     "listGarageCta": "Référencer mon garage",
     "features": {
       "search": {
         "title": "Rechercher et comparer",
-        "description": "Filtrez les garages par marque, spécialité, capacité VE et prix, et visualisez-les sur une carte avant de choisir."
+        "description": "Filtrez les ateliers par capacité VE, service mobile ou d'urgence et note, et visualisez-les sur une carte avant de choisir."
       },
       "verified": {
-        "title": "Garages vérifiés",
-        "description": "Chaque garage suit un processus de vérification des documents, et les avis et notes de vrais clients figurent directement sur son profil."
+        "title": "Ateliers vérifiés",
+        "description": "Chaque atelier suit un processus de vérification des documents, et les avis et notes de vrais clients figurent directement sur son profil."
       },
       "instant": {
         "title": "Réservez instantanément",
@@ -41,7 +41,7 @@
     }
   },
   "auth": {
-    "tagline": "Des garages de confiance, à une réservation près.",
+    "tagline": "Des ateliers de confiance, à une réservation près.",
     "emailLabel": "E-mail",
     "passwordLabel": "Mot de passe",
     "confirmPasswordLabel": "Confirmer le mot de passe",
@@ -92,8 +92,8 @@
     "noDetailsAdded": "Aucun détail ajouté",
     "upcoming": "À venir",
     "noUpcomingTitle": "Aucun rendez-vous à venir",
-    "noUpcomingDescription": "Trouvez un garage et réservez votre prochain service en quelques clics.",
-    "findAGarage": "Trouver un garage",
+    "noUpcomingDescription": "Trouvez un atelier et réservez votre prochain service en quelques clics.",
+    "findAGarage": "Trouver un atelier",
     "waitlist": "Liste d'attente",
     "waitlistWith": "chez",
     "waitlistOn": "le",
@@ -104,7 +104,7 @@
     "optionalComment": "Commentaire facultatif",
     "submit": "Envoyer",
     "serviceFallback": "Service",
-    "garageFallback": "Garage",
+    "garageFallback": "Atelier",
     "withGarage": "chez",
     "paymentProcessing": "Paiement en cours de traitement",
     "cancelled": "Annulé",
@@ -122,23 +122,25 @@
     "cancelConfirmYes": "Oui, annuler",
     "cancelKeep": "Garder",
     "ratingOptions": {
-      "5": "5 – Excellent",
-      "4": "4 – Bien",
-      "3": "3 – Moyen",
+      "1": "1 – Très mauvais",
       "2": "2 – Mauvais",
-      "1": "1 – Très mauvais"
+      "3": "3 – Moyen",
+      "4": "4 – Bien",
+      "5": "5 – Excellent"
     },
     "cancelling": "Annulation…",
     "cancelFailed": "La réservation n'a pas pu être annulée. Vérifiez votre connexion et réessayez.",
     "cancelNotAllowed": "Cette réservation ne peut plus être annulée ici. Elle a peut-être déjà été annulée ou terminée ; actualisez la page pour voir son statut.",
     "directions": "Itinéraire",
     "directionsTo": "Itinéraire vers {name}",
-    "showOnMap": "Voir {place} sur une carte"
+    "showOnMap": "Voir {place} sur une carte",
+    "pastServiceHistory": "Historique d'entretien",
+    "messageWorkshop": "Écrire à {name}"
   },
   "garageDiscovery": {
-    "title": "Trouvez un garage de confiance",
+    "title": "Trouvez un atelier de confiance",
     "searchByName": "Rechercher par nom",
-    "searchPlaceholder": "Rechercher par nom de garage",
+    "searchPlaceholder": "Rechercher par nom d'atelier",
     "cityLabel": "Ville",
     "anyCity": "Toutes les villes",
     "nearMe": "Près de moi",
@@ -160,12 +162,12 @@
     "noReviewsYet": "Aucun avis pour le moment",
     "service": "service",
     "services": "services",
-    "noGaragesMatch": "Aucun garage ne correspond à ces filtres.",
+    "noGaragesMatch": "Aucun atelier ne correspond à ces filtres.",
     "bookingFor": "Réservation pour {vehicle}",
     "clearBookingVehicle": "Réserver sans véhicule"
   },
   "garageDetail": {
-    "backToGarages": "Retour aux garages",
+    "backToGarages": "Retour aux ateliers",
     "stepVehicle": "Véhicule",
     "stepService": "Service",
     "stepDateTime": "Date et heure",
@@ -188,7 +190,7 @@
     },
     "waitlistedNotice": "Vous êtes sur la liste d'attente. Nous vous enverrons un e-mail si un créneau se libère.",
     "chooseService": "Choisissez un service",
-    "noServicesYet": "Ce garage n'a pas encore ajouté de services.",
+    "noServicesYet": "Cet atelier n'a pas encore ajouté de services.",
     "min": "min",
     "chooseDate": "Choisissez une date",
     "previousMonth": "Mois précédent",
@@ -199,7 +201,7 @@
     "addVehicleFaster": "Ajoutez un véhicule pour accélérer vos prochaines réservations",
     "agreeToThe": "J'accepte les",
     "bookingTermsLink": "conditions de réservation et la politique d'annulation",
-    "closedOnDate": "Ce garage est fermé à cette date.",
+    "closedOnDate": "Cet atelier est fermé à cette date.",
     "noOpenTimes": "Aucun créneau disponible ce jour-là.",
     "alreadyOnWaitlistForDate": "Vous êtes sur la liste d'attente pour cette date.",
     "joinWaitlistForDate": "Rejoindre la liste d'attente pour cette date",
@@ -211,11 +213,11 @@
     "contactTitle": "Contact",
     "hoursNotPublished": "Horaires d'ouverture pas encore publiés.",
     "noContactDetails": "Aucune coordonnée publiée pour le moment.",
-    "payOnSiteNotice": "Vous payez au garage (espèces ou carte). Rien n'est débité en ligne.",
+    "payOnSiteNotice": "Vous payez à l'atelier (espèces ou carte). Rien n'est débité en ligne.",
     "selectTimeHint": "Choisissez un horaire, puis vérifiez et confirmez votre réservation.",
     "timeNoLongerAvailable": "Cet horaire n'est plus disponible. Veuillez en choisir un autre.",
     "reviewTitle": "Vérifiez votre réservation",
-    "reviewGarage": "Garage",
+    "reviewGarage": "Atelier",
     "reviewService": "Prestation",
     "reviewWhen": "Quand",
     "reviewPrice": "Prix",
@@ -352,7 +354,7 @@
     "noLongerReschedulable": "Ce rendez-vous ne peut plus être reporté.",
     "chooseNewDate": "Choisissez une nouvelle date",
     "availableTimes": "Créneaux disponibles",
-    "closedOnDate": "Ce garage est fermé à cette date.",
+    "closedOnDate": "Cet atelier est fermé à cette date.",
     "noOpenTimes": "Aucun créneau disponible ce jour-là.",
     "weekdays": [
       "Dim",
@@ -1308,15 +1310,18 @@
     "dashboardShort": "Accueil",
     "findGarage": "Trouver un atelier",
     "findGarageShort": "Rechercher",
-    "vehicles": "Véhicules",
+    "vehicles": "Mes véhicules",
     "account": "Compte",
-    "garageDetails": "Détails du garage",
+    "garageDetails": "Détails de l'atelier",
     "logOut": "Déconnexion",
     "themeLight": "Clair",
     "themeDark": "Sombre",
     "switchToLight": "Passer au thème clair",
     "switchToDark": "Passer au thème sombre",
-    "language": "Langue"
+    "language": "Langue",
+    "messages": "Messages",
+    "unreadMessages": "{count} non lus",
+    "vehiclesShort": "Véhicules"
   },
   "servicePrice": {
     "priceFrom": "À partir de {price}",
@@ -1350,5 +1355,25 @@
       "label": "Partenaire de confiance",
       "description": "Un historique avéré de travail fiable et de confiance client sur RDV."
     }
+  },
+  "clientMessages": {
+    "title": "Messages",
+    "subtitle": "Échangez directement avec les ateliers où vous avez réservé.",
+    "conversations": "Conversations",
+    "noVehicle": "Aucun véhicule",
+    "noMessagesPreview": "Aucun message pour l'instant",
+    "unread": "{count} non lus",
+    "emptyTitle": "Aucune conversation pour l'instant",
+    "emptyDescription": "Après une réservation, vous pourrez écrire à l'atelier ici.",
+    "findWorkshop": "Trouver un atelier",
+    "back": "Toutes les conversations",
+    "call": "Appeler",
+    "callNamed": "Appeler {name}",
+    "directions": "Itinéraire",
+    "directionsTo": "Itinéraire vers {name}",
+    "regarding": "Concernant : {service} · {date}",
+    "workshopFallback": "Atelier",
+    "serviceFallback": "Prestation",
+    "noMessagesYet": "Aucun message pour l'instant. Posez vos questions à l'atelier sur votre réservation."
   }
 }

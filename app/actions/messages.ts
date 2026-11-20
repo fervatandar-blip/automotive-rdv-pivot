@@ -1,5 +1,7 @@
 "use server";
 
+import { refresh } from "next/cache";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { MessageFormSchema } from "@/lib/definitions";
 
@@ -39,4 +41,18 @@ export async function sendMessage(
   });
 
   return { ok: !error };
+}
+
+const MarkReadSchema = z.array(z.uuid()).min(1).max(100);
+
+// Stamps the caller's read receipts (mark_messages_read, 0049) and refreshes
+// the router so the nav's unread badge drops without a reload. Called from
+// the inbox thread on open and when a reply arrives while it's on screen.
+export async function markMessagesRead(appointmentIds: string[]): Promise<void> {
+  const parsed = MarkReadSchema.safeParse(appointmentIds);
+  if (!parsed.success) return;
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("mark_messages_read", { p_appointment_ids: parsed.data });
+  if (!error) refresh();
 }

@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { sendMessage } from "@/app/actions/messages";
+import { markMessagesRead, sendMessage } from "@/app/actions/messages";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 
 type Message = {
   id: string;
+  appointment_id?: string;
   sender_id: string;
   body: string;
   created_at: string;
@@ -20,8 +21,17 @@ type ChatThreadDictionary = {
   send: string;
 };
 
+/**
+ * `appointmentId` is where new messages are filed. A client inbox
+ * conversation spans several bookings: `threadAppointmentIds` widens the
+ * live subscription to all of them, `appointmentLabels` draws a divider when
+ * the booking changes, and `markRead` keeps the read receipts current while
+ * the thread is on screen.
+ */
 export function ChatThread({
   appointmentId,
+  threadAppointmentIds,
+  appointmentLabels,
   currentUserId,
   clientId,
   clientName,
@@ -29,8 +39,13 @@ export function ChatThread({
   initialMessages,
   dictionary,
   timeLocale,
+  markRead = false,
+  initialUnread = 0,
+  variant = "card",
 }: {
   appointmentId: string;
+  threadAppointmentIds?: string[];
+  appointmentLabels?: Record<string, string>;
   currentUserId: string;
   clientId: string;
   clientName: string;
@@ -38,12 +53,23 @@ export function ChatThread({
   initialMessages: Message[];
   dictionary: ChatThreadDictionary;
   timeLocale: string;
+  markRead?: boolean;
+  initialUnread?: number;
+  variant?: "card" | "pane";
 }) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const ids = threadAppointmentIds?.length ? threadAppointmentIds : [appointmentId];
+  // Stable string so the subscription effect doesn't resubscribe on every
+  // render (a new array arrives with each server refresh).
+  const idsKey = [...ids].sort().join(",");
+
+  useEffect(() => {
+    if (markRead && initialUnread > 0) void markMessagesRead(idsKey.split(","));
+  }, [markRead, initialUnread, idsKey]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -60,18 +86,28 @@ export function ChatThread({
         supabase.realtime.setAuth(session.access_token);
       }
 
+      const threadIds = idsKey.split(",");
       channel = supabase
-        .channel(`messages:${appointmentId}`)
+        .channel(`messages:${idsKey}`)
         .on(
           "postgres_changes",
           {
             event: "INSERT",
             schema: "public",
             table: "messages",
-            filter: `appointment_id=eq.${appointmentId}`,
+            filter:
+              threadIds.length === 1
+                ? `appointment_id=eq.${threadIds[0]}`
+                : `appointment_id=in.(${threadIds.join(",")})`,
           },
           (payload) => {
-            setMessages((prev) => [...prev, payload.new as Message]);
+            const incoming = payload.new as Message;
+            setMessages((prev) =>
+              prev.some((message) => message.id === incoming.id) ? prev : [...prev, incoming]
+            );
+            if (markRead && incoming.sender_id !== currentUserId) {
+              void markMessagesRead(threadIds);
+            }
           }
         )
         .subscribe();
@@ -81,10 +117,13 @@ export function ChatThread({
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [appointmentId]);
+  }, [idsKey, markRead, currentUserId]);
 
+  // Scroll the message list itself, not the page (scrollIntoView would
+  // also scroll the window in the inbox's fixed-height pane).
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
+    const list = listRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
   }, [messages]);
 
   function labelFor(senderId: string) {
@@ -114,34 +153,63 @@ export function ChatThread({
     }
   }
 
+  const isPane = variant === "pane";
+
   return (
-    <div className="flex flex-1 flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-      <div className="flex max-h-[28rem] min-h-[16rem] flex-1 flex-col gap-3 overflow-y-auto">
+    <div
+      className={
+        isPane
+          ? "flex min-h-0 flex-1 flex-col"
+          : "flex flex-1 flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+      }
+    >
+      <div
+        ref={listRef}
+        className={
+          isPane
+            ? "flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-5 sm:px-6"
+            : "flex max-h-[28rem] min-h-[16rem] flex-1 flex-col gap-3 overflow-y-auto"
+        }
+      >
         {messages.length > 0 ? (
-          messages.map((message) => {
+          messages.map((message, index) => {
             const isSelf = message.sender_id === currentUserId;
+            const previous = messages[index - 1];
+            const divider =
+              appointmentLabels && message.appointment_id && message.appointment_id !== previous?.appointment_id
+                ? appointmentLabels[message.appointment_id]
+                : undefined;
             return (
-              <div
-                key={message.id}
-                className={`flex flex-col ${isSelf ? "items-end" : "items-start"}`}
-              >
-                <span className="text-xs text-zinc-500 dark:text-zinc-500">
-                  {labelFor(message.sender_id)} &middot;{" "}
-                  {new Date(message.created_at).toLocaleTimeString(timeLocale, {
-                    timeZone: APP_TIME_ZONE,
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </span>
-                <p
-                  className={`mt-1 max-w-[80%] rounded-xl px-4 py-2 text-sm ${
-                    isSelf
-                      ? "bg-foreground text-background"
-                      : "bg-black/[.04] text-black dark:bg-white/[.08] dark:text-zinc-50"
-                  }`}
-                >
-                  {message.body}
-                </p>
+              <div key={message.id} className="flex flex-col gap-3">
+                {divider && (
+                  <div className="flex items-center gap-3 py-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    <span aria-hidden className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+                    <span className="max-w-[70%] truncate">{divider}</span>
+                    <span aria-hidden className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+                  </div>
+                )}
+                <div className={`flex flex-col ${isSelf ? "items-end" : "items-start"}`}>
+                  <span className="text-xs text-zinc-500 dark:text-zinc-500">
+                    {labelFor(message.sender_id)} &middot;{" "}
+                    {new Date(message.created_at).toLocaleString(timeLocale, {
+                      timeZone: APP_TIME_ZONE,
+                      ...(isPane ? { day: "numeric", month: "short" } : {}),
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                  <p
+                    className={`mt-1 max-w-[80%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2 text-sm ${
+                      isSelf
+                        ? isPane
+                          ? "bg-brand-600 text-white dark:bg-brand-500"
+                          : "bg-foreground text-background"
+                        : "bg-black/[.04] text-black dark:bg-white/[.08] dark:text-zinc-50"
+                    }`}
+                  >
+                    {message.body}
+                  </p>
+                </div>
               </div>
             );
           })
@@ -150,16 +218,22 @@ export function ChatThread({
             {dictionary.noMessagesYet}
           </p>
         )}
-        <div ref={bottomRef} />
       </div>
 
       {sendFailed && (
-        <p className="text-xs text-red-600 dark:text-red-400">
+        <p role="alert" className={`text-xs text-red-600 dark:text-red-400 ${isPane ? "px-4 sm:px-6" : ""}`}>
           {dictionary.sendFailed}
         </p>
       )}
 
-      <form onSubmit={handleSubmit} className="flex gap-2">
+      <form
+        onSubmit={handleSubmit}
+        className={
+          isPane
+            ? "flex gap-2 border-t border-zinc-200/80 p-3 sm:p-4 dark:border-zinc-800/60"
+            : "flex gap-2"
+        }
+      >
         <input
           value={draft}
           onChange={(event) => {
@@ -167,13 +241,22 @@ export function ChatThread({
             setSendFailed(false);
           }}
           placeholder={dictionary.placeholder}
+          aria-label={dictionary.placeholder}
           maxLength={2000}
-          className="flex-1 rounded-md border border-black/[.08] px-3 py-2 text-sm dark:border-white/[.145] dark:bg-black"
+          className={
+            isPane
+              ? "min-w-0 flex-1 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-black placeholder:text-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+              : "flex-1 rounded-md border border-black/[.08] px-3 py-2 text-sm dark:border-white/[.145] dark:bg-black"
+          }
         />
         <button
           type="submit"
           disabled={sending || draft.trim().length === 0}
-          className="rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
+          className={
+            isPane
+              ? "shrink-0 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+              : "rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
+          }
         >
           {dictionary.send}
         </button>

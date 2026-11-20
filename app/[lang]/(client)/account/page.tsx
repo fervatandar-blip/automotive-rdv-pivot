@@ -94,15 +94,50 @@ export default async function AccountPage({ params }: { params: Promise<{ lang: 
         )}
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
-          <section aria-labelledby="details-title" className={PANEL}>
-            <PanelHeader id="details-title" title={d.profileTitle} description={d.profileDescription} />
-            <ProfileDetailsForm
-              d={d}
-              fullName={profile.full_name ?? ""}
-              email={profile.email}
-              phone={(extra?.phone as string | null | undefined) ?? null}
-            />
-          </section>
+          {/* Two balanced columns and nothing below them: identity and
+              security on the left, how RDV talks to you on the right. */}
+          <div className="flex flex-col gap-6">
+            <section aria-labelledby="details-title" className={PANEL}>
+              <PanelHeader id="details-title" title={d.profileTitle} description={d.profileDescription} />
+              <ProfileDetailsForm
+                d={d}
+                fullName={profile.full_name ?? ""}
+                email={profile.email}
+                phone={(extra?.phone as string | null | undefined) ?? null}
+              />
+            </section>
+
+            <section aria-labelledby="security-title" className={PANEL}>
+              <PanelHeader id="security-title" title={d.security} description={d.securityDescription} />
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-2">
+                  <p className={ROW_TITLE}>{d.changePassword}</p>
+                  <p className={ROW_TEXT}>{d.changePasswordDescription}</p>
+                  <Link href={`/${lang}/forgot-password`} className={`${SECONDARY_BUTTON} mt-1`}>
+                    {d.changePasswordAction}
+                  </Link>
+                </div>
+
+                {!requestedAt && (
+                  <div className={`flex flex-col gap-2 ${DIVIDER}`}>
+                    <p className={ROW_TITLE}>{d.deleteAccount}</p>
+                    <p className={ROW_TEXT}>
+                      {d.deletionExplanationPrefix} {ACCOUNT_DELETION_GRACE_PERIOD_DAYS}
+                      {d.deletionExplanationSuffix}
+                    </p>
+                    <form action={requestAccountDeletion} className="mt-1">
+                      <button
+                        type="submit"
+                        className="inline-flex h-9 items-center rounded-full border border-red-200 px-4 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+                      >
+                        {d.deleteMyAccount}
+                      </button>
+                    </form>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
 
           <div className="flex flex-col gap-6">
             <section aria-labelledby="notifications-title" className={PANEL}>
@@ -155,36 +190,6 @@ export default async function AccountPage({ params }: { params: Promise<{ lang: 
             )}
           </div>
 
-          <section aria-labelledby="security-title" className={`${PANEL} lg:col-span-2`}>
-            <PanelHeader id="security-title" title={d.security} description={d.securityDescription} />
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
-              <div className="flex flex-col gap-2">
-                <p className={ROW_TITLE}>{d.changePassword}</p>
-                <p className={ROW_TEXT}>{d.changePasswordDescription}</p>
-                <Link href={`/${lang}/forgot-password`} className={`${SECONDARY_BUTTON} mt-1`}>
-                  {d.changePasswordAction}
-                </Link>
-              </div>
-
-              {!requestedAt && (
-                <div className="flex flex-col gap-2 border-t border-zinc-200/80 pt-6 md:border-l md:border-t-0 md:pl-8 md:pt-0 dark:border-zinc-800/60">
-                  <p className={ROW_TITLE}>{d.deleteAccount}</p>
-                  <p className={ROW_TEXT}>
-                    {d.deletionExplanationPrefix} {ACCOUNT_DELETION_GRACE_PERIOD_DAYS}
-                    {d.deletionExplanationSuffix}
-                  </p>
-                  <form action={requestAccountDeletion} className="mt-1">
-                    <button
-                      type="submit"
-                      className="inline-flex h-9 items-center rounded-full border border-red-200 px-4 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
-                    >
-                      {d.deleteMyAccount}
-                    </button>
-                  </form>
-                </div>
-              )}
-            </div>
-          </section>
         </div>
       </div>
     </div>

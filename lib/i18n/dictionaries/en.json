@@ -21,18 +21,18 @@
     }
   },
   "home": {
-    "heroTitle": "Find a trusted garage in Luxembourg.",
-    "heroSubtitle": "RDV connects car owners with verified garages — search, compare, and book online in a few taps.",
-    "findGarageCta": "Find a garage",
+    "heroTitle": "Find a trusted workshop in Luxembourg.",
+    "heroSubtitle": "RDV connects car owners with verified service centers — search, compare, and book online in a few taps.",
+    "findGarageCta": "Find a Workshop",
     "listGarageCta": "List your garage",
     "features": {
       "search": {
         "title": "Search & compare",
-        "description": "Filter garages by brand, specialty, EV capability, and price, and see them on a map before you choose."
+        "description": "Filter workshops by EV capability, mobile or emergency service, and rating, and see them on a map before you choose."
       },
       "verified": {
-        "title": "Verified garages",
-        "description": "Every garage completes a document verification process, and real client ratings & reviews are right on their profile."
+        "title": "Verified workshops",
+        "description": "Every workshop completes a document verification process, and real client ratings & reviews are right on their profile."
       },
       "instant": {
         "title": "Book instantly",
@@ -41,7 +41,7 @@
     }
   },
   "auth": {
-    "tagline": "Trusted garages, one booking away.",
+    "tagline": "Trusted workshops, one booking away.",
     "emailLabel": "Email",
     "passwordLabel": "Password",
     "confirmPasswordLabel": "Confirm password",
@@ -92,8 +92,8 @@
     "noDetailsAdded": "No details added",
     "upcoming": "Upcoming",
     "noUpcomingTitle": "No upcoming appointments",
-    "noUpcomingDescription": "Find a garage and book your next service in a couple of taps.",
-    "findAGarage": "Find a garage",
+    "noUpcomingDescription": "Find a workshop and book your next service in a couple of taps.",
+    "findAGarage": "Find a Workshop",
     "waitlist": "Waitlist",
     "waitlistWith": "with",
     "waitlistOn": "on",
@@ -104,7 +104,7 @@
     "optionalComment": "Optional comment",
     "submit": "Submit",
     "serviceFallback": "Service",
-    "garageFallback": "Garage",
+    "garageFallback": "Workshop",
     "withGarage": "with",
     "paymentProcessing": "Payment processing",
     "cancelled": "Cancelled",
@@ -122,23 +122,25 @@
     "cancelConfirmYes": "Yes, cancel",
     "cancelKeep": "Keep",
     "ratingOptions": {
-      "5": "5 – Excellent",
-      "4": "4 – Good",
-      "3": "3 – Average",
+      "1": "1 – Very poor",
       "2": "2 – Poor",
-      "1": "1 – Very poor"
+      "3": "3 – Average",
+      "4": "4 – Good",
+      "5": "5 – Excellent"
     },
     "cancelling": "Cancelling…",
     "cancelFailed": "The booking could not be cancelled. Check your connection and try again.",
     "cancelNotAllowed": "This booking can no longer be cancelled here. It may already have been cancelled or completed; refresh the page to see its status.",
     "directions": "Directions",
     "directionsTo": "Directions to {name}",
-    "showOnMap": "Show {place} on a map"
+    "showOnMap": "Show {place} on a map",
+    "pastServiceHistory": "Past service history",
+    "messageWorkshop": "Message {name}"
   },
   "garageDiscovery": {
-    "title": "Find a Trusted Garage",
+    "title": "Find a Trusted Workshop",
     "searchByName": "Search by name",
-    "searchPlaceholder": "Search by garage name",
+    "searchPlaceholder": "Search by workshop name",
     "cityLabel": "City",
     "anyCity": "Any city",
     "nearMe": "Near me",
@@ -160,12 +162,12 @@
     "noReviewsYet": "No reviews yet",
     "service": "service",
     "services": "services",
-    "noGaragesMatch": "No garages match those filters.",
+    "noGaragesMatch": "No workshops match those filters.",
     "bookingFor": "Booking for {vehicle}",
     "clearBookingVehicle": "Book without a vehicle"
   },
   "garageDetail": {
-    "backToGarages": "Back to garages",
+    "backToGarages": "Back to workshops",
     "stepVehicle": "Vehicle",
     "stepService": "Service",
     "stepDateTime": "Date & Time",
@@ -188,7 +190,7 @@
     },
     "waitlistedNotice": "You're on the waitlist. We'll email you if a slot opens up.",
     "chooseService": "Choose a service",
-    "noServicesYet": "This garage hasn't added any services yet.",
+    "noServicesYet": "This workshop hasn't added any services yet.",
     "min": "min",
     "chooseDate": "Choose a date",
     "previousMonth": "Previous month",
@@ -199,7 +201,7 @@
     "addVehicleFaster": "Add a vehicle for faster booking next time",
     "agreeToThe": "I agree to the",
     "bookingTermsLink": "booking terms and cancellation policy",
-    "closedOnDate": "This garage is closed on this date.",
+    "closedOnDate": "This workshop is closed on this date.",
     "noOpenTimes": "No open times on this day.",
     "alreadyOnWaitlistForDate": "You're on the waitlist for this date.",
     "joinWaitlistForDate": "Join waitlist for this date",
@@ -211,11 +213,11 @@
     "contactTitle": "Contact",
     "hoursNotPublished": "Opening hours not published yet.",
     "noContactDetails": "No contact details published yet.",
-    "payOnSiteNotice": "You pay at the garage (cash or card). Nothing is charged online.",
+    "payOnSiteNotice": "You pay at the workshop (cash or card). Nothing is charged online.",
     "selectTimeHint": "Pick a time, then review and confirm your booking.",
     "timeNoLongerAvailable": "That time is no longer available. Please pick another one.",
     "reviewTitle": "Review your booking",
-    "reviewGarage": "Garage",
+    "reviewGarage": "Workshop",
     "reviewService": "Service",
     "reviewWhen": "When",
     "reviewPrice": "Price",
@@ -352,7 +354,7 @@
     "noLongerReschedulable": "This appointment can no longer be rescheduled.",
     "chooseNewDate": "Choose a new date",
     "availableTimes": "Available times",
-    "closedOnDate": "This garage is closed on this date.",
+    "closedOnDate": "This workshop is closed on this date.",
     "noOpenTimes": "No open times on this day.",
     "weekdays": [
       "Sun",
@@ -1308,15 +1310,18 @@
     "dashboardShort": "Home",
     "findGarage": "Find a Workshop",
     "findGarageShort": "Search",
-    "vehicles": "Vehicles",
+    "vehicles": "My Vehicles",
     "account": "Account",
-    "garageDetails": "Garage details",
+    "garageDetails": "Workshop details",
     "logOut": "Log out",
     "themeLight": "Light",
     "themeDark": "Dark",
     "switchToLight": "Switch to light theme",
     "switchToDark": "Switch to dark theme",
-    "language": "Language"
+    "language": "Language",
+    "messages": "Messages",
+    "unreadMessages": "{count} unread",
+    "vehiclesShort": "Vehicles"
   },
   "servicePrice": {
     "priceFrom": "From {price}",
@@ -1350,5 +1355,25 @@
       "label": "Trusted Partner",
       "description": "A proven record of reliable work and customer trust on RDV."
     }
+  },
+  "clientMessages": {
+    "title": "Messages",
+    "subtitle": "Chat directly with the service centers you've booked.",
+    "conversations": "Conversations",
+    "noVehicle": "No vehicle",
+    "noMessagesPreview": "No messages yet",
+    "unread": "{count} unread",
+    "emptyTitle": "No conversations yet",
+    "emptyDescription": "Once you book a service, you can message the workshop here.",
+    "findWorkshop": "Find a Workshop",
+    "back": "All conversations",
+    "call": "Call",
+    "callNamed": "Call {name}",
+    "directions": "Directions",
+    "directionsTo": "Directions to {name}",
+    "regarding": "About: {service} · {date}",
+    "workshopFallback": "Workshop",
+    "serviceFallback": "Service",
+    "noMessagesYet": "No messages yet. Ask the workshop anything about your booking."
   }
 }
