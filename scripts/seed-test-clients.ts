@@ -1,17 +1,37 @@
 /**
- * One-off local script: gives a test garage a test client with two
- * vehicles and a few past/upcoming appointments, so the client directory's
- * plate/VIN search and vehicle history have something to show.
+ * Seeds the demo client account against a seeded test garage, so every part
+ * of the client area (and the garage's client directory) has something to
+ * show:
+ *
+ *   - a filled-in profile (name, phone, notification preferences, locale)
+ *   - two vehicles, one with a VIN (plate/VIN search in the client directory)
+ *   - a timeline relative to TODAY, so it never goes stale:
+ *       ~8 weeks ago  completed  Oil change        + a 5-star review
+ *       ~3 weeks ago  completed  Brake inspection  (left unreviewed, so the
+ *                                                   review form shows)
+ *       ~10 days ago  cancelled  Full diagnostic
+ *       in ~3 days    confirmed  Tire rotation     + a client/garage chat
+ *       in ~8 days    confirmed  Full diagnostic
+ *   - a waitlist entry in ~5 days
  *
  * Usage:
- *   node scripts/seed-test-clients.ts <garage-owner-email> [client-email]
+ *   node scripts/seed-test-clients.ts [garage-owner-email] [client-email] [--reset-password]
  *
- * The client defaults to demo-client@rdv.invalid (.invalid can never
- * receive mail). Re-running reuses the client and vehicles and only adds
- * appointments that don't exist yet.
+ * Defaults: garage demo-garage@rdv.invalid (run seed-test-garage.ts on it
+ * first), client demo-client@rdv.invalid. .invalid addresses can never
+ * receive mail, so no notification ever reaches a real inbox.
  *
- * WARNING: service-role key, writes confirmed/completed appointments with
- * no payment behind them. Test data only; delete before launch.
+ * Re-running RESETS the client's appointments (with their reviews and
+ * messages) and waitlist entries at that garage, then rebuilds the
+ * timeline. That's why the client must be an @rdv.invalid account: the
+ * script refuses to wipe a real person's bookings.
+ *
+ * The password is random and printed only when the account is created or
+ * with --reset-password. There is only one Supabase project (production),
+ * so a fixed, guessable password would be a live account anyone could use.
+ *
+ * Service-role key: bypasses RLS and writes completed/confirmed
+ * appointments with no payment behind them. Demo data only.
  */
 
 import path from "node:path";
@@ -20,8 +40,8 @@ import { createClient } from "@supabase/supabase-js";
 
 process.loadEnvFile(path.resolve(process.cwd(), ".env.local"));
 
-// Same reasoning as scripts/seed-test-garage.ts: lib/supabase/admin.ts
-// starts with `import "server-only"`, which throws outside Next's bundler.
+// lib/supabase/admin.ts starts with `import "server-only"`, which throws
+// outside Next's bundler, so the same service-role client is built here.
 function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -38,63 +58,226 @@ function fail(message: string): never {
   process.exit(1);
 }
 
+const DEMO_DOMAIN = "@rdv.invalid";
+const DEFAULT_GARAGE_OWNER = `demo-garage${DEMO_DOMAIN}`;
+const DEFAULT_CLIENT = `demo-client${DEMO_DOMAIN}`;
+
+const PROFILE = {
+  full_name: "Demo Client",
+  phone: "+352 621 000 000",
+  preferred_locale: "fr",
+  notify_repair_updates: true,
+  notify_waitlist: true,
+};
+
 const VEHICLES = [
   { brand: "Volkswagen", model: "Golf", year: 2019, license_plate: "LU-1234", vin: "WVWZZZ1KZAW123456" },
   { brand: "BMW", model: "320d", year: 2021, license_plate: "AB 5678", vin: null },
 ];
 
-// Wall-clock times in Luxembourg with their explicit UTC offset (CEST +02
-// until 25 Oct 2026, CET +01 after), so the result doesn't depend on the
-// machine running the script. All inside the seeded Mon-Fri 08-18 hours.
-const APPOINTMENTS = [
-  { vehicle: 0, service: "Oil change", start: "2026-09-15T09:00:00+02:00", status: "completed" },
-  { vehicle: 0, service: "Brake inspection", start: "2026-10-20T14:00:00+02:00", status: "completed" },
-  { vehicle: 1, service: "Full diagnostic", start: "2026-10-27T10:00:00+01:00", status: "cancelled" },
-  { vehicle: 1, service: "Tire rotation", start: "2026-11-10T11:00:00+01:00", status: "confirmed" },
-] as const;
+type Status = "completed" | "cancelled" | "confirmed";
+
+// dayOffset is from today (Luxembourg date); the nearest open day in that
+// direction is used. preferredTime is the first slot tried on that day.
+const TIMELINE: {
+  key: string;
+  vehicle: number;
+  service: string;
+  dayOffset: number;
+  preferredTime: string;
+  status: Status;
+}[] = [
+  { key: "oil", vehicle: 0, service: "Oil change", dayOffset: -56, preferredTime: "09:00", status: "completed" },
+  { key: "brakes", vehicle: 0, service: "Brake inspection", dayOffset: -21, preferredTime: "14:00", status: "completed" },
+  { key: "diag-cancelled", vehicle: 1, service: "Full diagnostic", dayOffset: -10, preferredTime: "10:00", status: "cancelled" },
+  { key: "tires", vehicle: 1, service: "Tire rotation", dayOffset: 3, preferredTime: "11:00", status: "confirmed" },
+  { key: "diag", vehicle: 0, service: "Full diagnostic", dayOffset: 8, preferredTime: "09:00", status: "confirmed" },
+];
+
+const REVIEW = {
+  on: "oil",
+  rating: 5,
+  comment: "Quick and friendly service, the car was ready on time. Recommended.",
+};
+
+const MESSAGES: { on: string; from: "client" | "garage"; body: string }[] = [
+  { on: "tires", from: "client", body: "Bonjour, pourriez-vous aussi vérifier le capteur de pression des pneus ? Le voyant s'allume par intermittence." },
+  { on: "tires", from: "garage", body: "Bonjour, oui bien sûr, nous le contrôlerons pendant le rendez-vous." },
+];
+
+const WAITLIST = { service: "Oil change", dayOffset: 5 };
+
+// --- Europe/Luxembourg wall-clock helpers --------------------------------
+// Same rules as lib/timezone.ts (inlined: a plain-node script can't import
+// app modules through the "@/" alias, and importing a ".ts" path directly
+// would break `tsc` without allowImportingTsExtensions).
+
+const ZONE = "Europe/Luxembourg";
+
+function zoneOffsetMs(instant: Date): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: ZONE,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
+      .formatToParts(instant)
+      .map((part) => [part.type, part.value])
+  );
+  const asUtc = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return asUtc - Math.floor(instant.getTime() / 1000) * 1000;
+}
+
+function zonedDateTimeToUtc(dateKey: string, time: string): Date {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const [hours, minutes] = time.split(":").map(Number);
+  const wallClockAsUtc = Date.UTC(year, month - 1, day, hours, minutes);
+  const firstOffset = zoneOffsetMs(new Date(wallClockAsUtc));
+  const firstGuess = wallClockAsUtc - firstOffset;
+  const secondOffset = zoneOffsetMs(new Date(firstGuess));
+  return new Date(secondOffset === firstOffset ? firstGuess : wallClockAsUtc - secondOffset);
+}
+
+function todayKey(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: ZONE }).format(new Date());
+}
+
+function addDays(dateKey: string, days: number): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+function dayOfWeek(dateKey: string): number {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+const toMinutes = (time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+const toTime = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+
+// -------------------------------------------------------------------------
 
 async function main() {
-  const [ownerEmail, clientEmailArg] = process.argv.slice(2);
-  if (!ownerEmail) fail("Usage: node scripts/seed-test-clients.ts <garage-owner-email> [client-email]");
-  const clientEmail = (clientEmailArg ?? "demo-client@rdv.invalid").toLowerCase();
+  const args = process.argv.slice(2);
+  const resetPassword = args.includes("--reset-password");
+  const positional = args.filter((arg) => !arg.startsWith("--"));
+  const ownerEmail = (positional[0] ?? DEFAULT_GARAGE_OWNER).toLowerCase();
+  const clientEmail = (positional[1] ?? DEFAULT_CLIENT).toLowerCase();
+
+  if (!clientEmail.endsWith(DEMO_DOMAIN)) {
+    fail(`Refusing to seed ${clientEmail}: this script deletes the client's bookings, so it only runs on ${DEMO_DOMAIN} accounts.`);
+  }
 
   const supabase = createAdminClient();
 
+  // --- Garage, services, opening hours ---------------------------------
   const { data: owner } = await supabase.from("profiles").select("id").eq("email", ownerEmail).maybeSingle();
   if (!owner) fail(`No profile for ${ownerEmail}.`);
-  const { data: garage } = await supabase.from("garages").select("id, name").eq("owner_id", owner.id).maybeSingle();
+  const { data: garage } = await supabase
+    .from("garages")
+    .select("id, name, status")
+    .eq("owner_id", owner.id)
+    .is("deleted_at", null)
+    .maybeSingle();
   if (!garage) fail(`${ownerEmail} owns no garage.`);
+  if (garage.status !== "approved") {
+    console.warn(`Warning: "${garage.name}" is ${garage.status}, so clients can't find it in search.`);
+  }
 
   const { data: services } = await supabase
     .from("services")
     .select("id, name, duration_minutes")
     .eq("garage_id", garage.id);
   const serviceByName = new Map((services ?? []).map((service) => [service.name, service]));
-  if (serviceByName.size === 0) fail(`Garage "${garage.name}" has no services -- run seed-test-garage.ts first.`);
+  const needed = new Set([...TIMELINE.map((item) => item.service), WAITLIST.service]);
+  const missing = [...needed].filter((name) => !serviceByName.has(name));
+  if (missing.length > 0) {
+    fail(`"${garage.name}" is missing services: ${missing.join(", ")}. Run: node scripts/seed-test-garage.ts ${ownerEmail}`);
+  }
 
-  // Client account (created once; password printed only on creation).
+  const { data: availability } = await supabase
+    .from("availability")
+    .select("day_of_week, start_time, end_time")
+    .eq("garage_id", garage.id);
+  const windowsByDay = new Map<number, { start: number; end: number }[]>();
+  for (const row of availability ?? []) {
+    const windows = windowsByDay.get(row.day_of_week) ?? [];
+    windows.push({ start: toMinutes(row.start_time), end: toMinutes(row.end_time) });
+    windowsByDay.set(row.day_of_week, windows.sort((a, b) => a.start - b.start));
+  }
+  if (windowsByDay.size === 0) {
+    fail(`"${garage.name}" has no opening hours. Run: node scripts/seed-test-garage.ts ${ownerEmail}`);
+  }
+
+  /** The open day nearest to today + offset, moving away from today. */
+  function openDay(offset: number): string {
+    const step = offset < 0 ? -1 : 1;
+    let key = addDays(todayKey(), offset);
+    for (let i = 0; i < 14; i++, key = addDays(key, step)) {
+      if (windowsByDay.has(dayOfWeek(key))) return key;
+    }
+    fail("Could not find an open day within two weeks of the target date.");
+  }
+
+  /** Start times on `dateKey` where a job of `duration` fits, preferred one first. */
+  function candidateTimes(dateKey: string, duration: number, preferred: string): string[] {
+    const times: number[] = [];
+    for (const window of windowsByDay.get(dayOfWeek(dateKey)) ?? []) {
+      for (let start = window.start; start + duration <= window.end; start += 30) times.push(start);
+    }
+    const preferredMinutes = toMinutes(preferred);
+    return times
+      .sort((a, b) => Math.abs(a - preferredMinutes) - Math.abs(b - preferredMinutes))
+      .map(toTime);
+  }
+
+  // --- Client account ---------------------------------------------------
   let clientId: string;
   let password: string | null = null;
-  const { data: existingClient } = await supabase.from("profiles").select("id, role").eq("email", clientEmail).maybeSingle();
+  const { data: existingClient } = await supabase
+    .from("profiles")
+    .select("id, role")
+    .eq("email", clientEmail)
+    .maybeSingle();
+
   if (existingClient) {
     if (existingClient.role !== "client") fail(`${clientEmail} exists with role ${existingClient.role}, not client.`);
     clientId = existingClient.id;
+    if (resetPassword) {
+      password = `Rdv-${randomBytes(18).toString("base64url")}1a`;
+      const { error } = await supabase.auth.admin.updateUserById(clientId, { password });
+      if (error) fail(`Could not reset the password: ${error.message}`);
+    }
   } else {
     password = `Rdv-${randomBytes(18).toString("base64url")}1a`;
     const { data: created, error } = await supabase.auth.admin.createUser({
       email: clientEmail,
       password,
       email_confirm: true,
-      user_metadata: { full_name: "Demo Client" },
+      user_metadata: { full_name: PROFILE.full_name },
     });
     if (error || !created.user) fail(`Could not create ${clientEmail}: ${error?.message}`);
     clientId = created.user.id;
   }
 
-  // Vehicles, reused by plate across re-runs.
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({ ...PROFILE, terms_accepted_at: new Date().toISOString() })
+    .eq("id", clientId);
+  if (profileError) fail(`Could not update the client profile: ${profileError.message}`);
+
+  // --- Vehicles (reused by plate) ---------------------------------------
   const vehicleIds: string[] = [];
   for (const vehicle of VEHICLES) {
-    const { data: brand } = await supabase.from("brands").select("id").eq("name", vehicle.brand).maybeSingle();
     const { data: existing } = await supabase
       .from("vehicles")
       .select("id")
@@ -105,6 +288,7 @@ async function main() {
       vehicleIds.push(existing.id);
       continue;
     }
+    const { data: brand } = await supabase.from("brands").select("id").eq("name", vehicle.brand).maybeSingle();
     const { data: inserted, error } = await supabase
       .from("vehicles")
       .insert({
@@ -121,41 +305,110 @@ async function main() {
     vehicleIds.push(inserted.id);
   }
 
-  let created = 0;
-  for (const appointment of APPOINTMENTS) {
-    const service = serviceByName.get(appointment.service);
-    if (!service) fail(`Service "${appointment.service}" not found at ${garage.name}.`);
-    const start = new Date(appointment.start);
-    const end = new Date(start.getTime() + service.duration_minutes * 60_000);
+  // --- Reset this client's history at this garage -----------------------
+  // Reviews, messages, invoices and payments cascade from appointments.
+  const { error: deleteError } = await supabase
+    .from("appointments")
+    .delete()
+    .eq("client_id", clientId)
+    .eq("garage_id", garage.id);
+  if (deleteError) fail(`Could not clear old appointments: ${deleteError.message}`);
+  const { error: waitlistDeleteError } = await supabase
+    .from("waitlist")
+    .delete()
+    .eq("client_id", clientId)
+    .eq("garage_id", garage.id);
+  if (waitlistDeleteError) fail(`Could not clear old waitlist entries: ${waitlistDeleteError.message}`);
 
-    const { data: existing } = await supabase
-      .from("appointments")
-      .select("id")
-      .eq("garage_id", garage.id)
-      .eq("client_id", clientId)
-      .eq("start_time", start.toISOString())
-      .maybeSingle();
-    if (existing) continue;
+  // --- Timeline ---------------------------------------------------------
+  const appointmentIds = new Map<string, string>();
+  const summary: string[] = [];
 
-    const { error } = await supabase.from("appointments").insert({
-      client_id: clientId,
-      garage_id: garage.id,
-      service_id: service.id,
-      vehicle_id: vehicleIds[appointment.vehicle],
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      status: appointment.status,
-      terms_accepted_at: new Date().toISOString(),
-    });
-    if (error) fail(`Could not insert ${appointment.service} on ${appointment.start}: ${error.message}`);
-    created++;
+  for (const item of TIMELINE) {
+    const service = serviceByName.get(item.service)!;
+    const dateKey = openDay(item.dayOffset);
+    let insertedId: string | null = null;
+    let lastError = "";
+
+    // The mechanic auto-assign trigger (0037) rejects a slot where every
+    // mechanic is busy (23P01), e.g. clashing with real test bookings, so
+    // walk outward from the preferred time until one fits.
+    for (const time of candidateTimes(dateKey, service.duration_minutes, item.preferredTime)) {
+      const start = zonedDateTimeToUtc(dateKey, time);
+      const end = new Date(start.getTime() + service.duration_minutes * 60_000);
+      const { data, error } = await supabase
+        .from("appointments")
+        .insert({
+          client_id: clientId,
+          garage_id: garage.id,
+          service_id: service.id,
+          vehicle_id: vehicleIds[item.vehicle],
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          status: item.status,
+          payment_mode: "on_site",
+          terms_accepted_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (data) {
+        insertedId = data.id;
+        summary.push(`  ${dateKey} ${time}  ${item.status.padEnd(9)}  ${item.service}`);
+        break;
+      }
+      if (error?.code !== "23P01") fail(`Could not insert ${item.service} on ${dateKey}: ${error?.message}`);
+      lastError = error.message;
+    }
+
+    if (!insertedId) fail(`No free slot for ${item.service} on ${dateKey} (${lastError}).`);
+    appointmentIds.set(item.key, insertedId);
   }
 
-  console.log("=== Test client seeded ===");
-  console.log(`Garage:       ${garage.name}`);
-  console.log(`Client:       ${clientEmail}${password ? `  (password: ${password})` : "  (existing account)"}`);
-  console.log(`Vehicles:     ${VEHICLES.map((vehicle) => `${vehicle.model} ${vehicle.license_plate}${vehicle.vin ? ` / VIN ${vehicle.vin}` : ""}`).join(", ")}`);
-  console.log(`Appointments: ${created} added (${APPOINTMENTS.length} total in the seed)`);
+  const reviewedAppointment = appointmentIds.get(REVIEW.on)!;
+  const { error: reviewError } = await supabase.from("reviews").insert({
+    appointment_id: reviewedAppointment,
+    garage_id: garage.id,
+    client_id: clientId,
+    rating: REVIEW.rating,
+    comment: REVIEW.comment,
+  });
+  if (reviewError) fail(`Could not insert the review: ${reviewError.message}`);
+
+  // Spaced a few minutes apart so the thread reads in order.
+  const threadStart = Date.now() - MESSAGES.length * 5 * 60_000;
+  const { error: messagesError } = await supabase.from("messages").insert(
+    MESSAGES.map((message, index) => ({
+      appointment_id: appointmentIds.get(message.on)!,
+      sender_id: message.from === "client" ? clientId : owner.id,
+      body: message.body,
+      created_at: new Date(threadStart + index * 5 * 60_000).toISOString(),
+    }))
+  );
+  if (messagesError) fail(`Could not insert messages: ${messagesError.message}`);
+
+  const waitlistDate = openDay(WAITLIST.dayOffset);
+  const { error: waitlistError } = await supabase.from("waitlist").insert({
+    garage_id: garage.id,
+    client_id: clientId,
+    service_id: serviceByName.get(WAITLIST.service)!.id,
+    date: waitlistDate,
+  });
+  if (waitlistError) fail(`Could not insert the waitlist entry: ${waitlistError.message}`);
+
+  console.log("=== Demo client seeded ===");
+  console.log(`Garage:    ${garage.name} (${ownerEmail})`);
+  console.log(`Client:    ${clientEmail}`);
+  console.log(
+    password
+      ? `Password:  ${password}`
+      : "Password:  unchanged (add --reset-password to set and print a new one)"
+  );
+  console.log(`Vehicles:  ${VEHICLES.map((vehicle) => `${vehicle.model} ${vehicle.license_plate}`).join(", ")}`);
+  console.log("Appointments (Luxembourg time):");
+  console.log(summary.join("\n"));
+  console.log(`Review:    ${REVIEW.rating}★ on the ${TIMELINE.find((item) => item.key === REVIEW.on)!.service}`);
+  console.log(`Messages:  ${MESSAGES.length} on the upcoming Tire rotation`);
+  console.log(`Waitlist:  ${WAITLIST.service} on ${waitlistDate}`);
 }
 
 main().catch((error) => {
