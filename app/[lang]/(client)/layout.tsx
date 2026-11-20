@@ -7,7 +7,7 @@ import {
 } from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { ClientSidebar, ClientTabBar } from "@/components/client-nav";
+import { ClientHeaderControls, ClientSidebar, ClientTabBar } from "@/components/client-nav";
 import { ClientPageTitle } from "@/components/client-page-title";
 import { GarageSidebar, GarageTopBar } from "@/components/garage-nav";
 import { AnimatedLogo } from "@/components/animated-logo";
@@ -120,14 +120,17 @@ export default async function ClientLayout({
             </Link>
             <ClientPageTitle labels={clientNav} />
           </div>
-          <Link
-            href={`/${lang}/account`}
-            aria-label={clientNav.account}
-            title={clientNav.account}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white transition-opacity hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
-          >
-            {initials}
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <ClientHeaderControls lang={lang} labels={clientNav} />
+            <Link
+              href={`/${lang}/account`}
+              aria-label={clientNav.account}
+              title={clientNav.account}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white transition-opacity hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
+            >
+              {initials}
+            </Link>
+          </div>
         </header>
         <main className="flex flex-1 flex-col pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
           {children}

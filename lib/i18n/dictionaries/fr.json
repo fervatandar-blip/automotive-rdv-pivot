@@ -130,7 +130,10 @@
     },
     "cancelling": "Annulation…",
     "cancelFailed": "La réservation n'a pas pu être annulée. Vérifiez votre connexion et réessayez.",
-    "cancelNotAllowed": "Cette réservation ne peut plus être annulée ici. Elle a peut-être déjà été annulée ou terminée ; actualisez la page pour voir son statut."
+    "cancelNotAllowed": "Cette réservation ne peut plus être annulée ici. Elle a peut-être déjà été annulée ou terminée ; actualisez la page pour voir son statut.",
+    "directions": "Itinéraire",
+    "directionsTo": "Itinéraire vers {name}",
+    "showOnMap": "Voir {place} sur une carte"
   },
   "garageDiscovery": {
     "title": "Trouvez un garage de confiance",
@@ -1273,12 +1276,17 @@
     "mainNav": "Navigation principale",
     "dashboard": "Mon tableau de bord",
     "dashboardShort": "Accueil",
-    "findGarage": "Trouver un garage",
+    "findGarage": "Trouver un atelier",
     "findGarageShort": "Rechercher",
     "vehicles": "Véhicules",
     "account": "Compte",
     "garageDetails": "Détails du garage",
-    "logOut": "Déconnexion"
+    "logOut": "Déconnexion",
+    "themeLight": "Clair",
+    "themeDark": "Sombre",
+    "switchToLight": "Passer au thème clair",
+    "switchToDark": "Passer au thème sombre",
+    "language": "Langue"
   },
   "servicePrice": {
     "priceFrom": "À partir de {price}",

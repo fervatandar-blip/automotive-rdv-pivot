@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, CalendarPlus, Car, Check } from "lucide-react";
+import {
+  ArrowRight,
+  CalendarClock,
+  CalendarPlus,
+  Car,
+  Check,
+  MapPin,
+  MessageSquare,
+  Navigation,
+} from "lucide-react";
 import { getAuthedProfile } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
@@ -15,6 +24,7 @@ import { LicensePlate } from "@/components/license-plate";
 import { CancelBookingButton } from "./cancel-booking-button";
 import { REPAIR_STAGES } from "@/lib/definitions";
 import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
+import { directionsUrl, mapSearchUrl } from "@/lib/maps";
 
 type Appointment = {
   id: string;
@@ -22,7 +32,13 @@ type Appointment = {
   status: string;
   repair_stage: string | null;
   services: { name: string } | null;
-  garages: { name: string; city: string | null } | null;
+  garages: {
+    name: string;
+    city: string | null;
+    address: string | null;
+    latitude: number | null;
+    longitude: number | null;
+  } | null;
   vehicles: {
     model: string | null;
     year: number | null;
@@ -133,8 +149,12 @@ const CARD =
   "rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800/60 dark:bg-transparent";
 const SECTION_LABEL =
   "text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400";
-const SECONDARY_BUTTON =
-  "rounded-full border border-zinc-200 px-3.5 py-1.5 text-sm font-medium text-black transition-colors hover:bg-zinc-100 dark:border-zinc-700/80 dark:text-zinc-50 dark:hover:bg-zinc-800/60";
+// Card actions share one height and shape: subtle secondary pills, with
+// Cancel as a ghost pill (transparent border keeps it the same height).
+const PILL_BASE =
+  "inline-flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40";
+const SECONDARY_BUTTON = `${PILL_BASE} border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-100 hover:text-black dark:border-zinc-700/80 dark:bg-transparent dark:text-zinc-100 dark:hover:bg-zinc-800/60`;
+const PILL_ICON = "h-3.5 w-3.5 shrink-0 text-zinc-500 dark:text-zinc-400";
 
 function StatusPill({ status, d }: { status: string; d: Dictionary["clientDashboard"] }) {
   const styles: Record<string, { label: string; className: string }> = {
@@ -230,6 +250,13 @@ function AppointmentCard({
     ? [vehicle.brands?.name, vehicle.model, vehicle.year].filter(Boolean).join(" ")
     : "";
   const plate = vehicle?.license_plate?.trim();
+  const garage = appointment.garages;
+  const garageName = garage?.name ?? d.garageFallback;
+  // City keeps the line short; the link itself targets the exact pin/address.
+  const place = garage?.city?.trim() || garage?.address?.trim() || "";
+  const placeUrl = garage ? mapSearchUrl(garage) : null;
+  // Directions only matter for a visit that's still ahead.
+  const routeUrl = cancellable && isOpen && garage ? directionsUrl(garage) : null;
 
   return (
     <article className={`${CARD} flex flex-col gap-4 p-4 sm:p-5`}>
@@ -246,8 +273,26 @@ function AppointmentCard({
             {appointment.services?.name ?? d.serviceFallback}
           </h3>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {appointment.garages?.name ?? d.garageFallback}
-            {appointment.garages?.city ? ` · ${appointment.garages.city}` : ""}
+            {garageName}
+            {place && (
+              <>
+                {" · "}
+                {placeUrl ? (
+                  <a
+                    href={placeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={d.showOnMap.replace("{place}", place)}
+                    className="inline-flex items-center gap-1 underline decoration-zinc-300 underline-offset-2 transition-colors hover:text-black hover:decoration-current dark:decoration-zinc-600 dark:hover:text-zinc-100"
+                  >
+                    <MapPin aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+                    {place}
+                  </a>
+                ) : (
+                  place
+                )}
+              </>
+            )}
           </p>
         </div>
         <StatusPill status={appointment.status} d={d} />
@@ -266,12 +311,26 @@ function AppointmentCard({
 
       <div className="flex flex-wrap items-center gap-2">
         <Link href={`/${lang}/appointments/${appointment.id}/messages`} className={SECONDARY_BUTTON}>
+          <MessageSquare aria-hidden className={PILL_ICON} strokeWidth={1.75} />
           {d.message}
         </Link>
         {cancellable && isOpen && (
           <Link href={`/${lang}/appointments/${appointment.id}/reschedule`} className={SECONDARY_BUTTON}>
+            <CalendarClock aria-hidden className={PILL_ICON} strokeWidth={1.75} />
             {d.reschedule}
           </Link>
+        )}
+        {routeUrl && (
+          <a
+            href={routeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={d.directionsTo.replace("{name}", garageName)}
+            className={SECONDARY_BUTTON}
+          >
+            <Navigation aria-hidden className={PILL_ICON} strokeWidth={1.75} />
+            {d.directions}
+          </a>
         )}
         {invoiceUrl && (
           <a href={invoiceUrl} className={SECONDARY_BUTTON}>
@@ -365,7 +424,7 @@ export default async function DashboardPage({
   const { data: appointments } = await supabase
     .from("appointments")
     .select(
-      "id, start_time, status, repair_stage, services(name), garages!appointments_garage_id_fkey(name, city), vehicles(model, year, license_plate, brands(name))"
+      "id, start_time, status, repair_stage, services(name), garages!appointments_garage_id_fkey(name, city, address, latitude, longitude), vehicles(model, year, license_plate, brands(name))"
     )
     .eq("client_id", profile.id)
     .order("start_time", { ascending: true });

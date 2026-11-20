@@ -130,7 +130,10 @@
     },
     "cancelling": "Cancelling…",
     "cancelFailed": "The booking could not be cancelled. Check your connection and try again.",
-    "cancelNotAllowed": "This booking can no longer be cancelled here. It may already have been cancelled or completed; refresh the page to see its status."
+    "cancelNotAllowed": "This booking can no longer be cancelled here. It may already have been cancelled or completed; refresh the page to see its status.",
+    "directions": "Directions",
+    "directionsTo": "Directions to {name}",
+    "showOnMap": "Show {place} on a map"
   },
   "garageDiscovery": {
     "title": "Find a Trusted Garage",
@@ -1273,12 +1276,17 @@
     "mainNav": "Main navigation",
     "dashboard": "My dashboard",
     "dashboardShort": "Home",
-    "findGarage": "Find a garage",
+    "findGarage": "Find a Workshop",
     "findGarageShort": "Search",
     "vehicles": "Vehicles",
     "account": "Account",
     "garageDetails": "Garage details",
-    "logOut": "Log out"
+    "logOut": "Log out",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme",
+    "language": "Language"
   },
   "servicePrice": {
     "priceFrom": "From {price}",

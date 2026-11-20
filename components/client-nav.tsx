@@ -5,8 +5,10 @@ import { usePathname } from "next/navigation";
 import { Search, LayoutDashboard, User, Car, LogOut } from "lucide-react";
 import { logout } from "@/app/actions/auth";
 import { locales, type Locale } from "@/lib/i18n/config";
+import { rememberLocale } from "@/lib/i18n/remember-locale";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import { AnimatedLogo } from "@/components/animated-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const LOCALE_LABELS: Record<Locale, string> = { fr: "FR", en: "EN" };
 
@@ -29,43 +31,79 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function SidebarLocaleToggle({ lang, pathname }: { lang: Locale; pathname: string }) {
+/** The current page in another language (keeps the path after the locale). */
+function localeHref(pathname: string, locale: Locale) {
   const rest = pathname.split("/").slice(2).join("/");
+  return `/${locale}${rest ? `/${rest}` : ""}`;
+}
+
+function themeLabels(labels: ClientNavLabels) {
+  return {
+    light: labels.themeLight,
+    dark: labels.themeDark,
+    switchToLight: labels.switchToLight,
+    switchToDark: labels.switchToDark,
+  };
+}
+
+/**
+ * [ FR | EN ] segmented control. rememberLocale records the choice for
+ * unprefixed URLs and for the language of the user's notifications.
+ */
+function LocaleSwitch({ lang, labels }: { lang: Locale; labels: ClientNavLabels }) {
+  const pathname = usePathname();
 
   return (
-    <div className="flex items-center gap-2 px-3 text-sm font-medium">
-      {locales.map((locale, index) => (
-        <span key={locale} className="flex items-center gap-2">
+    <div
+      role="group"
+      aria-label={labels.language}
+      className="flex rounded-full bg-zinc-200/60 p-0.5 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800"
+    >
+      {locales.map((locale) => {
+        const active = locale === lang;
+        return (
           <Link
-            href={`/${locale}${rest ? `/${rest}` : ""}`}
-            className={
-              locale === lang ? "text-zinc-50" : "text-zinc-500 transition-colors hover:text-zinc-200"
-            }
+            key={locale}
+            href={localeHref(pathname, locale)}
+            onClick={() => {
+              if (!active) rememberLocale(locale);
+            }}
+            aria-current={active ? "true" : undefined}
+            lang={locale}
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide transition-colors ${
+              active
+                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
+                : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+            }`}
           >
             {LOCALE_LABELS[locale]}
           </Link>
-          {index < locales.length - 1 && <span className="text-zinc-700">|</span>}
-        </span>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 const NAV_ITEM_BASE =
-  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600";
-const NAV_ITEM_ACTIVE = "bg-zinc-800/60 font-medium text-white";
-const NAV_ITEM_IDLE = "text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-100";
+  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-600";
+const NAV_ITEM_ACTIVE =
+  "bg-white font-medium text-zinc-900 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800/60 dark:text-white dark:shadow-none dark:ring-0";
+const NAV_ITEM_IDLE =
+  "text-zinc-600 hover:bg-zinc-200/60 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/40 dark:hover:text-zinc-100";
 
-/** Desktop (md and up): same look as the garage portal's sidebar. */
+/**
+ * Desktop (md and up). Follows the theme: light zinc panel in light mode,
+ * the garage portal's near-black panel in dark mode.
+ */
 export function ClientSidebar({ lang, labels }: { lang: Locale; labels: ClientNavLabels }) {
   const pathname = usePathname();
   const items = navItems(lang, labels);
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col bg-zinc-950 px-4 py-6 md:flex">
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 px-4 py-6 text-zinc-700 md:flex dark:border-zinc-800/60 dark:bg-zinc-950 dark:text-zinc-400">
       <Link href={`/${lang}/dashboard`} className="mb-8 flex items-center gap-2 px-2">
         <AnimatedLogo size={32} />
-        <span className="text-lg font-bold tracking-tight text-zinc-50">RDV</span>
+        <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50">RDV</span>
       </Link>
 
       <nav aria-label={labels.mainNav} className="flex flex-1 flex-col gap-0.5">
@@ -86,7 +124,12 @@ export function ClientSidebar({ lang, labels }: { lang: Locale; labels: ClientNa
         })}
       </nav>
 
-      <div className="flex flex-col gap-3 border-t border-zinc-800/60 pt-4">
+      <div className="mb-3 flex items-center justify-between gap-2 px-1">
+        <ThemeToggle labels={themeLabels(labels)} tone="adaptive" />
+        <LocaleSwitch lang={lang} labels={labels} />
+      </div>
+
+      <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800/60">
         <form action={logout}>
           <input type="hidden" name="lang" value={lang} />
           <button type="submit" className={`${NAV_ITEM_BASE} ${NAV_ITEM_IDLE} w-full`}>
@@ -94,9 +137,21 @@ export function ClientSidebar({ lang, labels }: { lang: Locale; labels: ClientNa
             {labels.logOut}
           </button>
         </form>
-        <SidebarLocaleToggle lang={lang} pathname={pathname} />
       </div>
     </aside>
+  );
+}
+
+/**
+ * Phones (below md) have no sidebar, so theme and language sit in the top
+ * bar next to the account avatar.
+ */
+export function ClientHeaderControls({ lang, labels }: { lang: Locale; labels: ClientNavLabels }) {
+  return (
+    <div className="flex items-center gap-1.5 md:hidden">
+      <ThemeToggle labels={themeLabels(labels)} tone="adaptive" collapsed />
+      <LocaleSwitch lang={lang} labels={labels} />
+    </div>
   );
 }
 
