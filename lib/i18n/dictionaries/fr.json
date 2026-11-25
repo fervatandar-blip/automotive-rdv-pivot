@@ -135,7 +135,9 @@
     "directionsTo": "Itinéraire vers {name}",
     "showOnMap": "Voir {place} sur une carte",
     "pastServiceHistory": "Historique d'entretien",
-    "messageWorkshop": "Écrire à {name}"
+    "messageWorkshop": "Écrire à {name}",
+    "moreVehicles": "+{count} autres",
+    "noVehiclesHint": "Ajoutez votre véhicule une fois et réservez plus vite à chaque fois."
   },
   "garageDiscovery": {
     "title": "Centres auto & ateliers",
@@ -166,7 +168,14 @@
     "clearBookingVehicle": "Réserver sans véhicule",
     "book": "Réserver",
     "bookAt": "Réserver chez {name}",
-    "moreCategories": "+{count}"
+    "moreCategories": "+{count}",
+    "evShort": "VE",
+    "mobileShort": "Mobile",
+    "emergencyShort": "Urgence",
+    "sortByName": "Tri : nom",
+    "sortByRating": "Tri : note",
+    "sortByDistance": "Tri : distance",
+    "filters": "Recherche et filtres"
   },
   "garageDetail": {
     "backToGarages": "Retour aux ateliers",
@@ -313,8 +322,6 @@
     "notifyAlwaysSent": "Les confirmations, annulations et reports de rendez-vous sont toujours envoyés.",
     "pushTitle": "Notifications push sur cet appareil",
     "pushDescription": "Recevez des alertes sur ce téléphone ou cet ordinateur, même lorsque RDV est fermé.",
-    "language": "Langue",
-    "languageDescription": "Langue utilisée dans l'application.",
     "changePassword": "Mot de passe",
     "changePasswordDescription": "Nous vous envoyons par e-mail un lien sécurisé pour définir un nouveau mot de passe.",
     "changePasswordAction": "Changer le mot de passe",
@@ -325,7 +332,7 @@
       "phoneInvalid": "Saisissez un numéro valide (chiffres, espaces et + uniquement)."
     },
     "preferences": "Préférences",
-    "preferencesDescription": "Langue et apparence sur cet appareil.",
+    "preferencesDescription": "Apparence sur cet appareil.",
     "theme": "Thème",
     "themeLight": "Clair",
     "themeDark": "Sombre"
@@ -1377,5 +1384,9 @@
     "workshopFallback": "Atelier",
     "serviceFallback": "Prestation",
     "noMessagesYet": "Aucun message pour l'instant. Posez vos questions à l'atelier sur votre réservation."
+  },
+  "meta": {
+    "siteTitle": "RDV — Trouvez un garage de confiance au Luxembourg",
+    "siteDescription": "RDV met en relation les automobilistes avec des garages vérifiés au Luxembourg : recherchez, comparez et réservez vos services auto en ligne en quelques clics."
   }
 }

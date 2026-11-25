@@ -9,7 +9,7 @@ import { DialogShell } from "@/components/dialog-shell";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 
 const ICON_BUTTON =
-  "inline-flex h-8 w-8 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:text-zinc-400 dark:hover:bg-red-500/10 dark:hover:text-red-400";
+  "inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:text-zinc-400 dark:hover:bg-red-500/10 dark:hover:text-red-400";
 
 function ConfirmButton({ label }: { label: string }) {
   const { pending } = useFormStatus();

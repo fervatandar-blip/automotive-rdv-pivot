@@ -99,7 +99,7 @@ export function LocaleSwitch({ lang, labels }: { lang: Locale; labels: Pick<Clie
     <div
       role="group"
       aria-label={labels.language}
-      className="flex rounded-full bg-zinc-200/60 p-0.5 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800"
+      className="flex rounded-full bg-zinc-100 p-0.5 ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-800"
     >
       {locales.map((locale) => {
         const active = locale === lang;
@@ -129,13 +129,13 @@ export function LocaleSwitch({ lang, labels }: { lang: Locale; labels: Pick<Clie
 const NAV_ITEM_BASE =
   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-600";
 const NAV_ITEM_ACTIVE =
-  "bg-white font-medium text-zinc-900 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800/60 dark:text-white dark:shadow-none dark:ring-0";
+  "bg-zinc-100 font-medium text-zinc-900 dark:bg-zinc-800/60 dark:text-white";
 const NAV_ITEM_IDLE =
-  "text-zinc-600 hover:bg-zinc-200/60 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/40 dark:hover:text-zinc-100";
+  "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/40 dark:hover:text-zinc-100";
 
 /**
- * Desktop (md and up). Follows the theme: light zinc panel in light mode,
- * the garage portal's near-black panel in dark mode.
+ * Desktop (md and up). Follows the theme: a white panel beside the zinc-50
+ * canvas in light mode, the garage portal's near-black panel in dark mode.
  */
 export function ClientSidebar({
   lang,
@@ -150,7 +150,7 @@ export function ClientSidebar({
   const items = navItems(lang, labels, unread);
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-zinc-200 bg-zinc-50 px-4 py-6 text-zinc-700 md:flex dark:border-zinc-800/60 dark:bg-zinc-950 dark:text-zinc-400">
+    <aside className="hidden w-60 shrink-0 flex-col border-r border-zinc-200/80 bg-white px-4 py-6 text-zinc-700 md:flex dark:border-zinc-800/60 dark:bg-zinc-950 dark:text-zinc-400">
       <Link href={`/${lang}/dashboard`} className="mb-8 flex items-center gap-2 px-2">
         <AnimatedLogo size={32} />
         <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50">RDV</span>
@@ -185,7 +185,7 @@ export function ClientSidebar({
         <LocaleSwitch lang={lang} labels={labels} />
       </div>
 
-      <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800/60">
+      <div className="border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60">
         <form action={logout}>
           <input type="hidden" name="lang" value={lang} />
           <button type="submit" className={`${NAV_ITEM_BASE} ${NAV_ITEM_IDLE} w-full`}>

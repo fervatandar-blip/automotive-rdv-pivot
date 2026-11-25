@@ -1,12 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Search, MapPin, Star } from "lucide-react";
+import { Search, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { GarageDiscoveryMap } from "@/components/garage-discovery-map";
 import { StyledSelect } from "@/components/styled-select";
-import { CheckboxChip } from "@/components/checkbox-chip";
+import { TogglePill } from "@/components/toggle-pill";
 import { NearMeButton } from "@/components/near-me-button";
 import { averageRating, formatRating } from "@/lib/ratings";
 import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
@@ -14,6 +15,15 @@ import { VerificationBadge } from "@/components/verification-badge";
 import { parseBookingVehicle, withBookingVehicle } from "@/lib/booking-vehicle";
 import { InstantFilterForm } from "@/components/instant-filter-form";
 import { SERVICE_CATEGORIES, normalizeServiceCategory, type ServiceCategory } from "@/lib/service-categories";
+import { CLIENT_CARD, CLIENT_PAGE, CLIENT_PAGE_TITLE } from "@/lib/client-ui";
+
+// Toolbar controls: borderless, tinted on hover, one 36px height.
+const TOOLBAR_SELECT =
+  "h-9 cursor-pointer rounded-lg bg-transparent pl-3 pr-8 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 dark:bg-transparent dark:text-zinc-200 dark:hover:bg-zinc-800/60 dark:focus:bg-zinc-800/60 [&>option]:bg-white [&>option]:text-zinc-900 dark:[&>option]:bg-zinc-900 dark:[&>option]:text-zinc-100";
+const TOOLBAR_SELECT_WRAPPER = "flex-1 sm:flex-none";
+const TOOLBAR_BUTTON =
+  "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 disabled:opacity-60 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50 [&>svg]:h-4 [&>svg]:w-4";
+const TOOLBAR_DIVIDER = "hidden h-5 w-px shrink-0 bg-zinc-200 sm:block dark:bg-zinc-800";
 
 const MAX_CATEGORY_TAGS = 3;
 
@@ -55,6 +65,12 @@ type SearchParams = {
   radius?: string;
   vehicle?: string;
 };
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params;
+  const { garageDiscovery } = await getDictionary(resolveLocale(lang));
+  return { title: garageDiscovery.title };
+}
 
 export default async function GaragesPage({
   params,
@@ -176,11 +192,9 @@ export default async function GaragesPage({
   });
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8 sm:py-10">
+    <div className={CLIENT_PAGE}>
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50 sm:text-3xl">
-          {d.title}
-        </h1>
+        <h1 className={CLIENT_PAGE_TITLE}>{d.title}</h1>
 
         {bookingVehicleLabel && (
           <p className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-100">
@@ -191,139 +205,134 @@ export default async function GaragesPage({
           </p>
         )}
 
+        {/* One toolbar: search, the selects, location, then the service
+            toggles. Wraps onto extra rows on phones. */}
         <InstantFilterForm
-          className="flex flex-col gap-5 rounded-xl border border-zinc-200/80 bg-white p-5 sm:p-6 dark:border-zinc-800/60 dark:bg-zinc-950/40"
+          ariaLabel={d.filters}
+          className={`${CLIENT_CARD} flex flex-wrap items-center gap-1 p-2`}
           resetLabel={d.clear}
           showReset={filtersActive}
           keepOnReset={["vehicle"]}
+          resetClassName="h-9 shrink-0 rounded-lg px-3 text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 sm:ml-auto dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50"
         >
-          <div className="flex flex-col gap-4">
-            {hasOrigin && (
-              <>
-                <input type="hidden" name="lat" value={filters.lat} />
-                <input type="hidden" name="lng" value={filters.lng} />
-              </>
-            )}
-            {vehicleId && <input type="hidden" name="vehicle" value={vehicleId} />}
+          {hasOrigin && (
+            <>
+              <input type="hidden" name="lat" value={filters.lat} />
+              <input type="hidden" name="lng" value={filters.lng} />
+            </>
+          )}
+          {vehicleId && <input type="hidden" name="vehicle" value={vehicleId} />}
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <div className="flex flex-1 flex-col overflow-hidden rounded-full border border-black/[.08] dark:border-white/[.145] sm:flex-row sm:items-center">
-                <div className="flex flex-1 items-center gap-2 px-4 py-2.5">
-                  <Search
-                    className="h-4 w-4 shrink-0 text-zinc-400"
-                    strokeWidth={1.5}
-                  />
-                  <label htmlFor="q" className="sr-only">
-                    {d.searchByName}
-                  </label>
-                  <input
-                    id="q"
-                    name="q"
-                    defaultValue={filters.q ?? ""}
-                    placeholder={d.searchPlaceholder}
-                    className="w-full bg-transparent text-sm outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-                <div className="h-px w-full bg-black/[.08] dark:bg-white/[.145] sm:h-6 sm:w-px" />
-                <div className="flex flex-1 items-center gap-2 px-4 py-2.5">
-                  <MapPin
-                    className="h-4 w-4 shrink-0 text-zinc-400"
-                    strokeWidth={1.5}
-                  />
-                  <label htmlFor="city" className="sr-only">
-                    {d.cityLabel}
-                  </label>
-                  <StyledSelect
-                    id="city"
-                    name="city"
-                    defaultValue={filters.city ?? ""}
-                  >
-                    <option value="">{d.anyCity}</option>
-                    {cities.map((city) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
-                  </StyledSelect>
-                </div>
-              </div>
-              <Suspense fallback={null}>
-                <NearMeButton label={d.nearMe} />
-              </Suspense>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <div className="flex flex-col gap-1">
-                <label htmlFor="minRating" className="text-sm font-medium">
-                  {d.minRating}
-                </label>
-                <StyledSelect
-                  id="minRating"
-                  name="minRating"
-                  defaultValue={filters.minRating ?? ""}
-                >
-                  <option value="">{d.any}</option>
-                  <option value="4">{d.fourPlusStars}</option>
-                  <option value="3">{d.threePlusStars}</option>
-                </StyledSelect>
-              </div>
-              <div className="flex flex-col gap-1">
-                <label htmlFor="sort" className="text-sm font-medium">
-                  {d.sortBy}
-                </label>
-                <StyledSelect
-                  id="sort"
-                  name="sort"
-                  defaultValue={effectiveSort}
-                >
-                  <option value="name">{d.sortName}</option>
-                  <option value="rating">{d.sortRating}</option>
-                  {hasOrigin && <option value="distance">{d.sortDistance}</option>}
-                </StyledSelect>
-              </div>
-              {hasOrigin && (
-                <div className="flex flex-col gap-1">
-                  <label htmlFor="radius" className="text-sm font-medium">
-                    {d.within}
-                  </label>
-                  <StyledSelect
-                    id="radius"
-                    name="radius"
-                    defaultValue={filters.radius ?? ""}
-                  >
-                    <option value="">{d.anyDistance}</option>
-                    {RADIUS_OPTIONS_KM.map((km) => (
-                      <option key={km} value={km}>
-                        {km} km
-                      </option>
-                    ))}
-                  </StyledSelect>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-x-5 gap-y-3 border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60">
-            <CheckboxChip
-              name="ev"
-              value="1"
-              label={d.evCapable}
-              defaultChecked={filters.ev === "1"}
-            />
-            <CheckboxChip
-              name="mobile"
-              value="1"
-              label={d.mobileService}
-              defaultChecked={filters.mobile === "1"}
-            />
-            <CheckboxChip
-              name="emergency"
-              value="1"
-              label={d.emergencyService}
-              defaultChecked={filters.emergency === "1"}
+          <div className="flex h-9 min-w-0 basis-full items-center gap-2 rounded-lg bg-zinc-100/70 px-3 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-600/30 sm:min-w-[12rem] sm:flex-1 sm:basis-auto dark:bg-zinc-800/40 dark:focus-within:bg-zinc-900">
+            <Search aria-hidden className="h-4 w-4 shrink-0 text-zinc-400" strokeWidth={1.75} />
+            <label htmlFor="q" className="sr-only">
+              {d.searchByName}
+            </label>
+            <input
+              id="q"
+              name="q"
+              type="search"
+              defaultValue={filters.q ?? ""}
+              placeholder={d.searchPlaceholder}
+              autoComplete="off"
+              enterKeyHint="search"
+              className="w-full min-w-0 bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-50 [&::-webkit-search-cancel-button]:hidden"
             />
           </div>
 
+          <label htmlFor="city" className="sr-only">
+            {d.cityLabel}
+          </label>
+          <StyledSelect
+            id="city"
+            name="city"
+            defaultValue={filters.city ?? ""}
+            variant="bare"
+            className={TOOLBAR_SELECT}
+            wrapperClassName={TOOLBAR_SELECT_WRAPPER}
+          >
+            <option value="">{d.anyCity}</option>
+            {cities.map((city) => (
+              <option key={city} value={city}>
+                {city}
+              </option>
+            ))}
+          </StyledSelect>
+
+          <label htmlFor="minRating" className="sr-only">
+            {d.minRating}
+          </label>
+          <StyledSelect
+            id="minRating"
+            name="minRating"
+            defaultValue={filters.minRating ?? ""}
+            variant="bare"
+            className={TOOLBAR_SELECT}
+            wrapperClassName={TOOLBAR_SELECT_WRAPPER}
+          >
+            <option value="">{d.any}</option>
+            <option value="4">{d.fourPlusStars}</option>
+            <option value="3">{d.threePlusStars}</option>
+          </StyledSelect>
+
+          <label htmlFor="sort" className="sr-only">
+            {d.sortBy}
+          </label>
+          <StyledSelect
+            id="sort"
+            name="sort"
+            defaultValue={effectiveSort}
+            variant="bare"
+            className={TOOLBAR_SELECT}
+            wrapperClassName={TOOLBAR_SELECT_WRAPPER}
+          >
+            <option value="name">{d.sortByName}</option>
+            <option value="rating">{d.sortByRating}</option>
+            {hasOrigin && <option value="distance">{d.sortByDistance}</option>}
+          </StyledSelect>
+
+          {hasOrigin ? (
+            <>
+              <label htmlFor="radius" className="sr-only">
+                {d.within}
+              </label>
+              <StyledSelect
+                id="radius"
+                name="radius"
+                defaultValue={filters.radius ?? ""}
+                variant="bare"
+                className={TOOLBAR_SELECT}
+                wrapperClassName={TOOLBAR_SELECT_WRAPPER}
+              >
+                <option value="">{d.anyDistance}</option>
+                {RADIUS_OPTIONS_KM.map((km) => (
+                  <option key={km} value={km}>
+                    {km} km
+                  </option>
+                ))}
+              </StyledSelect>
+            </>
+          ) : (
+            <Suspense fallback={null}>
+              <NearMeButton label={d.nearMe} className={TOOLBAR_BUTTON} />
+            </Suspense>
+          )}
+
+          <span aria-hidden className={TOOLBAR_DIVIDER} />
+
+          <TogglePill name="ev" label={d.evShort} title={d.evCapable} defaultChecked={filters.ev === "1"} />
+          <TogglePill
+            name="mobile"
+            label={d.mobileShort}
+            title={d.mobileService}
+            defaultChecked={filters.mobile === "1"}
+          />
+          <TogglePill
+            name="emergency"
+            label={d.emergencyShort}
+            title={d.emergencyService}
+            defaultChecked={filters.emergency === "1"}
+          />
         </InstantFilterForm>
 
         <GarageDiscoveryMap
@@ -355,11 +364,11 @@ export default async function GaragesPage({
               return (
                 <li
                   key={garage.id}
-                  className="relative flex items-center gap-4 rounded-xl border border-zinc-200/80 bg-white p-4 transition-colors focus-within:border-brand-600 hover:border-zinc-300 sm:p-5 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:hover:border-zinc-700"
+                  className={`${CLIENT_CARD} relative flex items-center gap-4 p-4 transition-colors focus-within:border-brand-600 hover:border-zinc-300 sm:p-5 dark:hover:border-zinc-700`}
                 >
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                      <h2 className="font-semibold text-black dark:text-zinc-50">
+                      <h2 className="font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
                         {/* Stretched link: the whole card opens the profile;
                             Book stays its own target above it. */}
                         <Link href={href} className="after:absolute after:inset-0 after:rounded-xl focus:outline-none">
@@ -370,7 +379,7 @@ export default async function GaragesPage({
                         <VerificationBadge level={garage.verification_level} labels={dictionary.verificationLevels} />
                       )}
                     </div>
-                    <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-zinc-500 dark:text-zinc-400">
                       {garage.city && <span>{garage.city}</span>}
                       {garage.distanceKm !== null && <span>· {formatDistanceKm(garage.distanceKm)}</span>}
                       {(garage.city || garage.distanceKm !== null) && <span aria-hidden>·</span>}
@@ -411,7 +420,7 @@ export default async function GaragesPage({
             })}
           </ul>
         ) : (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.noGaragesMatch}</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.noGaragesMatch}</p>
         )}
       </div>
     </div>

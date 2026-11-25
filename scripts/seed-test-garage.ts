@@ -69,32 +69,34 @@ const OPENING_HOURS: OpeningHours = {
   6: { closed: false, open: "09:00", close: "13:00" },
 };
 
+// Garages type their own service names in one language; the pilot runs
+// in French (the default locale), so the demo does too.
 const SERVICES = [
   {
-    name: "Oil change",
+    name: "Vidange",
     category: "maintenance",
-    description: "Full synthetic oil and filter replacement.",
+    description: "Remplacement de l'huile synthétique et du filtre.",
     duration_minutes: 45,
     price: 89.0,
   },
   {
-    name: "Brake inspection",
+    name: "Contrôle des freins",
     category: "brakes",
-    description: "Front and rear brake pad, disc and fluid check.",
+    description: "Contrôle des plaquettes, des disques et du liquide de frein, à l'avant et à l'arrière.",
     duration_minutes: 30,
     price: 59.0,
   },
   {
-    name: "Tire rotation",
+    name: "Permutation des pneus",
     category: "tires",
-    description: "Rotate and rebalance all four tires.",
+    description: "Permutation et équilibrage des quatre pneus.",
     duration_minutes: 40,
     price: 49.0,
   },
   {
-    name: "Full diagnostic",
+    name: "Diagnostic complet",
     category: "diagnostics",
-    description: "Complete OBD scan and multi-point inspection.",
+    description: "Lecture OBD complète et contrôle multipoints.",
     duration_minutes: 60,
     price: 79.0,
   },

@@ -6,12 +6,12 @@
  *   - a filled-in profile (name, phone, notification preferences, locale)
  *   - two vehicles, one with a VIN (plate/VIN search in the client directory)
  *   - a timeline relative to TODAY, so it never goes stale:
- *       ~8 weeks ago  completed  Oil change        + a 5-star review
- *       ~3 weeks ago  completed  Brake inspection  (left unreviewed, so the
- *                                                   review form shows)
- *       ~10 days ago  cancelled  Full diagnostic
- *       in ~3 days    confirmed  Tire rotation     + a client/garage chat
- *       in ~8 days    confirmed  Full diagnostic
+ *       ~8 weeks ago  completed  Vidange                + a 5-star review
+ *       ~3 weeks ago  completed  Contrôle des freins    (left unreviewed, so
+ *                                                        the review form shows)
+ *       ~10 days ago  cancelled  Diagnostic complet
+ *       in ~3 days    confirmed  Permutation des pneus  + a client/garage chat
+ *       in ~8 days    confirmed  Diagnostic complet
  *   - a waitlist entry in ~5 days
  *
  * Usage:
@@ -87,17 +87,17 @@ const TIMELINE: {
   preferredTime: string;
   status: Status;
 }[] = [
-  { key: "oil", vehicle: 0, service: "Oil change", dayOffset: -56, preferredTime: "09:00", status: "completed" },
-  { key: "brakes", vehicle: 0, service: "Brake inspection", dayOffset: -21, preferredTime: "14:00", status: "completed" },
-  { key: "diag-cancelled", vehicle: 1, service: "Full diagnostic", dayOffset: -10, preferredTime: "10:00", status: "cancelled" },
-  { key: "tires", vehicle: 1, service: "Tire rotation", dayOffset: 3, preferredTime: "11:00", status: "confirmed" },
-  { key: "diag", vehicle: 0, service: "Full diagnostic", dayOffset: 8, preferredTime: "09:00", status: "confirmed" },
+  { key: "oil", vehicle: 0, service: "Vidange", dayOffset: -56, preferredTime: "09:00", status: "completed" },
+  { key: "brakes", vehicle: 0, service: "Contrôle des freins", dayOffset: -21, preferredTime: "14:00", status: "completed" },
+  { key: "diag-cancelled", vehicle: 1, service: "Diagnostic complet", dayOffset: -10, preferredTime: "10:00", status: "cancelled" },
+  { key: "tires", vehicle: 1, service: "Permutation des pneus", dayOffset: 3, preferredTime: "11:00", status: "confirmed" },
+  { key: "diag", vehicle: 0, service: "Diagnostic complet", dayOffset: 8, preferredTime: "09:00", status: "confirmed" },
 ];
 
 const REVIEW = {
   on: "oil",
   rating: 5,
-  comment: "Quick and friendly service, the car was ready on time. Recommended.",
+  comment: "Service rapide et aimable, la voiture était prête à l'heure. Je recommande.",
 };
 
 const MESSAGES: { on: string; from: "client" | "garage"; body: string }[] = [
@@ -105,7 +105,7 @@ const MESSAGES: { on: string; from: "client" | "garage"; body: string }[] = [
   { on: "tires", from: "garage", body: "Bonjour, oui bien sûr, nous le contrôlerons pendant le rendez-vous." },
 ];
 
-const WAITLIST = { service: "Oil change", dayOffset: 5 };
+const WAITLIST = { service: "Vidange", dayOffset: 5 };
 
 // --- Europe/Luxembourg wall-clock helpers --------------------------------
 // Same rules as lib/timezone.ts (inlined: a plain-node script can't import
@@ -407,7 +407,7 @@ async function main() {
   console.log("Appointments (Luxembourg time):");
   console.log(summary.join("\n"));
   console.log(`Review:    ${REVIEW.rating}★ on the ${TIMELINE.find((item) => item.key === REVIEW.on)!.service}`);
-  console.log(`Messages:  ${MESSAGES.length} on the upcoming Tire rotation`);
+  console.log(`Messages:  ${MESSAGES.length} on the upcoming ${TIMELINE.find((entry) => entry.key === "tires")!.service}`);
   console.log(`Waitlist:  ${WAITLIST.service} on ${waitlistDate}`);
 }
 

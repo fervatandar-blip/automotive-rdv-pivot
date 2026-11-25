@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   CalendarClock,
   CalendarPlus,
+  Car,
   Check,
+  ChevronRight,
   FileText,
   MapPin,
   MessageSquare,
@@ -24,6 +27,16 @@ import { CancelBookingButton } from "./cancel-booking-button";
 import { REPAIR_STAGES } from "@/lib/definitions";
 import { APP_TIME_ZONE, dateKeyToDisplayDate } from "@/lib/timezone";
 import { directionsUrl, mapSearchUrl } from "@/lib/maps";
+import {
+  CLIENT_CARD,
+  CLIENT_DANGER_PILL,
+  CLIENT_DIVIDE,
+  CLIENT_PAGE,
+  CLIENT_PAGE_TITLE,
+  CLIENT_PILL_ICON,
+  CLIENT_SECTION_LABEL,
+  CLIENT_TINTED_PILL,
+} from "@/lib/client-ui";
 
 type Appointment = {
   id: string;
@@ -144,16 +157,16 @@ function formatTime(iso: string, lang: Locale) {
   });
 }
 
-const CARD =
-  "rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800/60 dark:bg-transparent";
-const SECTION_LABEL =
-  "text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400";
-// Card actions share one height and shape: subtle secondary pills, with
-// Cancel as a ghost pill (transparent border keeps it the same height).
-const PILL_BASE =
-  "inline-flex h-8 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40";
-const SECONDARY_BUTTON = `${PILL_BASE} border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-100 hover:text-black dark:border-zinc-700/80 dark:bg-transparent dark:text-zinc-100 dark:hover:bg-zinc-800/60`;
-const PILL_ICON = "h-3.5 w-3.5 shrink-0 text-zinc-500 dark:text-zinc-400";
+type VehicleSummary = {
+  id: string;
+  model: string | null;
+  license_plate: string | null;
+  brands: { name: string } | null;
+};
+
+const MAX_VEHICLES_IN_WIDGET = 3;
+const SIDE_LINK =
+  "inline-flex items-center gap-0.5 text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50";
 
 function StatusPill({ status, d }: { status: string; d: Dictionary["clientDashboard"] }) {
   const styles: Record<string, { label: string; className: string }> = {
@@ -254,20 +267,20 @@ function AppointmentCard({
   const routeUrl = cancellable && isOpen && garage ? directionsUrl(garage) : null;
 
   return (
-    <article className={`${CARD} flex flex-col gap-4 p-4 sm:p-5`}>
+    <article className={`${CLIENT_CARD} flex flex-col gap-4 p-4 sm:p-5`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold capitalize text-black dark:text-zinc-50">
+          <p className="text-sm font-semibold capitalize text-zinc-900 dark:text-zinc-50">
             {formatDay(appointment.start_time, lang)}
             <span className="font-normal text-zinc-500 dark:text-zinc-400">
               {" · "}
               {formatTime(appointment.start_time, lang)}
             </span>
           </p>
-          <h3 className="mt-1 text-base font-semibold text-black dark:text-zinc-50">
+          <h3 className="mt-1 text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             {appointment.services?.name ?? d.serviceFallback}
           </h3>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {garageName}
             {place && (
               <>
@@ -278,7 +291,7 @@ function AppointmentCard({
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={d.showOnMap.replace("{place}", place)}
-                    className="inline-flex items-center gap-1 underline decoration-zinc-300 underline-offset-2 transition-colors hover:text-black hover:decoration-current dark:decoration-zinc-600 dark:hover:text-zinc-100"
+                    className="inline-flex items-center gap-1 underline decoration-zinc-300 underline-offset-2 transition-colors hover:text-zinc-900 hover:decoration-current dark:decoration-zinc-600 dark:hover:text-zinc-100"
                   >
                     <MapPin aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
                     {place}
@@ -294,7 +307,7 @@ function AppointmentCard({
       </div>
 
       {(plate || vehicleText) && (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
           {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
           {vehicleText && <span>{vehicleText}</span>}
         </div>
@@ -304,14 +317,15 @@ function AppointmentCard({
         <RepairStageIndicator steps={repairStageSteps(appointment.repair_stage, dictionary.common.repairStage)} />
       )}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href={`/${lang}/messages?a=${appointment.id}`} className={SECONDARY_BUTTON}>
-          <MessageSquare aria-hidden className={PILL_ICON} strokeWidth={1.75} />
+      {/* Footer: everyday actions on the left, Cancel apart on the right. */}
+      <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800/60">
+        <Link href={`/${lang}/messages?a=${appointment.id}`} className={CLIENT_TINTED_PILL}>
+          <MessageSquare aria-hidden className={CLIENT_PILL_ICON} strokeWidth={1.75} />
           {d.message}
         </Link>
         {cancellable && isOpen && (
-          <Link href={`/${lang}/appointments/${appointment.id}/reschedule`} className={SECONDARY_BUTTON}>
-            <CalendarClock aria-hidden className={PILL_ICON} strokeWidth={1.75} />
+          <Link href={`/${lang}/appointments/${appointment.id}/reschedule`} className={CLIENT_TINTED_PILL}>
+            <CalendarClock aria-hidden className={CLIENT_PILL_ICON} strokeWidth={1.75} />
             {d.reschedule}
           </Link>
         )}
@@ -321,9 +335,9 @@ function AppointmentCard({
             target="_blank"
             rel="noopener noreferrer"
             aria-label={d.directionsTo.replace("{name}", garageName)}
-            className={SECONDARY_BUTTON}
+            className={CLIENT_TINTED_PILL}
           >
-            <Navigation aria-hidden className={PILL_ICON} strokeWidth={1.75} />
+            <Navigation aria-hidden className={CLIENT_PILL_ICON} strokeWidth={1.75} />
             {d.directions}
           </a>
         )}
@@ -349,7 +363,7 @@ function AppointmentCard({
 }
 
 const TEXT_ACTION =
-  "inline-flex items-center gap-1 text-sm font-medium text-zinc-600 underline-offset-2 hover:text-black hover:underline dark:text-zinc-400 dark:hover:text-zinc-100";
+  "inline-flex items-center gap-1 text-xs font-medium text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100";
 
 /** One line of the service history: what, where, which car, outcome. */
 function PastServiceRow({
@@ -377,14 +391,14 @@ function PastServiceRow({
           dateTime={appointment.start_time}
           className="w-14 shrink-0 text-center text-xs font-medium uppercase leading-tight text-zinc-500 dark:text-zinc-400"
         >
-          <span className="block text-lg font-semibold text-black dark:text-zinc-50">
+          <span className="block text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             {date.toLocaleDateString(dateLocaleFor(lang), { timeZone: APP_TIME_ZONE, day: "numeric" })}
           </span>
           {date.toLocaleDateString(dateLocaleFor(lang), { timeZone: APP_TIME_ZONE, month: "short", year: "2-digit" })}
         </time>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
-            <p className="truncate font-medium text-black dark:text-zinc-50">
+            <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
               {appointment.services?.name ?? d.serviceFallback}
             </p>
             <StatusPill status={appointment.status} d={d} />
@@ -432,6 +446,12 @@ function LogoutButton({ lang, dictionary }: { lang: Locale; dictionary: Dictiona
       </button>
     </form>
   );
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params;
+  const { clientNav } = await getDictionary(resolveLocale(lang));
+  return { title: clientNav.dashboard };
 }
 
 export default async function DashboardPage({
@@ -527,13 +547,19 @@ export default async function DashboardPage({
     }
   }
 
-  const { data: waitlistEntries } = await supabase
-    .from("waitlist")
-    .select(
-      "id, date, notified_at, services(name), garages(name)"
-    )
-    .eq("client_id", profile.id)
-    .order("date", { ascending: true });
+  const [{ data: waitlistEntries }, { data: vehicleRows }] = await Promise.all([
+    supabase
+      .from("waitlist")
+      .select("id, date, notified_at, services(name), garages(name)")
+      .eq("client_id", profile.id)
+      .order("date", { ascending: true }),
+    supabase
+      .from("vehicles")
+      .select("id, model, license_plate, brands(name)")
+      .eq("client_id", profile.id)
+      .order("created_at", { ascending: false }),
+  ]);
+  const vehicles = (vehicleRows ?? []) as unknown as VehicleSummary[];
 
   const waitlistRows = (waitlistEntries ?? []) as unknown as {
     id: string;
@@ -547,11 +573,169 @@ export default async function DashboardPage({
   const past = [...other].reverse();
   const firstName = (profile.full_name || "").trim().split(/\s+/)[0];
 
+  const v = dictionary.vehicles;
+
+  const upcomingSection = (
+    <section aria-labelledby="upcoming-title" className="flex flex-col gap-3">
+      <h2 id="upcoming-title" className={CLIENT_SECTION_LABEL}>
+        {d.upcoming}
+      </h2>
+      {upcoming.length > 0 ? (
+        upcoming.map((appointment) => (
+          <AppointmentCard
+            key={appointment.id}
+            appointment={appointment}
+            lang={lang}
+            dictionary={dictionary}
+            cancellable
+          />
+        ))
+      ) : (
+        <EmptyStateCard
+          icon={CalendarPlus}
+          title={d.noUpcomingTitle}
+          description={d.noUpcomingDescription}
+          ctaHref={`/${lang}/garages`}
+          ctaLabel={d.findAGarage}
+        />
+      )}
+    </section>
+  );
+
+  const historySection = past.length > 0 && (
+    <section aria-labelledby="past-title" className="flex flex-col gap-3">
+      <h2 id="past-title" className={CLIENT_SECTION_LABEL}>
+        {d.pastServiceHistory}
+      </h2>
+      <ol className={`${CLIENT_CARD} ${CLIENT_DIVIDE}`}>
+        {past.map((appointment) => (
+          <PastServiceRow
+            key={appointment.id}
+            appointment={appointment}
+            lang={lang}
+            dictionary={dictionary}
+            invoiceUrl={invoiceUrls.get(appointment.id)}
+            reviewable={appointment.status === "completed" && !reviewedAppointmentIds.has(appointment.id)}
+          />
+        ))}
+      </ol>
+    </section>
+  );
+
+  const shownVehicles = vehicles.slice(0, MAX_VEHICLES_IN_WIDGET);
+  const hiddenVehicles = vehicles.length - shownVehicles.length;
+
+  const sideColumn = (
+    <aside className="flex flex-col gap-6">
+      {waitlistRows.length > 0 && (
+        <section aria-labelledby="waitlist-title" className="flex flex-col gap-3">
+          <h2 id="waitlist-title" className={CLIENT_SECTION_LABEL}>
+            {d.waitlist}
+          </h2>
+          <ul className={`${CLIENT_CARD} ${CLIENT_DIVIDE}`}>
+            {waitlistRows.map((entry) => (
+              <li key={entry.id} className="flex items-start justify-between gap-3 px-4 py-3.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                    {entry.services?.name ?? d.serviceFallback}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {entry.garages?.name ?? d.garageFallback} ·{" "}
+                    <span className="capitalize">
+                      {dateKeyToDisplayDate(entry.date).toLocaleDateString(dateLocaleFor(lang), {
+                        timeZone: APP_TIME_ZONE,
+                        weekday: "short",
+                        day: "numeric",
+                        month: "short",
+                      })}
+                    </span>
+                  </p>
+                  {entry.notified_at && (
+                    <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+                      {d.waitlistSlotOpened}
+                    </p>
+                  )}
+                </div>
+                <form action={leaveWaitlist} className="shrink-0">
+                  <input type="hidden" name="id" value={entry.id} />
+                  <input type="hidden" name="lang" value={lang} />
+                  <button type="submit" className={CLIENT_DANGER_PILL}>
+                    {d.leave}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section aria-labelledby="vehicles-title" className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="vehicles-title" className={CLIENT_SECTION_LABEL}>
+            {dictionary.clientNav.vehicles}
+          </h2>
+          {vehicles.length > 0 && (
+            <Link href={`/${lang}/vehicles`} className={SIDE_LINK}>
+              {d.manageVehicles}
+              <ChevronRight aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
+            </Link>
+          )}
+        </div>
+        {vehicles.length > 0 ? (
+          <ul className={`${CLIENT_CARD} ${CLIENT_DIVIDE}`}>
+            {shownVehicles.map((vehicle) => {
+              const name = [vehicle.brands?.name, vehicle.model].filter(Boolean).join(" ") || v.vehicleFallback;
+              const plate = vehicle.license_plate?.trim();
+              return (
+                <li key={vehicle.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
+                    <Car aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+                  </div>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <p className="truncate text-sm font-medium text-zinc-900 dark:text-zinc-50">{name}</p>
+                    {plate && (
+                      <span className="self-start">
+                        <LicensePlate plate={plate} label={d.plateLabel} />
+                      </span>
+                    )}
+                  </div>
+                  <Link
+                    href={`/${lang}/garages?vehicle=${vehicle.id}`}
+                    aria-label={v.bookServiceFor.replace("{vehicle}", name)}
+                    title={v.bookService}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-brand-600 transition-colors hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 dark:text-brand-400 dark:hover:bg-brand-500/10"
+                  >
+                    <CalendarPlus aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+                  </Link>
+                </li>
+              );
+            })}
+            {hiddenVehicles > 0 && (
+              <li className="px-4 py-2.5">
+                <Link href={`/${lang}/vehicles`} className={SIDE_LINK}>
+                  {d.moreVehicles.replace("{count}", String(hiddenVehicles))}
+                </Link>
+              </li>
+            )}
+          </ul>
+        ) : (
+          <div className={`${CLIENT_CARD} flex flex-col items-start gap-2 p-4`}>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.noVehiclesHint}</p>
+            <Link href={`/${lang}/vehicles`} className={CLIENT_TINTED_PILL}>
+              <Car aria-hidden className={CLIENT_PILL_ICON} strokeWidth={1.75} />
+              {v.addVehicleButton}
+            </Link>
+          </div>
+        )}
+      </section>
+    </aside>
+  );
+
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8 sm:py-10">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
+    <div className={CLIENT_PAGE}>
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50 sm:text-3xl">
+          <h1 className={CLIENT_PAGE_TITLE}>
             {firstName ? `${d.welcomePrefix} ${firstName}` : d.welcomeFallback}
           </h1>
           <Link
@@ -581,93 +765,15 @@ export default async function DashboardPage({
           </p>
         )}
 
-        <section aria-labelledby="upcoming-title" className="flex flex-col gap-3">
-          <h2 id="upcoming-title" className={SECTION_LABEL}>
-            {d.upcoming}
-          </h2>
-          {upcoming.length > 0 ? (
-            upcoming.map((appointment) => (
-              <AppointmentCard
-                key={appointment.id}
-                appointment={appointment}
-                lang={lang}
-                dictionary={dictionary}
-                cancellable
-              />
-            ))
-          ) : (
-            <EmptyStateCard
-              icon={CalendarPlus}
-              title={d.noUpcomingTitle}
-              description={d.noUpcomingDescription}
-              ctaHref={`/${lang}/garages`}
-              ctaLabel={d.findAGarage}
-            />
-          )}
-        </section>
-
-        {waitlistRows.length > 0 && (
-          <section aria-labelledby="waitlist-title" className="flex flex-col gap-3">
-            <h2 id="waitlist-title" className={SECTION_LABEL}>
-              {d.waitlist}
-            </h2>
-            <ul className={`${CARD} divide-y divide-zinc-200/80 dark:divide-zinc-800/60`}>
-              {waitlistRows.map((entry) => (
-                <li key={entry.id} className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-5">
-                  <div className="min-w-0">
-                    <p className="font-medium text-black dark:text-zinc-50">
-                      {entry.services?.name ?? d.serviceFallback}
-                    </p>
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                      {entry.garages?.name ?? d.garageFallback} ·{" "}
-                      {dateKeyToDisplayDate(entry.date).toLocaleDateString(dateLocaleFor(lang), {
-                        timeZone: APP_TIME_ZONE,
-                        weekday: "short",
-                        day: "numeric",
-                        month: "short",
-                      })}
-                    </p>
-                    {entry.notified_at && (
-                      <p className="mt-1 text-sm font-medium text-amber-700 dark:text-amber-300">
-                        {d.waitlistSlotOpened}
-                      </p>
-                    )}
-                  </div>
-                  <form action={leaveWaitlist}>
-                    <input type="hidden" name="id" value={entry.id} />
-                    <input type="hidden" name="lang" value={lang} />
-                    <button
-                      type="submit"
-                      className="rounded-full px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
-                    >
-                      {d.leave}
-                    </button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {past.length > 0 && (
-          <section aria-labelledby="past-title" className="flex flex-col gap-3">
-            <h2 id="past-title" className={SECTION_LABEL}>
-              {d.pastServiceHistory}
-            </h2>
-            <ol className={`${CARD} divide-y divide-zinc-200/80 dark:divide-zinc-800/60`}>
-              {past.map((appointment) => (
-                <PastServiceRow
-                  key={appointment.id}
-                  appointment={appointment}
-                  lang={lang}
-                  dictionary={dictionary}
-                  invoiceUrl={invoiceUrls.get(appointment.id)}
-                  reviewable={appointment.status === "completed" && !reviewedAppointmentIds.has(appointment.id)}
-                />
-              ))}
-            </ol>
-          </section>
-        )}
+        {/* Phones stack upcoming, then the side column (a waitlist slot that
+            opened is time-sensitive), then history. From lg the side column
+            spans both rows on the right; the 1fr second row soaks up any
+            extra height so upcoming and history stay flush. */}
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-3 lg:grid-rows-[auto_1fr]">
+          <div className="flex min-w-0 flex-col gap-8 lg:col-span-2">{upcomingSection}</div>
+          <div className="min-w-0 lg:col-start-3 lg:row-span-2 lg:row-start-1">{sideColumn}</div>
+          {historySection && <div className="min-w-0 lg:col-span-2">{historySection}</div>}
+        </div>
       </div>
     </div>
   );

@@ -135,7 +135,9 @@
     "directionsTo": "Directions to {name}",
     "showOnMap": "Show {place} on a map",
     "pastServiceHistory": "Past service history",
-    "messageWorkshop": "Message {name}"
+    "messageWorkshop": "Message {name}",
+    "moreVehicles": "+{count} more",
+    "noVehiclesHint": "Add your car once and book faster every time."
   },
   "garageDiscovery": {
     "title": "Service Centers",
@@ -166,7 +168,14 @@
     "clearBookingVehicle": "Book without a vehicle",
     "book": "Book",
     "bookAt": "Book at {name}",
-    "moreCategories": "+{count}"
+    "moreCategories": "+{count}",
+    "evShort": "EV",
+    "mobileShort": "Mobile",
+    "emergencyShort": "Emergency",
+    "sortByName": "Sort: Name",
+    "sortByRating": "Sort: Rating",
+    "sortByDistance": "Sort: Distance",
+    "filters": "Search and filters"
   },
   "garageDetail": {
     "backToGarages": "Back to workshops",
@@ -313,8 +322,6 @@
     "notifyAlwaysSent": "Booking confirmations, cancellations and reschedules are always sent.",
     "pushTitle": "Push notifications on this device",
     "pushDescription": "Receive alerts on this phone or computer, even when RDV is closed.",
-    "language": "Language",
-    "languageDescription": "Language used across the app.",
     "changePassword": "Password",
     "changePasswordDescription": "We'll email you a secure link to set a new password.",
     "changePasswordAction": "Change password",
@@ -325,7 +332,7 @@
       "phoneInvalid": "Enter a valid phone number (digits, spaces and + only)."
     },
     "preferences": "Preferences",
-    "preferencesDescription": "Language and appearance on this device.",
+    "preferencesDescription": "Appearance on this device.",
     "theme": "Theme",
     "themeLight": "Light",
     "themeDark": "Dark"
@@ -1377,5 +1384,9 @@
     "workshopFallback": "Workshop",
     "serviceFallback": "Service",
     "noMessagesYet": "No messages yet. Ask the workshop anything about your booking."
+  },
+  "meta": {
+    "siteTitle": "RDV — Find a trusted garage in Luxembourg",
+    "siteDescription": "RDV connects car owners with verified garages in Luxembourg — search, compare, and book automotive services online in a few taps."
   }
 }

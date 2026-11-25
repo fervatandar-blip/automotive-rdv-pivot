@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { SendHorizontal } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { markMessagesRead, sendMessage } from "@/app/actions/messages";
 import { APP_TIME_ZONE } from "@/lib/timezone";
@@ -221,7 +222,7 @@ export function ChatThread({
       </div>
 
       {sendFailed && (
-        <p role="alert" className={`text-xs text-red-600 dark:text-red-400 ${isPane ? "px-4 sm:px-6" : ""}`}>
+        <p role="alert" className={`text-xs text-red-600 dark:text-red-400 ${isPane ? "shrink-0 px-4 pb-2 sm:px-6" : ""}`}>
           {dictionary.sendFailed}
         </p>
       )}
@@ -230,7 +231,7 @@ export function ChatThread({
         onSubmit={handleSubmit}
         className={
           isPane
-            ? "flex gap-2 border-t border-zinc-200/80 p-3 sm:p-4 dark:border-zinc-800/60"
+            ? "flex shrink-0 items-center gap-2 border-t border-zinc-200/80 bg-zinc-50/80 p-3 sm:px-4 dark:border-zinc-800/60 dark:bg-zinc-900/40"
             : "flex gap-2"
         }
       >
@@ -245,7 +246,7 @@ export function ChatThread({
           maxLength={2000}
           className={
             isPane
-              ? "min-w-0 flex-1 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm text-black placeholder:text-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+              ? "h-10 min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-3.5 text-sm text-zinc-900 shadow-[0_1px_2px_rgba(0,0,0,0.03)] placeholder:text-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-700/80 dark:bg-zinc-950 dark:text-zinc-50 dark:shadow-none"
               : "flex-1 rounded-md border border-black/[.08] px-3 py-2 text-sm dark:border-white/[.145] dark:bg-black"
           }
         />
@@ -254,10 +255,11 @@ export function ChatThread({
           disabled={sending || draft.trim().length === 0}
           className={
             isPane
-              ? "shrink-0 rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+              ? "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600 dark:focus-visible:ring-offset-zinc-950"
               : "rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
           }
         >
+          {isPane && <SendHorizontal aria-hidden className="h-4 w-4" strokeWidth={2} />}
           {dictionary.send}
         </button>
       </form>

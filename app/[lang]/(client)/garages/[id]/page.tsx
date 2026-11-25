@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -57,7 +58,7 @@ function BookingStepIndicator({ steps }: { steps: { label: string; status: StepS
               className={
                 step.status === "upcoming"
                   ? "text-xs font-medium text-zinc-400 dark:text-zinc-500"
-                  : "text-xs font-medium text-black dark:text-zinc-50"
+                  : "text-xs font-medium text-zinc-900 dark:text-zinc-50"
               }
             >
               {step.label}
@@ -118,6 +119,26 @@ function buildCalendarGrid(year: number, monthIndex: number) {
   }
 
   return cells;
+}
+
+// The workshop's own name as the tab title; the generic label if it isn't
+// visible (unknown id, not approved), where the page itself 404s.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ lang: string; id: string }>;
+}): Promise<Metadata> {
+  const { lang, id } = await params;
+  const { clientNav } = await getDictionary(resolveLocale(lang));
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("garages")
+    .select("name")
+    .eq("id", id)
+    .eq("status", "approved")
+    .is("deleted_at", null)
+    .maybeSingle();
+  return { title: data?.name ?? clientNav.garageDetails };
 }
 
 export default async function GarageDetailPage({
@@ -339,7 +360,7 @@ export default async function GarageDetailPage({
           >
             &larr; {d.backToGarages}
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">
             {garage.name}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -364,7 +385,7 @@ export default async function GarageDetailPage({
               {capabilities.map(({ icon: Icon, label }) => (
                 <li
                   key={label}
-                  className="flex items-center gap-1.5 rounded-full border border-black/[.08] bg-white px-3 py-1 text-xs font-medium text-black dark:border-white/[.145] dark:bg-zinc-950 dark:text-zinc-50"
+                  className="flex items-center gap-1.5 rounded-full border border-black/[.08] bg-white px-3 py-1 text-xs font-medium text-zinc-900 dark:border-white/[.145] dark:bg-zinc-950 dark:text-zinc-50"
                 >
                   <Icon className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400" strokeWidth={1.75} />
                   {label}
@@ -381,10 +402,10 @@ export default async function GarageDetailPage({
 
         {garage.description && (
           <section aria-labelledby="about-title" className="flex flex-col gap-2">
-            <h2 id="about-title" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            <h2 id="about-title" className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               {d.aboutTitle}
             </h2>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-black dark:text-zinc-50">
+            <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-900 dark:text-zinc-50">
               {garage.description}
             </p>
           </section>
@@ -393,9 +414,9 @@ export default async function GarageDetailPage({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <section
             aria-labelledby="hours-title"
-            className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+            className="flex flex-col gap-3 rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] p-4 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none"
           >
-            <h2 id="hours-title" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            <h2 id="hours-title" className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               {fields.openingHoursTitle}
             </h2>
             {hasAnyOpeningHours(weeklyHours) ? (
@@ -403,7 +424,7 @@ export default async function GarageDetailPage({
                 {weeklyHours.map((day) => (
                   <div key={day.dayOfWeek} className="contents">
                     <dt className="text-zinc-600 dark:text-zinc-400">{fields.days[day.dayOfWeek]}</dt>
-                    <dd className="text-right font-medium text-black dark:text-zinc-50">
+                    <dd className="text-right font-medium text-zinc-900 dark:text-zinc-50">
                       {day.ranges.length > 0 ? day.ranges.join(", ") : fields.closed}
                     </dd>
                   </div>
@@ -416,9 +437,9 @@ export default async function GarageDetailPage({
 
           <section
             aria-labelledby="contact-title"
-            className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+            className="flex flex-col gap-3 rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] p-4 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none"
           >
-            <h2 id="contact-title" className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            <h2 id="contact-title" className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               {d.contactTitle}
             </h2>
             {garage.phone || garage.email || garage.website ? (
@@ -460,9 +481,9 @@ export default async function GarageDetailPage({
         </div>
 
         {languageLabels.length > 0 && (
-          <section className="flex flex-col gap-2 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
-            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">{fields.languagesSpokenLabel}</h2>
-            <p className="text-sm text-black dark:text-zinc-50">{languageLabels.join(", ")}</p>
+          <section className="flex flex-col gap-2 rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] p-4 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none">
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{fields.languagesSpokenLabel}</h2>
+            <p className="text-sm text-zinc-900 dark:text-zinc-50">{languageLabels.join(", ")}</p>
           </section>
         )}
 
@@ -489,7 +510,7 @@ export default async function GarageDetailPage({
 
         {/* "Book" on a search result card lands here. */}
         <div id="book" className="flex scroll-mt-20 flex-col gap-3">
-          <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             {d.chooseService}
           </h2>
           <div className="flex flex-col gap-5">
@@ -502,7 +523,7 @@ export default async function GarageDetailPage({
                 >
                   <h3
                     id={`service-category-${group.category}`}
-                    className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+                    className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400"
                   >
                     {dictionary.serviceCategories[group.category]}
                   </h3>
@@ -512,12 +533,12 @@ export default async function GarageDetailPage({
                       href={keepVehicle(`/${lang}/garages/${garageId}?service=${service.id}&date=${selectedDate}`)}
                       className={`rounded-xl border p-4 transition-colors ${
                         selectedService?.id === service.id
-                          ? "border-black bg-white dark:border-white dark:bg-zinc-950"
-                          : "border-black/[.08] bg-white hover:bg-black/[.02] dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.03]"
+                          ? "border-brand-600 bg-white ring-1 ring-brand-600 dark:border-brand-500 dark:bg-zinc-950/40 dark:ring-brand-500"
+                          : "border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-zinc-300 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none dark:hover:border-zinc-700"
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-black dark:text-zinc-50">
+                        <span className="font-medium text-zinc-900 dark:text-zinc-50">
                           {service.name}
                         </span>
                         <span className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -546,7 +567,7 @@ export default async function GarageDetailPage({
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                   {d.chooseDate}
                 </h2>
                 <div className="flex items-center gap-1">
@@ -563,7 +584,7 @@ export default async function GarageDetailPage({
                       <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
                     </span>
                   )}
-                  <span className="min-w-28 text-center text-sm font-medium text-black dark:text-zinc-50">
+                  <span className="min-w-28 text-center text-sm font-medium text-zinc-900 dark:text-zinc-50">
                     {monthLabel}
                   </span>
                   {canGoNextMonth ? (
@@ -611,7 +632,7 @@ export default async function GarageDetailPage({
                       className={
                         isSelected
                           ? "flex h-9 items-center justify-center rounded-lg bg-brand-600 text-sm font-medium text-white dark:bg-brand-500"
-                          : "flex h-9 items-center justify-center rounded-lg text-sm text-black transition-colors hover:bg-black/[.04] dark:text-zinc-50 dark:hover:bg-white/[.06]"
+                          : "flex h-9 items-center justify-center rounded-lg text-sm text-zinc-900 transition-colors hover:bg-black/[.04] dark:text-zinc-50 dark:hover:bg-white/[.06]"
                       }
                     >
                       {date.getDate()}
@@ -622,7 +643,7 @@ export default async function GarageDetailPage({
             </div>
 
             <div className="flex flex-col gap-3">
-              <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                 {d.availableTimes}
               </h2>
               {slots.length > 0 ? (
@@ -670,7 +691,7 @@ export default async function GarageDetailPage({
                       id="confirm-booking"
                       action={bookAppointment}
                       aria-labelledby="confirm-booking-title"
-                      className="flex scroll-mt-6 flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-5 dark:border-white/[.145] dark:bg-zinc-950"
+                      className="flex scroll-mt-6 flex-col gap-4 rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] p-5 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none"
                     >
                       <input type="hidden" name="garageId" value={garageId} />
                       <input type="hidden" name="serviceId" value={selectedService.id} />
@@ -680,26 +701,26 @@ export default async function GarageDetailPage({
 
                       <h3
                         id="confirm-booking-title"
-                        className="font-semibold text-black dark:text-zinc-50"
+                        className="font-semibold text-zinc-900 dark:text-zinc-50"
                       >
                         {d.reviewTitle}
                       </h3>
                       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
                         <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewGarage}</dt>
-                        <dd className="font-medium text-black dark:text-zinc-50">{garage.name}</dd>
+                        <dd className="font-medium text-zinc-900 dark:text-zinc-50">{garage.name}</dd>
                         <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewService}</dt>
-                        <dd className="font-medium text-black dark:text-zinc-50">
+                        <dd className="font-medium text-zinc-900 dark:text-zinc-50">
                           {selectedService.name}{" "}
                           <span className="font-normal text-zinc-500 dark:text-zinc-400">
                             ({selectedService.duration_minutes} {d.min})
                           </span>
                         </dd>
                         <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewWhen}</dt>
-                        <dd className="font-medium text-black first-letter:uppercase dark:text-zinc-50">
+                        <dd className="font-medium text-zinc-900 first-letter:uppercase dark:text-zinc-50">
                           {selectedDateLabel} · {selectedTime}
                         </dd>
                         <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewPrice}</dt>
-                        <dd className="font-medium tabular-nums text-black dark:text-zinc-50">
+                        <dd className="font-medium tabular-nums text-zinc-900 dark:text-zinc-50">
                           {formatServicePrice(selectedService, dictionary.servicePrice)}
                         </dd>
                       </dl>
@@ -764,7 +785,7 @@ export default async function GarageDetailPage({
                         <Link
                           href={slotBaseHref}
                           scroll={false}
-                          className="text-sm font-medium text-zinc-600 underline hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                          className="text-sm font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                         >
                           {d.changeTime}
                         </Link>
@@ -806,17 +827,17 @@ export default async function GarageDetailPage({
         )}
 
         <div className="flex flex-col gap-3">
-          <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             {d.reviews}
           </h2>
           {reviewRows.length > 0 ? (
             reviewRows.map((review) => (
               <div
                 key={review.id}
-                className="rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+                className="rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] p-4 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-black dark:text-zinc-50">
+                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
                     {review.profiles?.full_name ?? d.clientFallback}
                   </span>
                   <span className="text-sm text-zinc-600 dark:text-zinc-400">

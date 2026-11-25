@@ -1,35 +1,40 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { getAuthedProfile } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { LocaleSwitch } from "@/components/client-nav";
 import { ThemeSegmentedControl } from "@/components/theme-toggle";
 import { PushNotificationOptIn } from "@/components/push-notification-opt-in";
 import { requestAccountDeletion, cancelAccountDeletion } from "@/app/actions/account";
 import { ACCOUNT_DELETION_GRACE_PERIOD_DAYS } from "@/lib/account-deletion";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import { NotificationPrefsForm, ProfileDetailsForm } from "./profile-forms";
+import { CLIENT_CARD, CLIENT_PAGE, CLIENT_PAGE_SUBTITLE, CLIENT_PAGE_TITLE } from "@/lib/client-ui";
 
-// Flat panels: hairline border, no shadow, light surface on the zinc page.
-const PANEL =
-  "flex flex-col gap-5 rounded-xl border border-zinc-200/80 bg-white p-5 sm:p-6 dark:border-zinc-800/60 dark:bg-zinc-950/40";
+const PANEL = `${CLIENT_CARD} flex flex-col gap-5 p-5 sm:p-6`;
 const DIVIDER = "border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60";
-const ROW_TITLE = "text-sm font-medium text-black dark:text-zinc-50";
-const ROW_TEXT = "text-sm text-zinc-500 dark:text-zinc-400";
+const ROW_TITLE = "text-sm font-medium text-zinc-900 dark:text-zinc-50";
+const ROW_TEXT = CLIENT_PAGE_SUBTITLE;
 const SECONDARY_BUTTON =
   "inline-flex h-9 items-center gap-1.5 self-start rounded-full border border-zinc-200 px-4 text-sm font-medium text-black transition-colors hover:bg-zinc-100 dark:border-zinc-700/80 dark:text-zinc-50 dark:hover:bg-zinc-800/60";
 
 function PanelHeader({ id, title, description }: { id: string; title: string; description?: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <h2 id={id} className="text-base font-semibold tracking-tight text-black dark:text-zinc-50">
+      <h2 id={id} className="text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
         {title}
       </h2>
       {description && <p className={ROW_TEXT}>{description}</p>}
     </div>
   );
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params;
+  const { account } = await getDictionary(resolveLocale(lang));
+  return { title: account.title };
 }
 
 export default async function AccountPage({ params }: { params: Promise<{ lang: string }> }) {
@@ -56,12 +61,10 @@ export default async function AccountPage({ params }: { params: Promise<{ lang: 
     : null;
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8 sm:py-10">
+    <div className={CLIENT_PAGE}>
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
         <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50 sm:text-3xl">
-            {d.title}
-          </h1>
+          <h1 className={CLIENT_PAGE_TITLE}>{d.title}</h1>
           <p className={ROW_TEXT}>{d.subtitle}</p>
         </header>
 
@@ -162,20 +165,11 @@ export default async function AccountPage({ params }: { params: Promise<{ lang: 
 
             <section aria-labelledby="preferences-title" className={PANEL}>
               <PanelHeader id="preferences-title" title={d.preferences} description={d.preferencesDescription} />
-              <div className="flex flex-col divide-y divide-zinc-200/80 dark:divide-zinc-800/60">
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
-                  <div className="min-w-0">
-                    <p className={ROW_TITLE}>{d.language}</p>
-                    <p className={ROW_TEXT}>{d.languageDescription}</p>
-                  </div>
-                  <LocaleSwitch lang={lang} labels={{ language: d.language }} />
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-4">
-                  <p className={ROW_TITLE}>{d.theme}</p>
-                  <ThemeSegmentedControl
-                    labels={{ group: d.theme, light: d.themeLight, dark: d.themeDark }}
-                  />
-                </div>
+              {/* Language lives in the sidebar footer (top bar on phones),
+                  next to the theme toggle; only the theme is repeated here. */}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className={ROW_TITLE}>{d.theme}</p>
+                <ThemeSegmentedControl labels={{ group: d.theme, light: d.themeLight, dark: d.themeDark }} />
               </div>
             </section>
 

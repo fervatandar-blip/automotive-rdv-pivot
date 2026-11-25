@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, MapPin, MessageSquare, Navigation, Phone } from "lucide-react";
@@ -11,6 +12,16 @@ import { ChatThread } from "@/components/chat-thread";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 import { directionsUrl } from "@/lib/maps";
 import { getClientUnreadCounts } from "@/lib/unread-messages";
+import {
+  CLIENT_CARD,
+  CLIENT_CANVAS,
+  CLIENT_PAGE,
+  CLIENT_PAGE_SUBTITLE,
+  CLIENT_PAGE_TITLE,
+  CLIENT_SECTION_LABEL,
+  CLIENT_TINTED_PILL,
+  CLIENT_PILL_ICON,
+} from "@/lib/client-ui";
 import {
   groupConversations,
   replyAppointment,
@@ -42,11 +53,12 @@ type AppointmentRow = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Header (h-14) and page padding on every size; the phone tab bar below md.
-const PANEL_HEIGHT =
-  "h-[calc(100dvh-3.5rem-4rem-env(safe-area-inset-bottom)-2rem)] md:h-[calc(100dvh-3.5rem-4rem)]";
-const ACTION_PILL =
-  "inline-flex h-8 items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-800 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 dark:border-zinc-700/80 dark:bg-transparent dark:text-zinc-100 dark:hover:bg-zinc-800/60";
+// The page fills the viewport below the top bar (h-14), less the phone tab
+// bar (h-16 + home indicator) below md, which <main> already pads for. The
+// inbox panel then takes whatever height the page title leaves, so the
+// composer stays anchored on screen however tall the title wraps.
+const PAGE_HEIGHT =
+  "h-[calc(100dvh-3.5rem-4rem-env(safe-area-inset-bottom))] md:h-[calc(100dvh-3.5rem)]";
 
 function dateLocaleFor(lang: Locale) {
   return lang === "fr" ? "fr-FR" : "en-GB";
@@ -81,6 +93,12 @@ function telHref(phone: string) {
 
 function vehicleName(vehicle: AppointmentRow["vehicles"]) {
   return vehicle ? [vehicle.brands?.name, vehicle.model].filter(Boolean).join(" ") : "";
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params;
+  const { clientMessages } = await getDictionary(resolveLocale(lang));
+  return { title: clientMessages.title };
 }
 
 export default async function ClientMessagesPage({
@@ -137,14 +155,14 @@ export default async function ClientMessagesPage({
 
   const header = (
     <header className={`flex flex-col gap-1 ${showThreadOnPhone ? "hidden md:flex" : ""}`}>
-      <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50 sm:text-3xl">{d.title}</h1>
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.subtitle}</p>
+      <h1 className={CLIENT_PAGE_TITLE}>{d.title}</h1>
+      <p className={CLIENT_PAGE_SUBTITLE}>{d.subtitle}</p>
     </header>
   );
 
   if (conversations.length === 0) {
     return (
-      <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8 sm:py-10">
+      <div className={CLIENT_PAGE}>
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
           {header}
           <EmptyStateCard
@@ -176,19 +194,19 @@ export default async function ClientMessagesPage({
   const appointmentLabels = Object.fromEntries(active.appointments.map((row) => [row.id, bookingLabel(row)]));
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-4 dark:bg-black sm:px-8 sm:py-8">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+    <div className={`${PAGE_HEIGHT} flex flex-col ${CLIENT_CANVAS} px-4 py-4 sm:px-8 sm:py-8`}>
+      <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-5">
         {header}
 
-        <div
-          className={`${PANEL_HEIGHT} flex min-h-[26rem] overflow-hidden rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800/60 dark:bg-zinc-950/40`}
-        >
+        {/* min-h keeps the thread usable on very short windows; there the
+            page scrolls instead of squeezing the composer away. */}
+        <div className={`${CLIENT_CARD} flex min-h-[22rem] flex-1 overflow-hidden`}>
           {/* Conversation list */}
           <nav
             aria-label={d.conversations}
             className={`${showThreadOnPhone ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col border-zinc-200/80 md:w-80 md:border-r dark:border-zinc-800/60`}
           >
-            <h2 className="border-b border-zinc-200/80 px-4 py-3 text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:border-zinc-800/60 dark:text-zinc-400">
+            <h2 className={`border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800/60 ${CLIENT_SECTION_LABEL}`}>
               {d.conversations}
             </h2>
             <ul className="min-h-0 flex-1 overflow-y-auto">
@@ -215,7 +233,7 @@ export default async function ClientMessagesPage({
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span
-                          className={`truncate text-sm text-black dark:text-zinc-50 ${conversation.unread > 0 ? "font-semibold" : "font-medium"}`}
+                          className={`truncate text-sm text-zinc-900 dark:text-zinc-50 ${conversation.unread > 0 ? "font-semibold" : "font-medium"}`}
                         >
                           {name}
                         </span>
@@ -235,7 +253,7 @@ export default async function ClientMessagesPage({
                         <p
                           className={`truncate text-sm ${
                             conversation.unread > 0
-                              ? "font-medium text-black dark:text-zinc-50"
+                              ? "font-medium text-zinc-900 dark:text-zinc-50"
                               : "text-zinc-500 dark:text-zinc-400"
                           }`}
                         >
@@ -258,9 +276,9 @@ export default async function ClientMessagesPage({
           {/* Thread */}
           <section
             aria-labelledby="thread-title"
-            className={`${showThreadOnPhone ? "flex" : "hidden md:flex"} min-w-0 flex-1 flex-col`}
+            className={`${showThreadOnPhone ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-1 flex-col`}
           >
-            <div className="flex flex-col gap-2 border-b border-zinc-200/80 px-4 py-3 sm:px-6 dark:border-zinc-800/60">
+            <div className="flex shrink-0 flex-col gap-2 border-b border-zinc-200/80 px-4 py-3 sm:px-6 dark:border-zinc-800/60">
               <Link
                 href={`/${lang}/messages`}
                 className="inline-flex items-center gap-1 self-start text-sm font-medium text-zinc-600 hover:text-black md:hidden dark:text-zinc-400 dark:hover:text-zinc-100"
@@ -270,7 +288,7 @@ export default async function ClientMessagesPage({
               </Link>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 id="thread-title" className="truncate text-base font-semibold text-black dark:text-zinc-50">
+                  <h2 id="thread-title" className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
                     {garageName}
                   </h2>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -293,9 +311,9 @@ export default async function ClientMessagesPage({
                         href={phoneHref}
                         aria-label={d.callNamed.replace("{name}", garageName)}
                         title={garage.phone}
-                        className={ACTION_PILL}
+                        className={CLIENT_TINTED_PILL}
                       >
-                        <Phone aria-hidden className="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400" strokeWidth={1.75} />
+                        <Phone aria-hidden className={CLIENT_PILL_ICON} strokeWidth={1.75} />
                         <span className="hidden sm:inline">{garage.phone}</span>
                         <span className="sm:hidden">{d.call}</span>
                       </a>
@@ -306,9 +324,9 @@ export default async function ClientMessagesPage({
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label={d.directionsTo.replace("{name}", garageName)}
-                        className={ACTION_PILL}
+                        className={CLIENT_TINTED_PILL}
                       >
-                        <Navigation aria-hidden className="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400" strokeWidth={1.75} />
+                        <Navigation aria-hidden className={CLIENT_PILL_ICON} strokeWidth={1.75} />
                         {d.directions}
                       </a>
                     )}

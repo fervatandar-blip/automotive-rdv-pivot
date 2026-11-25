@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { cancelAppointment, type CancelAppointmentState } from "@/app/actions/appointments";
 import type { Locale } from "@/lib/i18n/config";
+import { CLIENT_DANGER_PILL, CLIENT_TINTED_PILL } from "@/lib/client-ui";
 
 /**
  * Cancelling frees the slot for someone else and can't be undone from
@@ -38,10 +39,9 @@ export function CancelBookingButton({
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        // Ghost pill: same height and padding as the secondary pills next to
-        // it (transparent border), pushed to the row's end on wider screens
-        // so the destructive action sits apart from the everyday ones.
-        className="inline-flex h-8 items-center rounded-full border border-transparent px-3.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 sm:ml-auto dark:text-red-400 dark:hover:bg-red-500/10"
+        // Ghost pill, same box as the tinted pills next to it, pushed to the
+        // row's end so the destructive action sits apart from the everyday ones.
+        className={`${CLIENT_DANGER_PILL} ml-auto`}
       >
         {labels.cancel}
       </button>
@@ -51,13 +51,13 @@ export function CancelBookingButton({
   return (
     <div className="flex w-full flex-col gap-1.5 sm:ml-auto sm:w-auto">
       <div role="group" aria-label={labels.confirm} className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-medium text-black dark:text-zinc-50">{labels.confirm}</span>
+        <span className="text-xs font-medium text-zinc-900 dark:text-zinc-50">{labels.confirm}</span>
         <button
           type="button"
           autoFocus
           disabled={pending}
           onClick={() => setConfirming(false)}
-          className="inline-flex h-8 items-center rounded-full border border-zinc-200 px-3.5 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-50 dark:border-zinc-700/80 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          className={`${CLIENT_TINTED_PILL} disabled:opacity-50`}
         >
           {labels.keep}
         </button>
@@ -68,14 +68,14 @@ export function CancelBookingButton({
             type="submit"
             disabled={pending}
             aria-busy={pending}
-            className="inline-flex h-8 items-center rounded-full border border-transparent bg-red-600 px-3.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60 dark:bg-red-500/90 dark:hover:bg-red-500"
+            className="inline-flex h-8 items-center rounded-lg bg-red-600 px-3 text-xs font-medium text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 disabled:opacity-60 dark:bg-red-500/90 dark:hover:bg-red-500"
           >
             {pending ? labels.cancelling : labels.yes}
           </button>
         </form>
       </div>
       {!pending && state?.error && (
-        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
           {state.error === "failed" ? labels.failed : labels.notAllowed}
         </p>
       )}

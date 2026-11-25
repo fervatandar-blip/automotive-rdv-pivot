@@ -35,7 +35,7 @@ function applyTheme(dark: boolean) {
 const TONE_CLASSES = {
   dark: "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-50 focus-visible:ring-zinc-600",
   adaptive:
-    "text-zinc-600 hover:bg-zinc-200/70 hover:text-zinc-900 focus-visible:ring-zinc-400 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50 dark:focus-visible:ring-zinc-600",
+    "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 focus-visible:ring-zinc-400 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50 dark:focus-visible:ring-zinc-600",
 } as const;
 
 export function ThemeToggle({

@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LocateFixed, Loader2 } from "lucide-react";
 
-export function NearMeButton({ label = "Near me" }: { label?: string }) {
+const DEFAULT_CLASS =
+  "flex shrink-0 items-center gap-2 rounded-full border border-black/[.08] bg-white px-4 py-2.5 text-sm font-medium transition-colors hover:bg-black/[.04] disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.06]";
+
+export function NearMeButton({ label = "Near me", className = DEFAULT_CLASS }: { label?: string; className?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [locating, setLocating] = useState(false);
@@ -32,7 +35,8 @@ export function NearMeButton({ label = "Near me" }: { label?: string }) {
       type="button"
       onClick={handleClick}
       disabled={locating}
-      className="flex shrink-0 items-center gap-2 rounded-full border border-black/[.08] bg-white px-4 py-2.5 text-sm font-medium transition-colors hover:bg-black/[.04] disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.06]"
+      aria-busy={locating}
+      className={className}
     >
       {locating ? (
         <Loader2 className="h-4 w-4 shrink-0 animate-spin" strokeWidth={1.5} />

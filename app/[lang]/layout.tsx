@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { locales, resolveLocale } from "@/lib/i18n/config";
+import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
@@ -14,11 +15,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "RDV — Find a trusted garage in Luxembourg",
-  description:
-    "RDV connects car owners with verified garages in Luxembourg — search, compare, and book automotive services online in a few taps.",
-};
+// Pages below set a plain title ("Mes véhicules"); the template brands it.
+// The homepage shares this segment, so it gets the full default title.
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params;
+  const { meta } = await getDictionary(resolveLocale(lang));
+  return {
+    title: { default: meta.siteTitle, template: "%s · RDV" },
+    description: meta.siteDescription,
+  };
+}
 
 export function generateStaticParams() {
   return locales.map((lang) => ({ lang }));

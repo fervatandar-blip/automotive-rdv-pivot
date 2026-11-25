@@ -20,6 +20,8 @@ export function InstantFilterForm({
   resetLabel,
   showReset,
   keepOnReset = [],
+  resetClassName = "self-start text-sm font-medium text-zinc-500 underline-offset-2 hover:text-black hover:underline dark:text-zinc-400 dark:hover:text-zinc-100",
+  ariaLabel,
 }: {
   children: ReactNode;
   className?: string;
@@ -27,6 +29,9 @@ export function InstantFilterForm({
   showReset: boolean;
   /** Params a reset keeps (e.g. the vehicle being booked for). */
   keepOnReset?: string[];
+  resetClassName?: string;
+  /** Names the form as a search landmark for screen readers. */
+  ariaLabel?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -86,6 +91,8 @@ export function InstantFilterForm({
     <form
       ref={formRef}
       method="GET"
+      role={ariaLabel ? "search" : undefined}
+      aria-label={ariaLabel}
       aria-busy={pending}
       className={className}
       onSubmit={(event) => {
@@ -101,11 +108,7 @@ export function InstantFilterForm({
     >
       {children}
       {showReset && (
-        <button
-          type="button"
-          onClick={reset}
-          className="self-start text-sm font-medium text-zinc-500 underline-offset-2 hover:text-black hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
-        >
+        <button type="button" onClick={reset} className={resetClassName}>
           {resetLabel}
         </button>
       )}

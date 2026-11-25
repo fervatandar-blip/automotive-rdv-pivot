@@ -15,13 +15,13 @@ export function EmptyStateCard({
   ctaLabel?: string;
 }) {
   return (
-    <div className="flex flex-col items-start gap-3 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+    <div className="flex flex-col items-start gap-3 rounded-xl border border-zinc-200/80 bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none">
       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-600 text-white">
         <Icon className="h-5 w-5" strokeWidth={1.5} />
       </div>
       <div>
-        <h3 className="font-semibold text-black dark:text-zinc-50">{title}</h3>
-        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+        <h3 className="font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{title}</h3>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           {description}
         </p>
       </div>
