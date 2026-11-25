@@ -30,6 +30,7 @@ import { getDictionary, type Dictionary } from "@/lib/i18n/get-dictionary";
 import {
   APP_TIME_ZONE,
   addDaysToDateKey,
+  dateKeyInAppZone,
   dateKeyToDisplayDate,
   todayKeyInAppZone,
   zonedStartOfDay,
@@ -49,6 +50,16 @@ import {
 import { DrawerShell } from "@/components/drawer-shell";
 import { CalendarDragLayer } from "./drag-layer";
 import { SlotBookingSurface } from "./slot-booking";
+import { CalendarRail } from "./calendar-rail";
+import {
+  CLIENT_DANGER_PILL,
+  CLIENT_PRIMARY_BUTTON,
+  CLIENT_SECONDARY_BUTTON,
+  CLIENT_SEGMENT,
+  CLIENT_SEGMENTED,
+  CLIENT_SEGMENT_ACTIVE,
+  CLIENT_SEGMENT_IDLE,
+} from "@/lib/client-ui";
 
 type D = Dictionary["garageCalendar"];
 type Mechanic = { id: string; full_name: string };
@@ -59,9 +70,9 @@ const APPOINTMENT_SELECT =
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const CONTROL =
-  "inline-flex h-9 items-center justify-center rounded-lg border border-hairline bg-surface text-sm font-medium text-ink transition-colors hover:bg-subtle hover:text-ink";
-const DRAWER_BUTTON =
-  "inline-flex items-center justify-center rounded-full border border-hairline px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-subtle hover:text-ink";
+  "inline-flex h-10 items-center justify-center rounded-xl border border-hairline bg-surface text-sm font-semibold text-ink transition-colors hover:bg-subtle hover:text-ink";
+const DRAWER_BUTTON = CLIENT_SECONDARY_BUTTON;
+const SEGMENT = `${CLIENT_SEGMENT} px-3`;
 
 type CalendarState = {
   view: CalendarView;
@@ -148,8 +159,16 @@ export default async function GarageCalendarPage({
   const supabase = await createClient();
   const isGrid = view === "day" || view === "week";
 
-  const [{ data: appointmentData }, { data: staffRows }, { data: ownerProfile }, schedule, { data: selectedData }] =
-    await Promise.all([
+  // The rail's mini month marks days with at least one live booking.
+  const miniMonth = monthGridDates(anchor);
+  const [
+    { data: appointmentData },
+    { data: staffRows },
+    { data: ownerProfile },
+    schedule,
+    { data: selectedData },
+    { data: busyData },
+  ] = await Promise.all([
       // Everything overlapping the range, so overnight jobs show on both days.
       (() => {
         let request = supabase
@@ -179,7 +198,16 @@ export default async function GarageCalendarPage({
             .eq("garage_id", garage.id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
+      supabase
+        .from("appointments")
+        .select("start_time")
+        .eq("garage_id", garage.id)
+        .neq("status", "cancelled")
+        .gte("start_time", zonedStartOfDay(miniMonth[0]).toISOString())
+        .lt("start_time", zonedStartOfDay(addDaysToDateKey(miniMonth[miniMonth.length - 1], 1)).toISOString())
+        .limit(2000),
     ]);
+  const busyDays = new Set((busyData ?? []).map((row) => dateKeyInAppZone(new Date(row.start_time as string))));
 
   const appointments = (appointmentData ?? []) as unknown as CalendarAppointment[];
   const mechanics: Mechanic[] = [
@@ -266,155 +294,161 @@ export default async function GarageCalendarPage({
     | null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 bg-canvas px-4 py-6 sm:px-6 lg:px-8">
-      {/* Header bar: date navigation + title on the left, view switcher on the right. */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <nav aria-label={d.dateNavigation} className="flex items-center gap-1.5">
-            <Link href={calendarHref(lang, { ...state, date: prev })} aria-label={d.previous} className={`${CONTROL} w-9`}>
-              <ChevronLeft className="h-4 w-4" strokeWidth={2} />
-            </Link>
-            <Link href={calendarHref(lang, { ...state, date: todayKey })} className={`${CONTROL} px-3.5`}>
-              {d.today}
-            </Link>
-            <Link href={calendarHref(lang, { ...state, date: next })} aria-label={d.next} className={`${CONTROL} w-9`}>
-              <ChevronRight className="h-4 w-4" strokeWidth={2} />
-            </Link>
-          </nav>
-          <h1 className="text-xl font-bold tracking-tight text-ink first-letter:uppercase">
-            {title}
-          </h1>
-        </div>
+    <div className="flex flex-1 gap-6 bg-canvas px-4 py-6 sm:px-6 lg:px-8">
+      <CalendarRail
+        anchor={anchor}
+        todayKey={todayKey}
+        busyDays={busyDays}
+        visibleDates={isGrid ? dates : []}
+        dateLocale={dateLocale}
+        hrefForDate={(date) => calendarHref(lang, { ...state, date })}
+        dayByMechanicHref={
+          mechanics.length > 1 ? calendarHref(lang, { ...state, view: "day", by: "mechanic" }) : null
+        }
+        mechanics={mechanics}
+        currentUserId={profile.id}
+        statusLabels={statusLabels}
+        d={d}
+      />
+      <div className="flex min-w-0 flex-1 flex-col gap-4">
+        {/* Header bar: date navigation + title on the left, view switcher on the right. */}
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-wrap items-center gap-3">
+            <nav aria-label={d.dateNavigation} className="flex items-center gap-1.5">
+              <Link href={calendarHref(lang, { ...state, date: prev })} aria-label={d.previous} className={`${CONTROL} w-9`}>
+                <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+              </Link>
+              <Link href={calendarHref(lang, { ...state, date: todayKey })} className={`${CONTROL} px-3.5`}>
+                {d.today}
+              </Link>
+              <Link href={calendarHref(lang, { ...state, date: next })} aria-label={d.next} className={`${CONTROL} w-9`}>
+                <ChevronRight className="h-4 w-4" strokeWidth={2} />
+              </Link>
+            </nav>
+            <h1 className="text-xl font-bold tracking-tight text-ink first-letter:uppercase sm:text-2xl">
+              {title}
+            </h1>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {view === "day" && mechanics.length > 0 && (
-            <nav
-              aria-label={d.dayLayout}
-              className="inline-flex rounded-lg border border-hairline bg-subtle p-0.5"
-            >
-              {(["together", "mechanic"] as const).map((option) => (
+          <div className="flex flex-wrap items-center gap-2">
+            {view === "day" && mechanics.length > 0 && (
+              <nav aria-label={d.dayLayout} className={CLIENT_SEGMENTED}>
+                {(["together", "mechanic"] as const).map((option) => (
+                  <Link
+                    key={option}
+                    href={calendarHref(lang, { ...state, by: option })}
+                    aria-current={state.by === option ? "page" : undefined}
+                    className={`${SEGMENT} ${state.by === option ? CLIENT_SEGMENT_ACTIVE : CLIENT_SEGMENT_IDLE}`}
+                  >
+                    {option === "mechanic" ? d.byMechanic : d.together}
+                  </Link>
+                ))}
+              </nav>
+            )}
+            {view !== "list" && (
+              <Link
+                href={calendarHref(lang, { ...state, cancelled: !showCancelled })}
+                aria-pressed={showCancelled}
+                className={`${CONTROL} gap-1.5 px-3.5`}
+              >
+                {showCancelled ? (
+                  <EyeOff aria-hidden className="h-4 w-4" />
+                ) : (
+                  <Eye aria-hidden className="h-4 w-4" />
+                )}
+                {showCancelled ? d.hideCancelled : d.showCancelled}
+              </Link>
+            )}
+            <nav aria-label={d.viewSwitcher} className={CLIENT_SEGMENTED}>
+              {CALENDAR_VIEWS.map((option) => (
                 <Link
                   key={option}
-                  href={calendarHref(lang, { ...state, by: option })}
-                  aria-current={state.by === option ? "page" : undefined}
-                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                    state.by === option
-                      ? "bg-white text-ink shadow-sm dark:bg-zinc-800"
-                      : "text-ink-muted hover:text-ink"
-                  }`}
+                  href={calendarHref(lang, { ...state, view: option })}
+                  aria-current={option === view ? "page" : undefined}
+                  className={`${SEGMENT} ${option === view ? CLIENT_SEGMENT_ACTIVE : CLIENT_SEGMENT_IDLE}`}
                 >
-                  {option === "mechanic" ? d.byMechanic : d.together}
+                  {viewLabels[option]}
                 </Link>
               ))}
             </nav>
-          )}
-          {view !== "list" && (
-            <Link
-              href={calendarHref(lang, { ...state, cancelled: !showCancelled })}
-              aria-pressed={showCancelled}
-              className={`${CONTROL} gap-1.5 px-3 text-xs`}
-            >
-              {showCancelled ? (
-                <EyeOff aria-hidden className="h-3.5 w-3.5" />
-              ) : (
-                <Eye aria-hidden className="h-3.5 w-3.5" />
-              )}
-              {showCancelled ? d.hideCancelled : d.showCancelled}
-            </Link>
-          )}
-          <nav
-            aria-label={d.viewSwitcher}
-            className="inline-flex rounded-lg border border-hairline bg-subtle p-0.5"
-          >
-            {CALENDAR_VIEWS.map((option) => (
-              <Link
-                key={option}
-                href={calendarHref(lang, { ...state, view: option })}
-                aria-current={option === view ? "page" : undefined}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                  option === view
-                    ? "bg-white text-ink shadow-sm dark:bg-zinc-800"
-                    : "text-ink-muted hover:text-ink"
-                }`}
-              >
-                {viewLabels[option]}
-              </Link>
-            ))}
-          </nav>
+          </div>
         </div>
+
+        {(query.error === "mechanic-busy" || query.error === "assign-failed") && (
+          <p
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+          >
+            {query.error === "mechanic-busy" ? d.mechanicBusyError : d.assignFailedError}
+          </p>
+        )}
+
+        {/* Below lg the rail (and its legend) is hidden. */}
+        <div className="lg:hidden">
+          <StatusLegend statusLabels={statusLabels} d={d} showBlocks={isGrid} />
+        </div>
+
+        {isGrid && (
+          <SlotBookingSurface lang={lang} d={dictionary.walkIn}>
+            {/* Drag to reschedule; owners may also drop into another mechanic's column. */}
+            <CalendarDragLayer lang={lang} d={d} canReassign={isOwner}>
+              <TimeGrid
+                columns={columns}
+                schedule={schedule}
+                startHour={startHour}
+                endHour={endHour}
+                todayKey={todayKey}
+                now={now}
+                lang={lang}
+                dateLocale={dateLocale}
+                d={d}
+                hrefForAppointment={hrefForAppointment}
+                selectedId={selectedId}
+              />
+            </CalendarDragLayer>
+          </SlotBookingSurface>
+        )}
+        {view === "month" && (
+          <MonthGrid
+            dates={dates}
+            monthKey={anchor.slice(0, 7)}
+            appointments={appointments}
+            todayKey={todayKey}
+            lang={lang}
+            dateLocale={dateLocale}
+            d={d}
+            hrefForAppointment={hrefForAppointment}
+            hrefForDay={hrefForDay}
+          />
+        )}
+        {view === "list" && (
+          <AppointmentList
+            dates={dates}
+            appointments={appointments}
+            mechanicNames={mechanicNames}
+            todayKey={todayKey}
+            lang={lang}
+            dateLocale={dateLocale}
+            d={d}
+            statusLabels={statusLabels}
+            hrefForAppointment={hrefForAppointment}
+          />
+        )}
+
+        {selected && (
+          <AppointmentDrawer
+            appointment={selected}
+            closeHref={calendarHref(lang, state)}
+            state={state}
+            lang={lang}
+            dateLocale={dateLocale}
+            d={d}
+            dictionary={dictionary}
+            mechanics={mechanics}
+            isOwner={isOwner}
+          />
+        )}
       </div>
-
-      {(query.error === "mechanic-busy" || query.error === "assign-failed") && (
-        <p
-          role="alert"
-          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
-        >
-          {query.error === "mechanic-busy" ? d.mechanicBusyError : d.assignFailedError}
-        </p>
-      )}
-
-      <StatusLegend statusLabels={statusLabels} d={d} showBlocks={isGrid} />
-
-      {isGrid && (
-        <SlotBookingSurface lang={lang} d={dictionary.walkIn}>
-          {/* Drag to reschedule; owners may also drop into another mechanic's column. */}
-          <CalendarDragLayer lang={lang} d={d} canReassign={isOwner}>
-            <TimeGrid
-              columns={columns}
-              schedule={schedule}
-              startHour={startHour}
-              endHour={endHour}
-              todayKey={todayKey}
-              now={now}
-              lang={lang}
-              dateLocale={dateLocale}
-              d={d}
-              hrefForAppointment={hrefForAppointment}
-              selectedId={selectedId}
-            />
-          </CalendarDragLayer>
-        </SlotBookingSurface>
-      )}
-      {view === "month" && (
-        <MonthGrid
-          dates={dates}
-          monthKey={anchor.slice(0, 7)}
-          appointments={appointments}
-          todayKey={todayKey}
-          lang={lang}
-          dateLocale={dateLocale}
-          d={d}
-          hrefForAppointment={hrefForAppointment}
-          hrefForDay={hrefForDay}
-        />
-      )}
-      {view === "list" && (
-        <AppointmentList
-          dates={dates}
-          appointments={appointments}
-          mechanicNames={mechanicNames}
-          todayKey={todayKey}
-          lang={lang}
-          dateLocale={dateLocale}
-          d={d}
-          statusLabels={statusLabels}
-          hrefForAppointment={hrefForAppointment}
-        />
-      )}
-
-      {selected && (
-        <AppointmentDrawer
-          appointment={selected}
-          closeHref={calendarHref(lang, state)}
-          state={state}
-          lang={lang}
-          dateLocale={dateLocale}
-          d={d}
-          dictionary={dictionary}
-          mechanics={mechanics}
-          isOwner={isOwner}
-        />
-      )}
     </div>
   );
 }
@@ -493,7 +527,7 @@ function AppointmentDrawer({
             <span aria-hidden className={`h-2 w-2 rounded-full ${STATUS_DOT[appointment.status] ?? STATUS_DOT.pending}`} />
             {statusLabel}
           </span>
-          <p className="text-lg font-semibold text-ink first-letter:uppercase">
+          <p className="text-lg font-bold tracking-tight text-ink first-letter:uppercase">
             {start.toLocaleDateString(dateLocale, {
               timeZone: APP_TIME_ZONE,
               weekday: "long",
@@ -522,7 +556,7 @@ function AppointmentDrawer({
           <dt className="text-ink-muted">{d.vehicleLabel}</dt>
           <dd className="flex flex-wrap items-center gap-2 text-ink">
             {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
-            {vehicleDescription || (!plate && <span className="text-zinc-500">—</span>)}
+            {vehicleDescription || (!plate && <span className="text-ink-muted">–</span>)}
           </dd>
           <dt className="text-ink-muted">{d.mechanicLabel}</dt>
           <dd className="text-ink">{appointment.mechanic?.full_name ?? d.unassigned}</dd>
@@ -536,7 +570,7 @@ function AppointmentDrawer({
             <input type="hidden" name="returnDate" value={state.date} />
             {state.cancelled && <input type="hidden" name="returnCancelled" value="1" />}
             <input type="hidden" name="returnBy" value={state.by} />
-            <label htmlFor="drawer-mechanic" className="text-sm font-medium">
+            <label htmlFor="drawer-mechanic" className="text-sm font-semibold text-ink">
               {d.reassign}
             </label>
             <div className="flex gap-2">
@@ -544,7 +578,7 @@ function AppointmentDrawer({
                 id="drawer-mechanic"
                 name="mechanicId"
                 defaultValue={appointment.assigned_mechanic_id ?? ""}
-                className="text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                className="rounded-xl text-sm"
               >
                 <option value="">{d.autoAssign}</option>
                 {mechanics.map((mechanic) => (
@@ -564,7 +598,7 @@ function AppointmentDrawer({
           <form action={updateRepairStage} className="flex flex-col gap-2">
             <input type="hidden" name="id" value={appointment.id} />
             <input type="hidden" name="lang" value={lang} />
-            <label htmlFor="drawer-stage" className="text-sm font-medium">
+            <label htmlFor="drawer-stage" className="text-sm font-semibold text-ink">
               {d.repairStageLabel}
             </label>
             <div className="flex gap-2">
@@ -572,7 +606,7 @@ function AppointmentDrawer({
                 id="drawer-stage"
                 name="stage"
                 defaultValue={appointment.repair_stage ?? ""}
-                className="text-sm dark:border-zinc-700 dark:bg-zinc-950"
+                className="rounded-xl text-sm"
               >
                 <option value="" disabled>
                   {d.repairStagePlaceholder}
@@ -597,7 +631,7 @@ function AppointmentDrawer({
               <input type="hidden" name="lang" value={lang} />
               <button
                 type="submit"
-                className="w-full rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85"
+                className={`${CLIENT_PRIMARY_BUTTON} w-full`}
               >
                 {d.confirm}
               </button>
@@ -630,7 +664,7 @@ function AppointmentDrawer({
               <input type="hidden" name="lang" value={lang} />
               <button
                 type="submit"
-                className="w-full rounded-full px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-500/10"
+                className={`${CLIENT_DANGER_PILL} w-full`}
               >
                 {d.cancel}
               </button>

@@ -466,6 +466,7 @@ export async function updateRepairStage(formData: FormData) {
   }
 
   revalidateLocalizedPath("/garage/calendar");
+  revalidateLocalizedPath("/garage/dashboard");
   revalidateLocalizedPath("/dashboard");
   revalidateLocalizedPath("/appointments");
 }

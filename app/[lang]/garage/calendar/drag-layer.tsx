@@ -303,7 +303,7 @@ export function CalendarDragLayer({
       width: columnRect.width - 4,
       top: columnRect.top + ((drag.originStartMin - rangeStart) / 60) * hourPx,
       height: Math.max((durationMin / 60) * hourPx, 22),
-      text: `${minutesToTime(drag.originStartMin)}–${minutesToTime(endMin)} · ${formatMinutes(durationMin)}`,
+      text: `${minutesToTime(drag.originStartMin)}–${minutesToTime(endMin)} (${formatMinutes(durationMin)})`,
       valid: true,
     });
   }

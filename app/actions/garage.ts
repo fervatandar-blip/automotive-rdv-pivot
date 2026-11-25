@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireGarageOwner } from "@/lib/dal";
+import { geocodeAddress, shouldGeocode } from "@/lib/geocode";
 import { locales, parseLocale } from "@/lib/i18n/config";
 import {
   GARAGE_LANGUAGES,
@@ -53,6 +54,24 @@ function readLocation(formData: FormData) {
     return { latitude: null, longitude: null };
   }
   return { latitude, longitude };
+}
+
+/**
+ * The pin to save with an address: the one submitted, unless the address
+ * changed (or there's no pin) and the user didn't move it by hand -- then
+ * the address is geocoded. A failed or unavailable geocode keeps the
+ * submitted pin, so saving never fails over maps.
+ */
+async function locationFor(
+  stored: { address: string | null; city: string | null; latitude: number | null; longitude: number | null },
+  submitted: { address: string | null; city: string | null },
+  country: string | null,
+  formData: FormData
+) {
+  const pin = readLocation(formData);
+  if (!shouldGeocode({ stored, submitted: { ...submitted, ...pin } })) return pin;
+  const geocoded = await geocodeAddress({ ...submitted, country });
+  return geocoded ?? pin;
 }
 
 function readCapabilityFlags(formData: FormData) {
@@ -158,7 +177,12 @@ export async function completeOnboarding(
       pricing_category: data.pricingCategory ?? null,
       technician_count: data.technicianCount ?? null,
       ...readCapabilityFlags(formData),
-      ...readLocation(formData),
+      ...(await locationFor(
+        { address: null, city: null, latitude: null, longitude: null },
+        { address: data.address ?? null, city: data.city ?? null },
+        data.country,
+        formData
+      )),
       platform_terms_accepted_at: new Date().toISOString(),
     })
     .eq("id", garage.id);
@@ -265,10 +289,18 @@ export async function updateGarageProfile(
       return { errors: validatedFields.error.flatten().fieldErrors };
     }
 
-    update = {
+    const submitted = {
       address: validatedFields.data.address ?? null,
       city: validatedFields.data.city ?? null,
-      ...readLocation(formData),
+    };
+    update = {
+      ...submitted,
+      ...(await locationFor(
+        { address: garage.address, city: garage.city, latitude: garage.latitude, longitude: garage.longitude },
+        submitted,
+        garage.country,
+        formData
+      )),
     };
   } else {
     const validatedFields = GarageCapabilitiesFormSchema.safeParse({

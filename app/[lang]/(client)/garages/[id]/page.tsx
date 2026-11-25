@@ -12,6 +12,7 @@ import {
   Globe,
   Mail,
   MapPin,
+  Navigation,
   Phone,
 } from "lucide-react";
 import { getOptionalAuthedUser } from "@/lib/dal";
@@ -32,6 +33,7 @@ import { joinWaitlist } from "@/app/actions/waitlist";
 import { hasAnyOpeningHours, summarizeWeeklyHours } from "@/lib/opening-hours";
 import { APP_TIME_ZONE, dateKeyToDisplayDate, todayKeyInAppZone } from "@/lib/timezone";
 import { monogram } from "@/lib/monogram";
+import { directionsUrl } from "@/lib/maps";
 import { REVIEWS_ENABLED } from "@/lib/features";
 import { averageRating } from "@/lib/ratings";
 import { RatingPill, StarRating } from "@/components/star-rating";
@@ -178,6 +180,9 @@ export default async function GarageDetailPage({
   ]);
   const weeklyHours = summarizeWeeklyHours(availabilityRows ?? []);
   const capabilities = capabilityList(garage, fields);
+  // Address only counts if there's one to show; the link itself routes to
+  // the pin when there is one (lib/maps.ts).
+  const routeUrl = garage.address || garage.city ? directionsUrl(garage) : null;
   const pricingLabel =
     garage.pricing_category === "budget"
       ? fields.pricingBudget
@@ -345,11 +350,18 @@ export default async function GarageDetailPage({
           </span>
           <div className="flex min-w-0 flex-1 flex-col gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{garage.name}</h1>
-            {(garage.address || garage.city) && (
-              <p className="inline-flex items-center gap-1.5 text-sm text-ink-muted">
+            {routeUrl && (
+              <a
+                href={routeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={dictionary.clientDashboard.directionsTo.replace("{name}", garage.name)}
+                className="inline-flex w-fit items-center gap-1.5 text-sm text-ink-muted underline decoration-hairline underline-offset-4 transition-colors hover:text-ink hover:decoration-current"
+              >
                 <MapPin aria-hidden className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                 {[garage.address, garage.city].filter(Boolean).join(", ")}
-              </p>
+                <Navigation aria-hidden className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+              </a>
             )}
             <ul className="flex flex-wrap items-center gap-2 pt-1" aria-label={fields.servicesCapabilitiesTitle}>
               <li>

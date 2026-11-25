@@ -1,44 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { agendaBadge, computeDayCapacity, formatMinutes, isOpenAt, mechanicStatus } from "@/lib/dashboard";
+import { computeDayCapacity, formatMinutes, isOpenAt, mechanicStatus } from "@/lib/dashboard";
 import { zonedDateTimeToUtc } from "@/lib/timezone";
 
 const DATE = "2026-11-03"; // a Tuesday, CET (UTC+1)
 const at = (time: string) => zonedDateTimeToUtc(DATE, time).toISOString();
-
-describe("agendaBadge", () => {
-  const now = new Date(at("10:00"));
-
-  it("marks pending bookings as awaiting action", () => {
-    expect(agendaBadge({ status: "pending", repair_stage: null, start_time: at("14:00") }, now)).toBe(
-      "awaiting_action"
-    );
-  });
-
-  it("keeps a future confirmed booking with no stage as confirmed", () => {
-    expect(agendaBadge({ status: "confirmed", repair_stage: null, start_time: at("14:00") }, now)).toBe(
-      "confirmed"
-    );
-  });
-
-  it("treats a confirmed booking with a repair stage as in progress, even before its start", () => {
-    expect(
-      agendaBadge({ status: "confirmed", repair_stage: "received", start_time: at("14:00") }, now)
-    ).toBe("in_progress");
-  });
-
-  it("treats a confirmed booking whose start has passed as in progress", () => {
-    expect(agendaBadge({ status: "confirmed", repair_stage: null, start_time: at("09:30") }, now)).toBe(
-      "in_progress"
-    );
-  });
-
-  it("passes completed and cancelled through", () => {
-    expect(agendaBadge({ status: "completed", repair_stage: "ready_for_pickup", start_time: at("08:00") }, now)).toBe(
-      "completed"
-    );
-    expect(agendaBadge({ status: "cancelled", repair_stage: null, start_time: at("08:00") }, now)).toBe("cancelled");
-  });
-});
 
 describe("computeDayCapacity", () => {
   const splitShift = [

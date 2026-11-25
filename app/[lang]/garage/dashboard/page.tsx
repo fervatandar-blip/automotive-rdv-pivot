@@ -1,26 +1,22 @@
 import Link from "next/link";
-import { CLIENT_CARD, CLIENT_SECTION_LABEL } from "@/lib/client-ui";
 import { redirect } from "next/navigation";
 import {
-  AlertCircle,
   ArrowRight,
-  CalendarClock,
+  CalendarDays,
   Check,
-  CheckCircle2,
-  CircleCheckBig,
-  Gauge,
+  Clock,
   Hourglass,
   Info,
   KeyRound,
-  Wrench,
-  XCircle,
+  LogIn,
+  Phone,
   type LucideIcon,
 } from "lucide-react";
 import { getAuthedProfile, getGarageMembership } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/actions/auth";
 import { acceptMechanicInvite, declineMechanicInvite } from "@/app/actions/staff";
-import { completeAppointment, confirmAppointment } from "@/app/actions/appointments";
+import { completeAppointment, confirmAppointment, updateRepairStage } from "@/app/actions/appointments";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { getDictionary, type Dictionary } from "@/lib/i18n/get-dictionary";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -30,78 +26,46 @@ import { QuickWalkInButton } from "@/components/quick-walk-in-modal";
 import { REPAIR_STAGES } from "@/lib/definitions";
 import { getBookableWindowsForDate } from "@/lib/availability";
 import {
-  agendaBadge,
   computeDayCapacity,
   formatMinutes,
   isOpenAt,
   mechanicStatus,
-  parseAgendaView,
-  type AgendaBadge,
   type DayCapacity,
   type MechanicStatus,
 } from "@/lib/dashboard";
+import { BOARD_COLUMNS, groupBoard, nextStep, type BoardColumn } from "@/lib/job-board";
 import {
   APP_TIME_ZONE,
   addDaysToDateKey,
+  dateKeyInAppZone,
   dateKeyToDisplayDate,
   dayOfWeekForDateKey,
   todayKeyInAppZone,
   zonedStartOfDay,
 } from "@/lib/timezone";
-import { AgendaTabs } from "./agenda-tabs";
+import {
+  CLIENT_CARD,
+  CLIENT_PRIMARY_BUTTON,
+  CLIENT_SECONDARY_BUTTON,
+  CLIENT_SECTION_LABEL,
+  CLIENT_TEXT_LINK,
+  CLIENT_TINTED_PILL,
+} from "@/lib/client-ui";
 import { AppointmentActionsMenu } from "./appointment-actions-menu";
-import { MobileCollapsible } from "./mobile-collapsible";
 
 type D = Dictionary["garageDashboard"];
 type StageLabels = Dictionary["common"]["repairStage"];
 
-// Shared by the mechanic and owner views. The vehicle embed is visible to
-// garage members only for vehicles booked with this garage (vehicles RLS,
-// 0036/0038); null when the appointment has no vehicle attached.
+// The vehicle embed is visible to garage members only for vehicles booked
+// with this garage (vehicles RLS, 0036/0038); null when there is none.
 const APPOINTMENT_SELECT =
   "id, client_id, start_time, end_time, status, repair_stage, assigned_mechanic_id, services(name), profiles!appointments_client_id_fkey(full_name, phone), walk_in:garage_customers(full_name, phone), vehicle:vehicles(model, year, license_plate, brands(name))";
 
-// Statuses the agenda lists: pending_payment is an unfinished checkout and
-// cancelled jobs are noise on a "what's on today" view (the calendar still
-// shows them).
-const AGENDA_STATUSES = ["pending", "confirmed", "completed"];
+// What today's board shows: old pending bookings still awaiting a confirm,
+// confirmed jobs, and what's been completed today.
+const BOARD_STATUSES = ["pending", "confirmed", "completed"];
 
-// Surfaces: one quiet style for the whole page -- a single hairline border,
-// no fill in dark mode, never a box inside a box. Light mode keeps a white
-// fill so cards lift off the zinc-50 page.
-// Same elevated cards as the client portal (lib/client-ui.ts).
-const CARD = CLIENT_CARD;
-const CARD_INTERACTIVE = `${CARD} transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] dark:hover:bg-subtle/40`;
-// KPI strip: a swipeable row on phones (the next card peeks in so the row
-// reads as scrollable), a 2x2 grid from sm, one row of four from lg.
-const KPI_ITEM = "w-[72%] max-w-[17rem] shrink-0 snap-start sm:w-auto sm:max-w-none";
-const SECTION_LABEL = CLIENT_SECTION_LABEL;
-
-function isUpcoming(appointment: { status: string; start_time: string }) {
-  return (
-    (appointment.status === "pending" || appointment.status === "confirmed") &&
-    new Date(appointment.start_time).getTime() >= Date.now()
-  );
-}
-
-function timeFormatter(lang: Locale) {
-  return new Intl.DateTimeFormat(lang === "fr" ? "fr-FR" : "en-GB", {
-    timeZone: APP_TIME_ZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function dayFormatter(dateLocale: string) {
-  return new Intl.DateTimeFormat(dateLocale, {
-    timeZone: APP_TIME_ZONE,
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  });
-}
-
-type AgendaAppointment = {
+type Job = {
   id: string;
   start_time: string;
   end_time: string;
@@ -121,216 +85,64 @@ type AgendaAppointment = {
   } | null;
 };
 
-function customerName(appointment: AgendaAppointment, d: D) {
-  return (
-    appointment.profiles?.full_name ?? appointment.walk_in?.full_name ?? d.clientFallback
-  );
-}
+type Mechanic = { id: string; name: string };
 
-const BADGE_STYLES: Record<
-  AgendaBadge,
-  { icon: LucideIcon; className: string; labelKey: keyof D }
-> = {
-  awaiting_action: {
-    icon: AlertCircle,
-    className: "text-amber-700 dark:text-amber-300",
-    labelKey: "badgeAwaitingAction",
-  },
-  confirmed: {
-    icon: CheckCircle2,
-    className: "text-ink-muted",
-    labelKey: "badgeConfirmed",
-  },
-  in_progress: {
-    icon: Wrench,
-    className: "text-brand-700 dark:text-brand-400",
-    labelKey: "badgeInProgress",
-  },
-  completed: {
-    icon: CircleCheckBig,
-    className: "text-green-700 dark:text-green-400",
-    labelKey: "badgeCompleted",
-  },
-  cancelled: {
-    icon: XCircle,
-    className: "text-red-700 dark:text-red-400",
-    labelKey: "badgeCancelled",
-  },
+const COLUMN_STYLE: Record<BoardColumn, { dot: string; labelKey: keyof D; emptyKey: keyof D }> = {
+  arriving: { dot: "bg-brand-600 dark:bg-brand-400", labelKey: "colArriving", emptyKey: "emptyArriving" },
+  in_workshop: { dot: "bg-amber-500", labelKey: "colInWorkshop", emptyKey: "emptyInWorkshop" },
+  ready: { dot: "bg-emerald-500", labelKey: "colReady", emptyKey: "emptyReady" },
+  done: { dot: "bg-zinc-400 dark:bg-zinc-500", labelKey: "colDone", emptyKey: "emptyDone" },
 };
 
-// Borderless status: icon + text in the state's color. The row already has
-// a frame; a bordered pill here would be the box-in-a-box we're removing.
-function StatusBadge({ badge, d }: { badge: AgendaBadge; d: D }) {
-  const style = BADGE_STYLES[badge];
-  const Icon = style.icon;
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-xs font-medium ${style.className}`}
-    >
-      <Icon aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
-      {d[style.labelKey]}
-    </span>
-  );
+const TEAM_DOT: Record<MechanicStatus["kind"], string> = {
+  busy: "bg-amber-500",
+  free: "bg-emerald-500",
+  off: "bg-zinc-400 dark:bg-zinc-600",
+};
+
+function timeFormatter(lang: Locale) {
+  // 24-hour clock in both languages (Luxembourg usage).
+  return new Intl.DateTimeFormat(lang === "fr" ? "fr-FR" : "en-GB", {
+    timeZone: APP_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-const PRIMARY_BUTTON =
-  "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-semibold text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-zinc-950";
-
-/**
- * One agenda row. Phones stack it: time + status (and the "⋯") on top, then
- * customer and phone, car and plate, the service order, and the primary
- * action full-width at the bottom. From md it's one line: time, details,
- * status, primary action, "⋯" -- the wrappers switch to `display: contents`
- * so their children become items of the row and `order` places them.
- * Nothing that identifies the job (name, phone, plate) is truncated.
- */
-function AppointmentRow({
-  appointment,
-  phone,
-  lang,
-  dateLocale,
-  now,
-  d,
-  stageLabels,
-  showDay,
-}: {
-  appointment: AgendaAppointment;
-  // Walk-in's phone, or the one the garage noted for a registered client.
-  phone: string | null;
-  lang: Locale;
-  dateLocale: string;
-  now: Date;
-  d: D;
-  stageLabels: StageLabels;
-  // Week / mechanic lists span several days; Today doesn't need the date.
-  showDay: boolean;
-}) {
-  const isPending = appointment.status === "pending";
-  const isConfirmed = appointment.status === "confirmed";
-  const isOpen = isPending || isConfirmed;
-  const start = new Date(appointment.start_time);
-  const vehicle = appointment.vehicle;
-  const plate = vehicle?.license_plate?.trim();
-  const vehicleText = vehicle
-    ? [vehicle.brands?.name, vehicle.model, vehicle.year].filter(Boolean).join(" ")
-    : "";
-  const stage =
-    isConfirmed && appointment.repair_stage
-      ? stageLabels[appointment.repair_stage as keyof StageLabels]
-      : null;
-  const serviceLine = [appointment.services?.name ?? d.serviceFallback, stage]
-    .filter(Boolean)
-    .join(" · ");
-
-  return (
-    <li className="flex flex-col gap-2.5 px-4 py-3.5 transition-colors hover:bg-subtle sm:px-5 md:flex-row md:items-center md:gap-4">
-      <div className="flex items-center justify-between gap-3 md:contents">
-        <div className="flex items-center gap-2 md:order-1 md:w-16 md:shrink-0 md:flex-col md:items-start md:gap-0.5">
-          <span className="rounded-md bg-subtle px-1.5 py-0.5 text-sm font-semibold tabular-nums text-ink">
-            {timeFormatter(lang).format(start)}
-          </span>
-          {showDay && (
-            <span className="whitespace-nowrap text-xs text-zinc-500 md:text-[11px]">
-              {dayFormatter(dateLocale).format(start)}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2 md:contents">
-          <div className="md:order-3 md:ml-auto">
-            <StatusBadge badge={agendaBadge(appointment, now)} d={d} />
-          </div>
-          <div className="md:order-5">
-            <AppointmentActionsMenu
-              appointmentId={appointment.id}
-              lang={lang}
-              labels={{
-                moreActions: d.moreActions,
-                message: d.message,
-                reschedule: d.reschedule,
-                complete: d.complete,
-                stageHeading: d.stageHeading,
-                cancelAppointment: d.cancelAppointment,
-                cancelConfirm: d.cancelConfirm,
-                cancelConfirmYes: d.cancelConfirmYes,
-                cancelKeep: d.cancelKeep,
-              }}
-              canMessage={appointment.profiles !== null}
-              isOpen={isOpen}
-              showComplete={isPending}
-              stages={
-                isConfirmed
-                  ? REPAIR_STAGES.map((value) => ({ value, label: stageLabels[value] }))
-                  : null
-              }
-              currentStage={appointment.repair_stage}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex min-w-0 flex-col gap-1 md:order-2 md:flex-1 md:gap-0.5">
-        <p className="flex flex-wrap items-baseline gap-x-2 break-words">
-          <span className="font-medium text-ink">
-            {customerName(appointment, d)}
-          </span>
-          {phone && (
-            <a
-              href={`tel:${phone.replace(/[^\d+]/g, "")}`}
-              className="text-sm tabular-nums text-ink-muted hover:text-ink hover:underline"
-            >
-              {phone}
-            </a>
-          )}
-        </p>
-        {(plate || vehicleText) && (
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-muted">
-            {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
-            {vehicleText && <span>{vehicleText}</span>}
-          </p>
-        )}
-        <p className="text-sm text-ink-muted">{serviceLine}</p>
-      </div>
-
-      {(isPending || isConfirmed) && (
-        <form action={isPending ? confirmAppointment : completeAppointment} className="md:order-4">
-          <input type="hidden" name="id" value={appointment.id} />
-          <input type="hidden" name="lang" value={lang} />
-          <button
-            type="submit"
-            className={`${PRIMARY_BUTTON} w-full justify-center py-2 md:w-auto md:py-1.5 ${
-              isPending
-                ? "bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-600/50 dark:bg-brand-500 dark:hover:bg-brand-600"
-                : "bg-green-600 hover:bg-green-700 focus-visible:ring-green-600/50 dark:bg-green-600 dark:hover:bg-green-500"
-            }`}
-          >
-            {isConfirmed && <Check aria-hidden className="h-3.5 w-3.5" strokeWidth={2.5} />}
-            {isPending ? d.confirm : d.complete}
-          </button>
-        </form>
-      )}
-    </li>
-  );
+function shortDay(iso: string, dateLocale: string) {
+  return new Date(iso).toLocaleDateString(dateLocale, {
+    timeZone: APP_TIME_ZONE,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
 }
 
-/** The agenda's single frame: rows divided by hairlines, no per-row boxes. */
-function AppointmentList({ children }: { children: React.ReactNode }) {
+function customerName(job: Job, d: D) {
+  return job.profiles?.full_name ?? job.walk_in?.full_name ?? d.clientFallback;
+}
+
+function initials(name: string) {
   return (
-    <ul className={`${CARD} divide-y divide-hairline`}>{children}</ul>
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "?"
   );
 }
 
 /**
- * Phone per appointment: a walk-in customer's own; for a registered client,
- * the one the garage noted (0042) or else the one on their profile (0044).
+ * Phone per job: a walk-in customer's own; for a registered client, the
+ * one the garage noted (0042) or else the one on their profile (0044).
  */
 async function phonesFor(
   supabase: Awaited<ReturnType<typeof createClient>>,
   garageId: string,
-  rows: AgendaAppointment[]
+  rows: Job[]
 ): Promise<Map<string, string>> {
-  const clientIds = [
-    ...new Set(rows.map((row) => row.client_id).filter((id): id is string => Boolean(id))),
-  ];
+  const clientIds = [...new Set(rows.map((row) => row.client_id).filter((id): id is string => Boolean(id)))];
   const noted = new Map<string, string>();
   if (clientIds.length > 0) {
     const { data } = await supabase
@@ -345,232 +157,305 @@ async function phonesFor(
   }
   const phones = new Map<string, string>();
   for (const row of rows) {
-    const phone =
-      row.walk_in?.phone ??
-      (row.client_id ? noted.get(row.client_id) : undefined) ??
-      row.profiles?.phone;
+    const phone = row.walk_in?.phone ?? (row.client_id ? noted.get(row.client_id) : undefined) ?? row.profiles?.phone;
     if (phone) phones.set(row.id, phone);
   }
   return phones;
 }
 
-/** Empty calendar page with dashed "nothing here" lines; theme-aware via currentColor. */
-function EmptyCalendarGraphic() {
+/** The repair stages as five segments, the current one and before filled. */
+function StageTrack({ stage, labels }: { stage: string | null; labels: StageLabels }) {
+  const current = stage ? REPAIR_STAGES.indexOf(stage as (typeof REPAIR_STAGES)[number]) : -1;
+  if (current < 0) return null;
   return (
-    <svg
-      aria-hidden
-      viewBox="0 0 96 96"
-      className="h-20 w-20 text-zinc-300 dark:text-zinc-700"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="14" y="20" width="68" height="62" rx="10" />
-      <path d="M14 38h68" />
-      <path d="M32 12v14M64 12v14" />
-      <rect
-        x="26"
-        y="48"
-        width="12"
-        height="10"
-        rx="2.5"
-        className="text-zinc-200 dark:text-zinc-800"
-        fill="currentColor"
-        stroke="none"
-      />
-      <path d="M46 53h24M26 70h44" strokeDasharray="4 6" />
-    </svg>
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between gap-2 text-xs">
+        <span className="font-semibold text-ink">{labels[REPAIR_STAGES[current]]}</span>
+        <span className="tabular-nums text-ink-muted">
+          {current + 1}/{REPAIR_STAGES.length}
+        </span>
+      </div>
+      <ol className="grid grid-cols-5 gap-1" aria-hidden>
+        {REPAIR_STAGES.map((key, index) => (
+          <li key={key} className={`h-1 rounded-full ${index <= current ? "bg-ink" : "bg-hairline"}`} />
+        ))}
+      </ol>
+    </div>
   );
 }
 
 /**
- * Empty agenda: the drawing, what's (not) there, and the one useful next
- * step -- logging a walk-in -- with the calendar as the secondary way out.
+ * One car on the board: when, what, who, which car, where it stands, and
+ * the single button that moves it to the next step. Everything else
+ * (message, reschedule, any stage, cancel) is in the "more" menu.
  */
-function EmptyAgenda({
-  text,
+function JobCard({
+  job,
+  phone,
+  mechanicName,
   lang,
+  dateLocale,
+  todayKey,
+  now,
   d,
-  walkIn,
+  stageLabels,
+  actionable,
 }: {
-  text: string;
+  job: Job;
+  phone: string | null;
+  // Owner view only: who has the job.
+  mechanicName: string | null | undefined;
   lang: Locale;
+  dateLocale: string;
+  todayKey: string;
+  now: Date;
   d: D;
-  walkIn: Dictionary["walkIn"];
+  stageLabels: StageLabels;
+  // Future-day jobs (the mechanic's "coming up" list) can't be advanced yet.
+  actionable: boolean;
 }) {
-  return (
-    <div className={`${CARD} flex flex-col items-center gap-4 px-6 py-12 text-center`}>
-      <EmptyCalendarGraphic />
-      <p className="text-sm text-ink-muted">{text}</p>
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
-        <QuickWalkInButton lang={lang} d={walkIn} label={d.logWalkIn} />
-        <Link
-          href={`/${lang}/garage/calendar`}
-          className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink"
-        >
-          {d.viewFullCalendar}
-          <ArrowRight aria-hidden className="h-4 w-4" />
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function KpiCard({
-  href,
-  icon: Icon,
-  label,
-  value,
-  hint,
-  highlight = false,
-}: {
-  href: string;
-  icon: LucideIcon;
-  label: string;
-  value: number;
-  hint: string;
-  // Draws attention (amber chip) when the number needs action.
-  highlight?: boolean;
-}) {
-  return (
-    <Link href={href} className={`${CARD_INTERACTIVE} ${KPI_ITEM} group flex flex-col gap-3 p-4 sm:p-5`}>
-      <div className="flex items-center justify-between gap-2">
-        <p className={SECTION_LABEL}>{label}</p>
-        <Icon
-          aria-hidden
-          className={`h-4 w-4 shrink-0 ${
-            highlight ? "text-amber-600 dark:text-amber-400" : "text-ink-muted"
-          }`}
-          strokeWidth={1.75}
-        />
-      </div>
-      <p className="text-3xl font-semibold tabular-nums tracking-tight text-ink">
-        {value}
-      </p>
-      <p className="text-xs text-ink-muted group-hover:text-ink">
-        {hint}
-      </p>
-    </Link>
-  );
-}
-
-// Meter severity (dataviz status palette): the fill carries the state, the
-// track is a lighter step of the same ramp, and the state is always spelled
-// out in text too -- never color alone.
-function capacityTone(percent: number) {
-  if (percent >= 100) {
-    return {
-      stroke: "text-red-600 dark:text-red-500",
-      track: "text-red-100 dark:text-red-500/15",
-      labelKey: "capacityFull" as const,
-    };
-  }
-  if (percent >= 80) {
-    return {
-      stroke: "text-amber-500",
-      track: "text-amber-100 dark:text-amber-500/15",
-      labelKey: "capacityNearlyFull" as const,
-    };
-  }
-  return {
-    stroke: "text-brand-600 dark:text-brand-500",
-    track: "text-brand-50 dark:text-brand-500/15",
-    labelKey: "capacityAvailable" as const,
-  };
-}
-
-const RING_RADIUS = 26;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-
-function CapacityRing({
-  percent,
-  label,
-  valueText,
-}: {
-  percent: number | null;
-  label: string;
-  valueText: string;
-}) {
-  const tone = capacityTone(percent ?? 0);
-  return (
-    <div
-      role="meter"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={percent ?? 0}
-      aria-valuetext={valueText}
-      className="relative h-16 w-16 shrink-0"
-    >
-      <svg viewBox="0 0 64 64" className="h-16 w-16 -rotate-90" aria-hidden>
-        <circle
-          cx="32"
-          cy="32"
-          r={RING_RADIUS}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="7"
-          className={percent === null ? "text-zinc-200 dark:text-zinc-800" : tone.track}
-        />
-        {percent !== null && percent > 0 && (
-          <circle
-            cx="32"
-            cy="32"
-            r={RING_RADIUS}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="7"
-            strokeLinecap="round"
-            strokeDasharray={`${(percent / 100) * RING_CIRCUMFERENCE} ${RING_CIRCUMFERENCE}`}
-            className={tone.stroke}
-          />
-        )}
-      </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums text-ink">
-        {percent === null ? "—" : `${percent}%`}
-      </span>
-    </div>
-  );
-}
-
-function CapacityKpi({ capacity, lang, d }: { capacity: DayCapacity; lang: Locale; d: D }) {
-  const open = capacity.kind === "open" ? capacity : null;
-  const bookedText = open
-    ? d.capacityBooked
-        .replace("{booked}", formatMinutes(open.bookedMinutes))
-        .replace("{capacity}", formatMinutes(open.capacityMinutes))
-    : null;
-  const stateText = open
-    ? d[capacityTone(open.percent).labelKey]
-    : capacity.kind === "closed"
-      ? d.capacityClosed
-      : d.capacityNoMechanics;
+  const formatTime = timeFormatter(lang);
+  const startDay = dateKeyInAppZone(new Date(job.start_time));
+  const isOpen = job.status === "pending" || job.status === "confirmed";
+  const late =
+    job.status === "confirmed" &&
+    job.repair_stage === null &&
+    startDay === todayKey &&
+    new Date(job.start_time).getTime() < now.getTime();
+  const vehicle = job.vehicle;
+  const plate = vehicle?.license_plate?.trim();
+  const vehicleText = vehicle ? [vehicle.brands?.name, vehicle.model, vehicle.year].filter(Boolean).join(" ") : "";
+  const step = actionable ? nextStep(job) : null;
+  const stepLabel =
+    step?.kind === "confirm"
+      ? d.confirm
+      : step?.kind === "complete"
+        ? d.actionPickedUp
+        : step?.kind === "stage"
+          ? step.stage === "received"
+            ? d.actionCheckIn
+            : d.actionToStage.replace("{stage}", stageLabels[step.stage])
+          : null;
+  const StepIcon: LucideIcon = step?.kind === "complete" ? KeyRound : step?.kind === "stage" && step.stage === "received" ? LogIn : step?.kind === "confirm" ? Check : ArrowRight;
 
   return (
-    <Link
-      href={`/${lang}/garage/${capacity.kind === "no_mechanics" ? "staff" : "availability"}`}
-      className={`${CARD_INTERACTIVE} ${KPI_ITEM} group flex flex-col gap-3 p-4 sm:p-5`}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className={SECTION_LABEL}>{d.capacityTitle}</p>
-        <Gauge aria-hidden className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} />
-      </div>
-      <div className="flex items-center gap-3">
-        <CapacityRing
-          percent={open ? open.percent : null}
-          label={d.capacityTitle}
-          valueText={open ? `${open.percent}% · ${bookedText}` : stateText}
-        />
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-ink">{stateText}</p>
-          {bookedText && (
-            <p className="text-xs tabular-nums text-ink-muted">{bookedText}</p>
+    <li className={`${CLIENT_CARD} flex flex-col gap-3 p-4`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="inline-flex items-center gap-1 text-sm font-bold tabular-nums text-ink">
+            <Clock aria-hidden className="h-3.5 w-3.5 text-ink-muted" strokeWidth={2} />
+            {formatTime.format(new Date(job.start_time))}
+          </span>
+          {startDay !== todayKey && (
+            <span className="text-xs font-medium text-ink-muted">
+              {startDay < todayKey ? d.sinceDay.replace("{day}", shortDay(job.start_time, dateLocale)) : shortDay(job.start_time, dateLocale)}
+            </span>
+          )}
+          {late && (
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+              {d.late}
+            </span>
+          )}
+          {job.status === "pending" && (
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+              {d.badgeAwaitingAction}
+            </span>
           )}
         </div>
+        <AppointmentActionsMenu
+          appointmentId={job.id}
+          lang={lang}
+          labels={{
+            moreActions: d.moreActions,
+            message: d.message,
+            reschedule: d.reschedule,
+            complete: d.complete,
+            stageHeading: d.stageHeading,
+            cancelAppointment: d.cancelAppointment,
+            cancelConfirm: d.cancelConfirm,
+            cancelConfirmYes: d.cancelConfirmYes,
+            cancelKeep: d.cancelKeep,
+          }}
+          canMessage={job.profiles !== null}
+          isOpen={isOpen}
+          // The card's own button already completes a car that's ready.
+          showComplete={isOpen && step?.kind !== "complete"}
+          stages={job.status === "confirmed" ? REPAIR_STAGES.map((value) => ({ value, label: stageLabels[value] })) : null}
+          currentStage={job.repair_stage}
+        />
       </div>
-    </Link>
+
+      <div className="flex min-w-0 flex-col gap-1">
+        <p className="text-[15px] font-bold leading-snug tracking-tight text-ink">
+          {job.services?.name ?? d.serviceFallback}
+        </p>
+        <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm">
+          <span className="font-medium text-ink">{customerName(job, d)}</span>
+          {phone && (
+            <a
+              href={`tel:${phone.replace(/[^\d+]/g, "")}`}
+              className="inline-flex items-center gap-1 tabular-nums text-ink-muted hover:text-ink hover:underline"
+            >
+              <Phone aria-hidden className="h-3.5 w-3.5" strokeWidth={1.75} />
+              {phone}
+            </a>
+          )}
+        </p>
+        {(plate || vehicleText) && (
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-muted">
+            {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
+            {vehicleText && <span className="truncate">{vehicleText}</span>}
+          </p>
+        )}
+        {mechanicName !== undefined && (
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-muted">
+            <span
+              aria-hidden
+              className="flex h-5 w-5 items-center justify-center rounded-full bg-subtle text-[10px] font-semibold text-ink"
+            >
+              {mechanicName ? initials(mechanicName) : "?"}
+            </span>
+            {mechanicName ? d.assignedTo.replace("{name}", mechanicName) : d.unassigned}
+          </p>
+        )}
+      </div>
+
+      {job.status === "confirmed" && <StageTrack stage={job.repair_stage} labels={stageLabels} />}
+
+      {step && stepLabel && (
+        <form
+          action={step.kind === "confirm" ? confirmAppointment : step.kind === "complete" ? completeAppointment : updateRepairStage}
+        >
+          <input type="hidden" name="id" value={job.id} />
+          <input type="hidden" name="lang" value={lang} />
+          {step.kind === "stage" && <input type="hidden" name="stage" value={step.stage} />}
+          <button
+            type="submit"
+            className={`${step.kind === "complete" || step.kind === "confirm" ? CLIENT_PRIMARY_BUTTON : CLIENT_TINTED_PILL} w-full`}
+          >
+            <StepIcon aria-hidden className="h-4 w-4" strokeWidth={2} />
+            <span className="truncate">{stepLabel}</span>
+          </button>
+        </form>
+      )}
+    </li>
+  );
+}
+
+function Board({
+  columns,
+  render,
+  d,
+}: {
+  columns: Record<BoardColumn, Job[]>;
+  render: (job: Job) => React.ReactNode;
+  d: D;
+}) {
+  return (
+    <section aria-labelledby="board-title" className="flex flex-col gap-4">
+      <h2 id="board-title" className="sr-only">
+        {d.boardLabel}
+      </h2>
+      <div className="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {BOARD_COLUMNS.map((key) => {
+          const style = COLUMN_STYLE[key];
+          const jobs = columns[key];
+          return (
+            <section
+              key={key}
+              aria-labelledby={`col-${key}`}
+              className="flex min-w-0 flex-col gap-3 rounded-2xl bg-subtle/60 p-3 dark:bg-subtle/40"
+            >
+              <h3 id={`col-${key}`} className="flex items-center gap-2 px-1 pt-1 text-sm font-bold tracking-tight text-ink">
+                <span aria-hidden className={`h-2 w-2 rounded-full ${style.dot}`} />
+                {d[style.labelKey] as string}
+                <span className="ml-auto rounded-full bg-surface px-2 py-0.5 text-xs font-semibold tabular-nums text-ink-muted">
+                  {jobs.length}
+                </span>
+              </h3>
+              {jobs.length > 0 ? (
+                <ul className="flex flex-col gap-2.5">{jobs.map(render)}</ul>
+              ) : (
+                <p className="rounded-xl border border-dashed border-hairline px-3 py-6 text-center text-sm text-ink-muted">
+                  {d[style.emptyKey] as string}
+                </p>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function capacityTone(percent: number) {
+  if (percent >= 100) return { bar: "bg-red-500", labelKey: "capacityFull" as const };
+  if (percent >= 80) return { bar: "bg-amber-500", labelKey: "capacityNearlyFull" as const };
+  return { bar: "bg-brand-600 dark:bg-brand-500", labelKey: "capacityAvailable" as const };
+}
+
+/** Today in one card: four figures side by side, split by hairlines. */
+function SummaryStrip({
+  todayCount,
+  inWorkshop,
+  ready,
+  capacity,
+  lang,
+  d,
+}: {
+  todayCount: number;
+  inWorkshop: number;
+  ready: number;
+  capacity: DayCapacity;
+  lang: Locale;
+  d: D;
+}) {
+  const open = capacity.kind === "open" ? capacity : null;
+  const tone = open ? capacityTone(open.percent) : null;
+  const stateText = open && tone ? d[tone.labelKey] : capacity.kind === "closed" ? d.capacityClosed : d.capacityNoMechanics;
+  const figure = (label: string, value: number, accent?: string) => (
+    <div className="flex flex-col gap-1 p-4 sm:p-5">
+      <p className="text-sm font-medium text-ink-muted">{label}</p>
+      <p className={`font-display text-3xl font-bold tabular-nums tracking-tight ${accent ?? "text-ink"}`}>{value}</p>
+    </div>
+  );
+  return (
+    <div className={`${CLIENT_CARD} grid grid-cols-2 divide-hairline lg:grid-cols-4 [&>*]:border-hairline [&>*:nth-child(2n)]:border-l lg:[&>*:not(:first-child)]:border-l [&>*:nth-child(n+3)]:border-t lg:[&>*:nth-child(n+3)]:border-t-0`}>
+      {figure(d.summaryToday, todayCount)}
+      {figure(d.summaryInWorkshop, inWorkshop)}
+      {figure(d.summaryReady, ready, ready > 0 ? "text-emerald-600 dark:text-emerald-400" : undefined)}
+      <Link
+        href={`/${lang}/garage/${capacity.kind === "no_mechanics" ? "staff" : "availability"}`}
+        className="flex flex-col gap-2 p-4 transition-colors hover:bg-subtle/50 sm:p-5"
+      >
+        <p className="text-sm font-medium text-ink-muted">{d.capacityTitle}</p>
+        <div className="flex items-baseline gap-2">
+          <span className="font-display text-3xl font-bold tabular-nums tracking-tight text-ink">
+            {open ? `${open.percent}%` : "–"}
+          </span>
+          <span className="truncate text-xs font-medium text-ink-muted">{stateText}</span>
+        </div>
+        <div
+          role="meter"
+          aria-label={d.capacityTitle}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={open?.percent ?? 0}
+          aria-valuetext={
+            open
+              ? `${open.percent}%, ${d.capacityBooked
+                  .replace("{booked}", formatMinutes(open.bookedMinutes))
+                  .replace("{capacity}", formatMinutes(open.capacityMinutes))}`
+              : stateText
+          }
+          className="h-1.5 overflow-hidden rounded-full bg-hairline"
+        >
+          {open && tone && (
+            <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${Math.min(open.percent, 100)}%` }} />
+          )}
+        </div>
+      </Link>
+    </div>
   );
 }
 
@@ -592,13 +477,11 @@ function Callout({
       ? "border-amber-300/60 bg-amber-50 text-amber-900 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-200"
       : "border-red-300/60 bg-red-50 text-red-900 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-200";
   return (
-    <div
-      className={`flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${toneClass}`}
-    >
+    <div className={`flex flex-col gap-3 rounded-2xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${toneClass}`}>
       <div className="flex min-w-0 items-start gap-3">
         <Icon aria-hidden className="mt-0.5 h-4 w-4 shrink-0 opacity-80" strokeWidth={2} />
         <div className="min-w-0">
-          <p className="text-sm font-medium">{title}</p>
+          <p className="text-sm font-semibold">{title}</p>
           <p className="text-sm opacity-80">{description}</p>
         </div>
       </div>
@@ -608,26 +491,7 @@ function Callout({
 }
 
 const CALLOUT_BUTTON =
-  "rounded-full bg-amber-900 px-3.5 py-1.5 text-sm font-medium text-amber-50 transition-colors hover:bg-amber-800 dark:bg-amber-300 dark:text-amber-950 dark:hover:bg-amber-200";
-
-type Mechanic = { id: string; name: string };
-
-const TEAM_DOT: Record<MechanicStatus["kind"], string> = {
-  busy: "bg-brand-600 dark:bg-brand-500",
-  free: "bg-green-600 dark:bg-green-500",
-  off: "bg-zinc-400 dark:bg-zinc-600",
-};
-
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "?"
-  );
-}
+  "inline-flex items-center rounded-xl bg-amber-900 px-4 py-2 text-sm font-semibold text-amber-50 transition-colors hover:bg-amber-800 dark:bg-amber-300 dark:text-amber-950 dark:hover:bg-amber-200";
 
 function teamStatusText(status: MechanicStatus, d: D, formatTime: (iso: string) => string) {
   if (status.kind === "busy") return d.teamBusyUntil.replace("{time}", formatTime(status.until));
@@ -635,20 +499,6 @@ function teamStatusText(status: MechanicStatus, d: D, formatTime: (iso: string) 
     return status.nextAt ? d.teamFreeNext.replace("{time}", formatTime(status.nextAt)) : d.teamFree;
   }
   return status.nextAt ? d.teamOffNext.replace("{time}", formatTime(status.nextAt)) : d.teamOff;
-}
-
-function LogoutButton({ lang, d }: { lang: Locale; d: D }) {
-  return (
-    <form action={logout}>
-      <input type="hidden" name="lang" value={lang} />
-      <button
-        type="submit"
-        className="rounded-full border border-hairline px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
-      >
-        {d.logOut}
-      </button>
-    </form>
-  );
 }
 
 // Outcomes of accept/decline (app/actions/staff.ts) shown on the no-garage
@@ -672,16 +522,16 @@ export default async function GarageDashboardPage({
   searchParams,
 }: {
   params: Promise<{ lang: string }>;
-  searchParams: Promise<{ invite?: string; view?: string }>;
+  searchParams: Promise<{ invite?: string }>;
 }) {
   const { lang: rawLang } = await params;
-  const { invite: inviteResult, view } = await searchParams;
+  const { invite: inviteResult } = await searchParams;
   const lang = resolveLocale(rawLang);
   const profile = await getAuthedProfile(lang);
   const dictionary = await getDictionary(lang);
   const d = dictionary.garageDashboard;
   const stageLabels = dictionary.common.repairStage;
-  const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
+  const dateLocale = lang === "fr" ? "fr-FR" : "en-GB";
   const now = new Date();
 
   // Direct navigation guard -- getGarageMembership alone can't tell "wrong
@@ -710,15 +560,12 @@ export default async function GarageDashboardPage({
 
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-canvas px-4 py-16">
-        <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-8">
+        <div className={`${CLIENT_CARD} flex w-full max-w-md flex-col gap-4 p-8`}>
           <h1 className="text-2xl font-bold tracking-tight text-ink">
             {pendingInvites.length > 0 ? d.invitesTitle : d.noGarageTitle}
           </h1>
           {resultKey && (
-            <p
-              role="status"
-              className="rounded-md bg-subtle px-3 py-2 text-sm text-ink"
-            >
+            <p role="status" className="rounded-xl bg-subtle px-3.5 py-2.5 text-sm text-ink">
               {d[resultKey]}
             </p>
           )}
@@ -726,13 +573,10 @@ export default async function GarageDashboardPage({
             <div className="flex flex-col gap-3">
               <p className="text-sm text-ink-muted">{d.invitesDescription}</p>
               {pendingInvites.map((invite) => (
-                <div
-                  key={invite.id}
-                  className="flex flex-col gap-3 rounded-lg border border-hairline p-4"
-                >
+                <div key={invite.id} className="flex flex-col gap-3 rounded-xl border border-hairline p-4">
                   <div>
-                    <p className="font-medium text-ink">{invite.garage_name}</p>
-                    <p className="text-xs text-zinc-500">
+                    <p className="font-semibold text-ink">{invite.garage_name}</p>
+                    <p className="text-xs text-ink-muted">
                       {d.inviteExpires.replace(
                         "{date}",
                         new Date(invite.expires_at).toLocaleDateString(dateLocale, {
@@ -747,20 +591,14 @@ export default async function GarageDashboardPage({
                     <form action={acceptMechanicInvite}>
                       <input type="hidden" name="lang" value={lang} />
                       <input type="hidden" name="inviteId" value={invite.id} />
-                      <button
-                        type="submit"
-                        className="rounded-full bg-foreground px-4 py-1.5 text-sm font-medium text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc]"
-                      >
+                      <button type="submit" className={CLIENT_PRIMARY_BUTTON}>
                         {d.acceptInvite}
                       </button>
                     </form>
                     <form action={declineMechanicInvite}>
                       <input type="hidden" name="lang" value={lang} />
                       <input type="hidden" name="inviteId" value={invite.id} />
-                      <button
-                        type="submit"
-                        className="rounded-full border border-hairline px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
-                      >
+                      <button type="submit" className={CLIENT_SECONDARY_BUTTON}>
                         {d.declineInvite}
                       </button>
                     </form>
@@ -771,11 +609,16 @@ export default async function GarageDashboardPage({
           ) : (
             <p className="text-sm text-ink-muted">{d.noGarageDescription}</p>
           )}
-          <Link href={`/${lang}/account`} className="text-sm font-medium underline">
+          <Link href={`/${lang}/account`} className={`${CLIENT_TEXT_LINK} self-start`}>
             {d.account}
           </Link>
           <LanguageSwitcher lang={lang} />
-          <LogoutButton lang={lang} d={d} />
+          <form action={logout}>
+            <input type="hidden" name="lang" value={lang} />
+            <button type="submit" className={CLIENT_SECONDARY_BUTTON}>
+              {d.logOut}
+            </button>
+          </form>
         </div>
       </div>
     );
@@ -787,6 +630,7 @@ export default async function GarageDashboardPage({
     redirect(`/${lang}/garage/onboarding`);
   }
 
+  const supabase = await createClient();
   const todayKey = todayKeyInAppZone(now);
   const todayLabel = dateKeyToDisplayDate(todayKey).toLocaleDateString(dateLocale, {
     timeZone: APP_TIME_ZONE,
@@ -794,175 +638,105 @@ export default async function GarageDashboardPage({
     day: "numeric",
     month: "long",
   });
-  const pageHeader = (
-    <header className="flex flex-col gap-1">
-      <p className="text-sm font-medium capitalize text-ink-muted">{todayLabel}</p>
-      <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-        {d.title}
-      </h1>
-    </header>
-  );
-
-  if (!isOwner) {
-    const supabase = await createClient();
-    const { data: appointments } = await supabase
-      .from("appointments")
-      .select(APPOINTMENT_SELECT)
-      .eq("garage_id", garage.id)
-      .eq("assigned_mechanic_id", profile.id)
-      .order("start_time", { ascending: true });
-
-    const rows = (appointments ?? []) as unknown as AgendaAppointment[];
-    const phones = await phonesFor(supabase, garage.id, rows);
-    const upcoming = rows.filter(isUpcoming);
-    const other = rows.filter((appointment) => !upcoming.includes(appointment));
-
-    return (
-      <div className="flex flex-1 flex-col bg-canvas px-4 py-8 sm:px-8 sm:py-10">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-          {pageHeader}
-          <section className="flex flex-col gap-3">
-            <h2 className={SECTION_LABEL}>{d.yourAssignedAppointments}</h2>
-            {upcoming.length > 0 ? (
-              <AppointmentList>
-                {upcoming.map((appointment) => (
-                  <AppointmentRow
-                    key={appointment.id}
-                    appointment={appointment}
-                    phone={phones.get(appointment.id) ?? null}
-                    lang={lang}
-                    dateLocale={dateLocale}
-                    now={now}
-                    d={d}
-                    stageLabels={stageLabels}
-                    showDay
-                  />
-                ))}
-              </AppointmentList>
-            ) : (
-              <EmptyAgenda text={d.noUpcomingAssigned} lang={lang} d={d} walkIn={dictionary.walkIn} />
-            )}
-          </section>
-
-          {other.length > 0 && (
-            <section className="flex flex-col gap-3">
-              <h2 className={SECTION_LABEL}>{d.pastAndCancelled}</h2>
-              <AppointmentList>
-                {other.map((appointment) => (
-                  <AppointmentRow
-                    key={appointment.id}
-                    appointment={appointment}
-                    phone={phones.get(appointment.id) ?? null}
-                    lang={lang}
-                    dateLocale={dateLocale}
-                    now={now}
-                    d={d}
-                    stageLabels={stageLabels}
-                    showDay
-                  />
-                ))}
-              </AppointmentList>
-            </section>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const ownerSupabase = await createClient();
-  const nowIso = now.toISOString();
 
   // Day and week boundaries in the garage's zone, not the server's (UTC on
-  // Vercel). "This week" runs from today to the end of Sunday: earlier days
-  // of the week are history, which the calendar already covers.
+  // Vercel). "This week" runs to the end of Sunday.
   const todayStart = zonedStartOfDay(todayKey);
   const tomorrowStart = zonedStartOfDay(addDaysToDateKey(todayKey, 1));
   const diffToMonday = (dayOfWeekForDateKey(todayKey) + 6) % 7;
-  const mondayKey = addDaysToDateKey(todayKey, -diffToMonday);
-  const startOfWeek = zonedStartOfDay(mondayKey);
-  const endOfWeek = zonedStartOfDay(addDaysToDateKey(mondayKey, 7));
+  const endOfWeek = zonedStartOfDay(addDaysToDateKey(todayKey, 7 - diffToMonday));
+
+  // A mechanic sees their own jobs; the owner sees the whole workshop.
+  let todayQuery = supabase
+    .from("appointments")
+    .select(APPOINTMENT_SELECT)
+    .eq("garage_id", garage.id)
+    .in("status", BOARD_STATUSES)
+    .gte("start_time", todayStart.toISOString())
+    .lt("start_time", tomorrowStart.toISOString());
+  // Cars checked in on an earlier day and still in the workshop or waiting
+  // for pickup: they stay on the board until handed back.
+  let inShopQuery = supabase
+    .from("appointments")
+    .select(APPOINTMENT_SELECT)
+    .eq("garage_id", garage.id)
+    .eq("status", "confirmed")
+    .not("repair_stage", "is", null)
+    .lt("start_time", todayStart.toISOString());
+  let laterThisWeekQuery = supabase
+    .from("appointments")
+    .select("*", { count: "exact", head: true })
+    .eq("garage_id", garage.id)
+    .in("status", ["pending", "confirmed"])
+    .gte("start_time", tomorrowStart.toISOString())
+    .lt("start_time", endOfWeek.toISOString());
+  if (!isOwner) {
+    todayQuery = todayQuery.eq("assigned_mechanic_id", profile.id);
+    inShopQuery = inShopQuery.eq("assigned_mechanic_id", profile.id);
+    laterThisWeekQuery = laterThisWeekQuery.eq("assigned_mechanic_id", profile.id);
+  }
 
   const [
-    { count: upcomingCount },
+    { data: todayData },
+    { data: inShopData },
+    { data: laterData },
+    { count: laterThisWeekCount },
     { count: pendingCount },
-    { count: completedThisWeekCount },
-    { count: readyForPickupCount },
-    { data: weekData },
     { data: todayLoad },
     { windows },
     { data: mechanicCountData },
     { data: staffData },
   ] = await Promise.all([
-    ownerSupabase
-      .from("appointments")
-      .select("*", { count: "exact", head: true })
-      .eq("garage_id", garage.id)
-      .in("status", ["pending", "confirmed"])
-      .gte("start_time", nowIso),
+    todayQuery.order("start_time", { ascending: true }),
+    inShopQuery.order("start_time", { ascending: true }).limit(100),
+    // A mechanic's next few jobs after today.
+    isOwner
+      ? Promise.resolve({ data: [] as unknown[] })
+      : supabase
+          .from("appointments")
+          .select(APPOINTMENT_SELECT)
+          .eq("garage_id", garage.id)
+          .eq("assigned_mechanic_id", profile.id)
+          .in("status", ["pending", "confirmed"])
+          .gte("start_time", tomorrowStart.toISOString())
+          .order("start_time", { ascending: true })
+          .limit(12),
+    laterThisWeekQuery,
     // Bookings are confirmed on creation now (0040); this only finds paid
     // bookings from before the pilot that still await the garage's OK.
-    ownerSupabase
+    supabase
       .from("appointments")
       .select("*", { count: "exact", head: true })
       .eq("garage_id", garage.id)
       .eq("status", "pending"),
-    ownerSupabase
-      .from("appointments")
-      .select("*", { count: "exact", head: true })
-      .eq("garage_id", garage.id)
-      .eq("status", "completed")
-      .gte("start_time", startOfWeek.toISOString()),
-    // Cars that are done and waiting for their owner, whatever day they
-    // were booked: they stay here until the job is marked complete.
-    ownerSupabase
-      .from("appointments")
-      .select("*", { count: "exact", head: true })
-      .eq("garage_id", garage.id)
-      .eq("status", "confirmed")
-      .eq("repair_stage", "ready_for_pickup"),
-    // Today + This week tabs: one query, split below.
-    ownerSupabase
-      .from("appointments")
-      .select(APPOINTMENT_SELECT)
-      .eq("garage_id", garage.id)
-      .in("status", AGENDA_STATUSES)
-      .gte("start_time", todayStart.toISOString())
-      .lt("start_time", endOfWeek.toISOString())
-      .order("start_time", { ascending: true })
-      .limit(300),
     // Capacity: everything holding a mechanic today, including unfinished
     // checkouts (pending_payment holds the slot) and jobs that started
     // yesterday but run into today.
-    ownerSupabase
+    supabase
       .from("appointments")
       .select("start_time, end_time")
       .eq("garage_id", garage.id)
       .neq("status", "cancelled")
       .lt("start_time", tomorrowStart.toISOString())
       .gt("end_time", todayStart.toISOString()),
-    // Opening hours minus intraday blocks (0039): blocked time isn't
-    // capacity, and it shows as a gap in "Opening hours".
-    getBookableWindowsForDate({
-      supabase: ownerSupabase,
-      garageId: garage.id,
-      date: todayKey,
-    }),
-    ownerSupabase.rpc("get_bookable_mechanic_count", {
-      target_garage_id: garage.id,
-    }) as unknown as Promise<{ data: number | null }>,
-    ownerSupabase.from("garage_staff").select("profiles(id, full_name)").eq("garage_id", garage.id),
+    // Opening hours minus intraday blocks (0039).
+    getBookableWindowsForDate({ supabase, garageId: garage.id, date: todayKey }),
+    supabase.rpc("get_bookable_mechanic_count", { target_garage_id: garage.id }) as unknown as Promise<{
+      data: number | null;
+    }>,
+    supabase.from("garage_staff").select("profiles(id, full_name)").eq("garage_id", garage.id),
   ]);
 
-  const weekAppointments = (weekData ?? []) as unknown as AgendaAppointment[];
-  const phones = await phonesFor(ownerSupabase, garage.id, weekAppointments);
-  const todayAppointments = weekAppointments.filter(
-    (appointment) => new Date(appointment.start_time).getTime() < tomorrowStart.getTime()
-  );
-  const mechanicCount = mechanicCountData ?? 0;
+  const todayJobs = (todayData ?? []) as unknown as Job[];
+  const inShopJobs = (inShopData ?? []) as unknown as Job[];
+  const laterJobs = (laterData ?? []) as unknown as Job[];
+  const phones = await phonesFor(supabase, garage.id, [...todayJobs, ...inShopJobs, ...laterJobs]);
+  const board = groupBoard([...inShopJobs, ...todayJobs]);
+
   const capacity = computeDayCapacity({
     date: todayKey,
     windows,
-    mechanicCount,
+    mechanicCount: mechanicCountData ?? 0,
     bookings: todayLoad ?? [],
   });
 
@@ -971,59 +745,57 @@ export default async function GarageDashboardPage({
   const staff = (staffData ?? [])
     .map((row) => row.profiles as unknown as { id: string; full_name: string } | null)
     .filter((person): person is { id: string; full_name: string } => person !== null);
+  const ownerName = isOwner ? (profile.full_name as string) : null;
   const mechanics: Mechanic[] = [
-    ...(garage.owner_takes_bookings ? [{ id: profile.id, name: profile.full_name as string }] : []),
+    ...(garage.owner_takes_bookings && isOwner ? [{ id: profile.id, name: ownerName || d.teamYou }] : []),
     ...staff.map((person) => ({ id: person.id, name: person.full_name })),
   ];
+  const mechanicNames = new Map(mechanics.map((mechanic) => [mechanic.id, mechanic.name]));
   const shopOpen = isOpenAt({ date: todayKey, windows, now });
   const formatTime = (iso: string) => timeFormatter(lang).format(new Date(iso));
-
-  const openToday = todayAppointments.filter(
-    (appointment) => appointment.status === "pending" || appointment.status === "confirmed"
-  );
-  const completedToday = todayAppointments.filter(
-    (appointment) => appointment.status === "completed"
-  );
-  const nextUp = openToday.find(
-    (appointment) => new Date(appointment.start_time).getTime() > now.getTime()
-  );
   const hoursText =
     windows.length > 0
-      ? windows
-          .map((window) => `${window.start_time.slice(0, 5)}–${window.end_time.slice(0, 5)}`)
-          .join(" · ")
+      ? windows.map((window) => `${window.start_time.slice(0, 5)}–${window.end_time.slice(0, 5)}`).join(", ")
       : d.glanceClosed;
+  const nextArrival = board.arriving.find((job) => new Date(job.start_time).getTime() >= now.getTime());
+  const legacyPending = isOwner ? (pendingCount ?? 0) : 0;
 
-  function renderList(list: AgendaAppointment[], emptyText: string, showDay: boolean) {
-    if (list.length === 0) {
-      return <EmptyAgenda text={emptyText} lang={lang} d={d} walkIn={dictionary.walkIn} />;
-    }
-    return (
-      <AppointmentList>
-        {list.map((appointment) => (
-          <AppointmentRow
-            key={appointment.id}
-            appointment={appointment}
-            phone={phones.get(appointment.id) ?? null}
-            lang={lang}
-            dateLocale={dateLocale}
-            now={now}
-            d={d}
-            stageLabels={stageLabels}
-            showDay={showDay}
-          />
-        ))}
-      </AppointmentList>
-    );
-  }
-
-  const initialView = parseAgendaView(view);
-  const legacyPending = pendingCount ?? 0;
+  const renderCard = (job: Job, actionable = true) => (
+    <JobCard
+      key={job.id}
+      job={job}
+      phone={phones.get(job.id) ?? null}
+      mechanicName={
+        isOwner ? (job.assigned_mechanic_id ? (mechanicNames.get(job.assigned_mechanic_id) ?? null) : null) : undefined
+      }
+      lang={lang}
+      dateLocale={dateLocale}
+      todayKey={todayKey}
+      now={now}
+      d={d}
+      stageLabels={stageLabels}
+      actionable={actionable}
+    />
+  );
 
   return (
-    <div className="flex flex-1 flex-col bg-canvas px-4 py-8 sm:px-8 sm:py-10">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        {pageHeader}
+    <div className="flex flex-1 flex-col bg-canvas px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-semibold capitalize text-ink-muted">{todayLabel}</p>
+            <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+              {isOwner ? d.boardTitle : d.yourAssignedAppointments}
+            </h1>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/${lang}/garage/calendar`} className={CLIENT_SECONDARY_BUTTON}>
+              <CalendarDays aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+              {d.viewFullCalendar}
+            </Link>
+            <QuickWalkInButton lang={lang} d={dictionary.walkIn} label={d.logWalkIn} />
+          </div>
+        </header>
 
         {(garage.status !== "approved" || legacyPending > 0) && (
           <div className="flex flex-col gap-3">
@@ -1032,15 +804,13 @@ export default async function GarageDashboardPage({
                 tone={garage.status === "rejected" ? "red" : "amber"}
                 icon={Info}
                 title={garage.status === "rejected" ? d.garageRejectedTitle : d.garagePendingTitle}
-                description={
-                  garage.status === "rejected"
-                    ? d.garageRejectedDescription
-                    : d.garagePendingDescription
-                }
+                description={garage.status === "rejected" ? d.garageRejectedDescription : d.garagePendingDescription}
               >
-                <Link href={`/${lang}/garage/profile`} className={CALLOUT_BUTTON}>
-                  {d.reviewProfile}
-                </Link>
+                {isOwner && (
+                  <Link href={`/${lang}/garage/profile`} className={CALLOUT_BUTTON}>
+                    {d.reviewProfile}
+                  </Link>
+                )}
               </Callout>
             )}
             {legacyPending > 0 && (
@@ -1058,159 +828,79 @@ export default async function GarageDashboardPage({
           </div>
         )}
 
-        <div className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden">
-          <KpiCard
-            href={`/${lang}/garage/calendar`}
-            icon={CalendarClock}
-            label={d.statUpcoming}
-            value={upcomingCount ?? 0}
-            hint={d.kpiUpcomingHint}
-          />
-          <KpiCard
-            href={`/${lang}/garage/calendar`}
-            icon={KeyRound}
-            label={d.statReadyForPickup}
-            value={readyForPickupCount ?? 0}
-            hint={d.kpiReadyForPickupHint}
-            highlight={(readyForPickupCount ?? 0) > 0}
-          />
-          <KpiCard
-            href={`/${lang}/garage/calendar`}
-            icon={CircleCheckBig}
-            label={d.statCompletedThisWeek}
-            value={completedThisWeekCount ?? 0}
-            hint={d.kpiCompletedHint}
-          />
-          <CapacityKpi capacity={capacity} lang={lang} d={d} />
-        </div>
+        <SummaryStrip
+          todayCount={todayJobs.length}
+          inWorkshop={board.in_workshop.length}
+          ready={board.ready.length}
+          capacity={capacity}
+          lang={lang}
+          d={d}
+        />
 
-        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <section aria-labelledby="agenda-title" className="flex min-w-0 flex-col gap-4">
-            <h2 id="agenda-title" className="text-lg font-semibold text-ink">
-              {d.agendaTitle}
+        <Board columns={board} render={(job) => renderCard(job)} d={d} />
+
+        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-3">
+          {/* Next arrival */}
+          <section aria-labelledby="next-title" className={`${CLIENT_CARD} flex flex-col gap-3 p-5`}>
+            <h2 id="next-title" className={CLIENT_SECTION_LABEL}>
+              {d.nextArrival}
             </h2>
-            <AgendaTabs
-              key={initialView}
-              label={d.agendaTabsLabel}
-              initialView={initialView}
-              trailing={
-                <Link
-                  href={`/${lang}/garage/calendar`}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink"
-                >
-                  {d.viewFullCalendar}
-                  <ArrowRight aria-hidden className="h-4 w-4" />
-                </Link>
-              }
-              tabs={[
-                {
-                  id: "today",
-                  label: d.tabToday,
-                  count: todayAppointments.length,
-                  panel: renderList(todayAppointments, d.emptyToday, false),
-                },
-                {
-                  id: "week",
-                  label: d.tabWeek,
-                  count: weekAppointments.length,
-                  panel: renderList(weekAppointments, d.emptyWeek, true),
-                },
-              ]}
-            />
+            {nextArrival ? (
+              <div className="flex items-start gap-4">
+                <span className="rounded-xl bg-brand-50 px-3 py-2 text-center text-lg font-bold tabular-nums text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">
+                  {formatTime(nextArrival.start_time)}
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate font-bold tracking-tight text-ink">
+                    {nextArrival.services?.name ?? d.serviceFallback}
+                  </p>
+                  <p className="truncate text-sm text-ink-muted">{customerName(nextArrival, d)}</p>
+                  {nextArrival.vehicle?.license_plate?.trim() && (
+                    <span className="mt-1.5 inline-block">
+                      <LicensePlate plate={nextArrival.vehicle.license_plate.trim()} label={d.plateLabel} />
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-ink-muted">{d.noNextArrival}</p>
+            )}
           </section>
 
-          <aside className="lg:border-l lg:border-zinc-200/80 lg:pl-6 dark:lg:border-zinc-800/60">
-            <MobileCollapsible label={d.overviewToggle}>
-            <section aria-labelledby="glance-title">
-              <h2 id="glance-title" className={SECTION_LABEL}>
-                {d.glanceTitle}
-              </h2>
-              <dl className="mt-4 flex flex-col gap-3 text-sm">
-                <div className="flex items-start justify-between gap-4">
-                  <dt className="text-ink-muted">{d.glanceHours}</dt>
-                  <dd className="text-right font-medium tabular-nums text-ink">
-                    {hoursText}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-ink-muted">{d.glanceRemaining}</dt>
-                  <dd className="font-medium tabular-nums text-ink">
-                    {openToday.length}
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-ink-muted">{d.glanceDone}</dt>
-                  <dd className="font-medium tabular-nums text-ink">
-                    {completedToday.length}
-                  </dd>
-                </div>
-                <div className="flex flex-col gap-1 border-t border-hairline pt-3">
-                  <dt className="text-ink-muted">{d.glanceNextUp}</dt>
-                  <dd className="text-ink">
-                    {nextUp ? (
-                      <>
-                        <span className="font-semibold tabular-nums">
-                          {formatTime(nextUp.start_time)}
-                        </span>{" "}
-                        · {nextUp.services?.name ?? d.serviceFallback}
-                        <span className="block truncate text-ink-muted">
-                          {customerName(nextUp, d)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-ink-muted">{d.glanceNothingNext}</span>
-                    )}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-
-            <section aria-labelledby="team-title" className="border-t border-hairline pt-8">
+          {/* Team (owner) or the mechanic's next days */}
+          {isOwner ? (
+            <section aria-labelledby="team-title" className={`${CLIENT_CARD} flex flex-col gap-3 p-5`}>
               <div className="flex items-center justify-between gap-2">
-                <h2 id="team-title" className={SECTION_LABEL}>
+                <h2 id="team-title" className={CLIENT_SECTION_LABEL}>
                   {d.teamTitle}
                 </h2>
-                <Link
-                  href={`/${lang}/garage/staff`}
-                  className="text-xs font-medium text-ink-muted hover:text-ink"
-                >
+                <Link href={`/${lang}/garage/staff`} className={CLIENT_TEXT_LINK}>
                   {d.teamManage}
                 </Link>
               </div>
               {mechanics.length === 0 ? (
-                <p className="mt-4 text-sm text-ink-muted">{d.teamEmpty}</p>
+                <p className="text-sm text-ink-muted">{d.teamEmpty}</p>
               ) : (
-                <ul className="mt-4 flex flex-col gap-3">
+                <ul className="flex flex-col gap-3">
                   {mechanics.map((mechanic) => {
-                    const status = mechanicStatus({
-                      mechanicId: mechanic.id,
-                      appointments: todayAppointments,
-                      now,
-                      shopOpen,
-                    });
+                    const status = mechanicStatus({ mechanicId: mechanic.id, appointments: todayJobs, now, shopOpen });
                     return (
                       <li key={mechanic.id} className="flex items-center gap-3">
                         <span
                           aria-hidden
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-subtle text-xs font-semibold text-ink"
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-subtle text-xs font-bold text-ink"
                         >
                           {initials(mechanic.name)}
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-ink">
+                          <p className="truncate text-sm font-semibold text-ink">
                             {mechanic.name}
                             {mechanic.id === profile.id && (
-                              <span className="font-normal text-ink-muted">
-                                {" "}
-                                ({d.teamYou})
-                              </span>
+                              <span className="font-normal text-ink-muted"> ({d.teamYou})</span>
                             )}
                           </p>
                           <p className="flex items-center gap-1.5 text-xs text-ink-muted">
-                            <span
-                              aria-hidden
-                              className={`h-1.5 w-1.5 shrink-0 rounded-full ${TEAM_DOT[status.kind]}`}
-                            />
+                            <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${TEAM_DOT[status.kind]}`} />
                             {teamStatusText(status, d, formatTime)}
                           </p>
                         </div>
@@ -1220,10 +910,39 @@ export default async function GarageDashboardPage({
                 </ul>
               )}
             </section>
+          ) : (
+            <section aria-labelledby="later-title" className="flex flex-col gap-3 lg:col-span-1">
+              <h2 id="later-title" className={CLIENT_SECTION_LABEL}>
+                {d.upcomingTitle}
+              </h2>
+              {laterJobs.length > 0 ? (
+                <ul className="flex flex-col gap-2.5">{laterJobs.map((job) => renderCard(job, false))}</ul>
+              ) : (
+                <p className={`${CLIENT_CARD} p-5 text-sm text-ink-muted`}>{d.noUpcomingAssigned}</p>
+              )}
+            </section>
+          )}
 
-            <PushNotificationOptIn />
-            </MobileCollapsible>
-          </aside>
+          {/* Today's hours and the rest of the week */}
+          <section aria-labelledby="hours-title" className={`${CLIENT_CARD} flex flex-col gap-3 p-5`}>
+            <h2 id="hours-title" className={CLIENT_SECTION_LABEL}>
+              {d.glanceHours}
+            </h2>
+            <p className="inline-flex items-center gap-2 text-sm font-semibold tabular-nums text-ink">
+              <span
+                aria-hidden
+                className={`h-2 w-2 rounded-full ${shopOpen ? "bg-emerald-500" : "bg-zinc-400 dark:bg-zinc-600"}`}
+              />
+              {hoursText}
+            </p>
+            <Link href={`/${lang}/garage/calendar?view=week`} className={`${CLIENT_TEXT_LINK} self-start`}>
+              {d.upcomingWeek.replace("{count}", String(laterThisWeekCount ?? 0))}
+              <ArrowRight aria-hidden className="h-4 w-4" strokeWidth={2} />
+            </Link>
+            <div className="border-t border-hairline pt-3">
+              <PushNotificationOptIn />
+            </div>
+          </section>
         </div>
       </div>
     </div>

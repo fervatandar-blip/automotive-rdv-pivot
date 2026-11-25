@@ -34,28 +34,23 @@ export type CalendarAppointment = {
 export const HOUR_PX = 64;
 const SLOT_MINUTES = 30;
 
-// Solid left accent carries the status; the tint keeps blocks readable in
-// both themes. Text always says the status somewhere (drawer, list, title),
-// never color alone.
+// White cards on the grid with a coloured left edge for the status; the
+// fill stays neutral so a busy day reads calmly. Text always says the
+// status somewhere too (drawer, list, title), never colour alone.
 export const EVENT_STYLES: Record<string, string> = {
-  confirmed:
-    "border-l-green-600 bg-green-50 text-green-950 hover:bg-green-100 dark:border-l-green-500 dark:bg-green-500/10 dark:text-green-50 dark:hover:bg-green-500/20",
-  pending:
-    "border-l-amber-500 bg-amber-50 text-amber-950 hover:bg-amber-100 dark:border-l-amber-400 dark:bg-amber-500/10 dark:text-amber-50 dark:hover:bg-amber-500/20",
-  pending_payment:
-    "border-l-amber-500 bg-amber-50 text-amber-950 hover:bg-amber-100 dark:border-l-amber-400 dark:bg-amber-500/10 dark:text-amber-50 dark:hover:bg-amber-500/20",
-  completed:
-    "border-l-zinc-400 bg-subtle text-ink hover:bg-zinc-200/70 dark:border-l-zinc-500 dark:hover:bg-zinc-800",
-  cancelled:
-    "border-l-red-600 bg-red-50 text-red-900 opacity-80 hover:opacity-100 dark:border-l-red-500 dark:bg-red-500/10 dark:text-red-200",
+  confirmed: "border-l-emerald-500 bg-surface text-ink hover:bg-subtle",
+  pending: "border-l-amber-500 bg-surface text-ink hover:bg-subtle",
+  pending_payment: "border-l-amber-500 bg-surface text-ink hover:bg-subtle",
+  completed: "border-l-zinc-400 bg-subtle text-ink-muted hover:text-ink dark:border-l-zinc-500",
+  cancelled: "border-l-red-500 bg-surface text-ink-muted opacity-70 hover:opacity-100",
 };
 
 export const STATUS_DOT: Record<string, string> = {
-  confirmed: "bg-green-600 dark:bg-green-500",
+  confirmed: "bg-emerald-500",
   pending: "bg-amber-500",
   pending_payment: "bg-amber-500",
   completed: "bg-zinc-400 dark:bg-zinc-500",
-  cancelled: "bg-red-600 dark:bg-red-500",
+  cancelled: "bg-red-500",
 };
 
 export function customerName(appointment: CalendarAppointment, d: D) {
@@ -166,7 +161,7 @@ export function TimeGrid({
       data-grid-scroll
       data-range-start={rangeStartMin}
       data-hour-px={HOUR_PX}
-      className="max-h-[calc(100dvh-14rem)] min-h-[24rem] overflow-auto rounded-xl border border-hairline bg-surface"
+      className="max-h-[calc(100dvh-13rem)] min-h-[24rem] overflow-auto rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none"
     >
       <div className="grid" style={{ gridTemplateColumns: gridColumns }}>
         {/* Header row */}
@@ -178,11 +173,11 @@ export function TimeGrid({
           if (header.kind === "date") {
             content = (
               <>
-                <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+                <span className="text-xs font-semibold capitalize text-ink-muted">
                   {weekday.format(dateKeyToDisplayDate(column.date))}
                 </span>
                 <span
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-base font-semibold tabular-nums ${
+                  className={`flex h-8 w-8 items-center justify-center rounded-full font-display text-base font-bold tabular-nums ${
                     isToday ? "bg-brand-600 text-white dark:bg-brand-500" : "text-ink"
                   }`}
                 >
@@ -321,7 +316,7 @@ export function TimeGrid({
                     data-slot-time={label}
                     data-slot-mechanic={column.mechanicId}
                     aria-label={ariaLabel}
-                    className="group absolute inset-x-0 z-0 flex items-start px-1.5 pt-0.5 text-left transition-colors hover:bg-brand-500/[.06] focus-visible:bg-brand-500/[.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600/50 dark:hover:bg-zinc-800/60"
+                    className="group absolute inset-x-0 z-0 flex items-start px-1.5 pt-0.5 text-left transition-colors hover:bg-brand-500/[.06] focus-visible:bg-brand-500/[.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-600/50 dark:hover:bg-brand-500/10"
                     style={{ top: yFor(start), height: (SLOT_MINUTES / 60) * HOUR_PX }}
                   >
                     <span className="hidden text-[11px] font-medium text-brand-600 group-hover:inline group-focus-visible:inline dark:text-brand-400">
@@ -344,7 +339,7 @@ export function TimeGrid({
                   >
                     <span className="flex items-center gap-1 text-[11px] font-medium text-amber-800 dark:text-amber-300">
                       <Ban aria-hidden className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{block.reason ? `${d.blocked} · ${block.reason}` : d.blocked}</span>
+                      <span className="truncate">{block.reason ? `${d.blocked}: ${block.reason}` : d.blocked}</span>
                     </span>
                   </div>
                 );
@@ -383,16 +378,16 @@ export function TimeGrid({
                           "data-drag-start": event.startMin,
                           "data-drag-duration": durationMin,
                           "data-drag-mechanic": event.assigned_mechanic_id ?? "",
-                          "data-drag-label": `${service} · ${client}`,
+                          "data-drag-label": `${service}, ${client}`,
                           "data-drag-notify": event.profiles ? "1" : "0",
                         }
                       : {})}
-                    title={`${range} · ${client} · ${service}${plate ? ` · ${plate}` : ""}`}
-                    className={`group/block absolute z-10 flex select-none flex-col gap-0.5 overflow-hidden rounded-md border-l-4 px-1.5 py-1 text-left shadow-sm ring-1 ring-black/5 transition-colors dark:ring-white/5 ${
+                    title={`${range}, ${client}, ${service}${plate ? `, ${plate}` : ""}`}
+                    className={`group/block absolute z-10 flex select-none flex-col gap-0.5 overflow-hidden rounded-lg border-l-[3px] px-2 py-1 text-left shadow-[0_1px_3px_rgba(0,0,0,0.08)] ring-1 ring-hairline transition-colors dark:shadow-none ${
                       movable ? "cursor-grab active:cursor-grabbing" : ""
                     } ${
                       EVENT_STYLES[event.status] ?? EVENT_STYLES.pending
-                    } ${selectedId === event.id ? "ring-2 ring-brand-600 dark:ring-brand-400" : ""}`}
+                    } ${selectedId === event.id ? "!ring-2 !ring-ink" : ""}`}
                     style={{
                       top: top + 1,
                       height: blockHeight - 2,
@@ -403,7 +398,7 @@ export function TimeGrid({
                     <span className={`text-[11px] font-semibold tabular-nums leading-tight ${event.status === "cancelled" ? "line-through" : ""}`}>
                       {range}
                     </span>
-                    <span className="truncate text-xs font-medium leading-tight">{client}</span>
+                    <span className="truncate text-xs font-semibold leading-tight">{client}</span>
                     {(plate || service) && (
                       <span className="flex min-w-0 items-center gap-1 text-[11px] leading-tight opacity-80">
                         {plate && <PlateChip plate={plate} />}
@@ -478,7 +473,7 @@ export function MonthGrid({
         {dates.slice(0, 7).map((date) => (
           <div
             key={date}
-            className="px-2 py-2 text-center text-xs font-medium uppercase tracking-wide text-ink-muted"
+            className="px-2 py-2.5 text-center text-xs font-semibold capitalize text-ink-muted"
           >
             {weekday.format(dateKeyToDisplayDate(date))}
           </div>
@@ -496,7 +491,7 @@ export function MonthGrid({
               key={date}
               className={`flex min-h-28 min-w-0 flex-col gap-1 border-hairline p-1.5 ${
                 index % 7 === 0 ? "" : "border-l"
-              } ${index >= 7 ? "border-t" : ""} ${inMonth ? "" : "bg-zinc-50/80 dark:bg-zinc-950/40"}`}
+              } ${index >= 7 ? "border-t" : ""} ${inMonth ? "" : "bg-subtle/50"}`}
             >
               <Link
                 href={hrefForDay(date)}
@@ -517,7 +512,7 @@ export function MonthGrid({
                   href={hrefForAppointment(appointment.id)}
                   scroll={false}
                   className={`flex min-w-0 items-center gap-1 rounded px-1 py-0.5 text-[11px] leading-tight transition-colors hover:bg-subtle ${
-                    appointment.status === "cancelled" ? "text-zinc-400 line-through" : "text-ink"
+                    appointment.status === "cancelled" ? "text-ink-muted line-through" : "text-ink"
                   }`}
                 >
                   <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[appointment.status] ?? STATUS_DOT.pending}`} />
@@ -584,7 +579,7 @@ export function AppointmentList({
   if (groups.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none px-6 py-14 text-center">
-        <CalendarX2 aria-hidden className="h-10 w-10 text-zinc-300 dark:text-zinc-700" strokeWidth={1.5} />
+        <CalendarX2 aria-hidden className="h-10 w-10 text-ink-muted/40" strokeWidth={1.5} />
         <p className="text-sm text-ink-muted">{d.listEmpty}</p>
       </div>
     );
@@ -600,7 +595,7 @@ export function AppointmentList({
           >
             {dayLabel.format(dateKeyToDisplayDate(group.date))}
             {group.date === todayKey && (
-              <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[11px] font-medium text-white dark:bg-brand-500">
+              <span className="rounded-full bg-brand-600 px-2 py-0.5 text-[11px] font-semibold text-white dark:bg-brand-500">
                 {d.today}
               </span>
             )}
@@ -632,7 +627,7 @@ export function AppointmentList({
                       <span className="flex min-w-0 items-center gap-2 text-xs text-ink-muted">
                         <span className="truncate">{customerName(appointment, d)}</span>
                         {plate && <PlateChip plate={plate} />}
-                        {mechanic && <span className="hidden truncate sm:inline">· {mechanic}</span>}
+                        {mechanic && <span className="hidden truncate sm:inline">{mechanic}</span>}
                       </span>
                     </span>
                     <span className="hidden shrink-0 text-xs font-medium text-ink-muted sm:block">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { directionsUrl, mapSearchUrl } from "@/lib/maps";
+import { directionsUrl } from "@/lib/maps";
 
 describe("directionsUrl", () => {
   it("routes to the map pin when the garage has one", () => {
@@ -26,14 +26,6 @@ describe("directionsUrl", () => {
     );
     expect(directionsUrl({ city: "Esch", latitude: Number.NaN, longitude: 6 })).toBe(
       "https://www.google.com/maps/dir/?api=1&destination=Esch"
-    );
-  });
-});
-
-describe("mapSearchUrl", () => {
-  it("uses the search endpoint with the same destination", () => {
-    expect(mapSearchUrl({ city: "Luxembourg City" })).toBe(
-      "https://www.google.com/maps/search/?api=1&query=Luxembourg%20City"
     );
   });
 });

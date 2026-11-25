@@ -101,7 +101,7 @@ describe("TimeGrid", () => {
     expect(html.match(/data-slot-date="2026-11-04"/g)).toHaveLength(20);
     expect(html).toContain('data-slot-time="10:00"');
     expect(html).toContain("New appointment, Wed 4 Nov at 10:00");
-    expect(html).toContain("Blocked · Staff meeting");
+    expect(html).toContain("Blocked: Staff meeting");
   });
 
   it("offers no slots on a past day", () => {

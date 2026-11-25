@@ -652,5 +652,6 @@ export const REPAIR_STAGES = [
   "quality_check",
   "ready_for_pickup",
 ] as const;
+export type RepairStage = (typeof REPAIR_STAGES)[number];
 
 // Display labels live in dictionary.common.repairStage (FR/EN).

@@ -39,11 +39,3 @@ export function directionsUrl(place: MapPlace): string | null {
     ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(target)}`
     : null;
 }
-
-/** The place itself on a map (for the address/city link). */
-export function mapSearchUrl(place: MapPlace): string | null {
-  const target = destination(place);
-  return target
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(target)}`
-    : null;
-}

@@ -15,7 +15,7 @@ import type { Locale } from "@/lib/i18n/config";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import { REPAIR_STAGES } from "@/lib/definitions";
 import { APP_TIME_ZONE } from "@/lib/timezone";
-import { directionsUrl, mapSearchUrl } from "@/lib/maps";
+import { directionsUrl } from "@/lib/maps";
 import { isOpen, type ClientAppointment } from "@/lib/client-appointments";
 import { LicensePlate } from "@/components/license-plate";
 import { CancelBookingButton } from "@/components/cancel-booking-button";
@@ -187,12 +187,12 @@ export function vehicleLabel(vehicle: ClientAppointment["vehicles"]) {
   return vehicle ? [vehicle.brands?.name, vehicle.model].filter(Boolean).join(" ") : "";
 }
 
-/** Workshop name and city, the city linking to the map. */
+/** Workshop name and city; the city opens turn-by-turn directions. */
 export function WorkshopLine({ appointment, d }: { appointment: ClientAppointment; d: Dictionary["clientDashboard"] }) {
   const garage = appointment.garages;
   const name = garage?.name ?? d.garageFallback;
   const place = garage?.city?.trim() || garage?.address?.trim() || "";
-  const placeUrl = garage ? mapSearchUrl(garage) : null;
+  const placeUrl = garage ? directionsUrl(garage) : null;
   return (
     <span className="inline-flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
       <span className="truncate font-medium text-ink">{name}</span>
@@ -202,7 +202,7 @@ export function WorkshopLine({ appointment, d }: { appointment: ClientAppointmen
             href={placeUrl}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={d.showOnMap.replace("{place}", place)}
+            aria-label={d.directionsTo.replace("{name}", `${name}, ${place}`)}
             className="inline-flex items-center gap-1 text-ink-muted underline decoration-hairline underline-offset-4 transition-colors hover:text-ink hover:decoration-current"
           >
             <MapPin aria-hidden className="h-4 w-4 shrink-0" strokeWidth={1.75} />

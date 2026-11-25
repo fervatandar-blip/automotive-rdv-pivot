@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { ArrowRight, MapPin, Search } from "lucide-react";
+import { ArrowRight, List, Map as MapIcon, MapPin, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
@@ -14,6 +14,7 @@ import { RatingPill } from "@/components/star-rating";
 import { CapabilityPill, capabilityList } from "@/components/capability-pills";
 import { REVIEWS_ENABLED } from "@/lib/features";
 import { monogram } from "@/lib/monogram";
+import { directionsUrl } from "@/lib/maps";
 import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
 import { VerificationBadge } from "@/components/verification-badge";
 import { parseBookingVehicle, withBookingVehicle } from "@/lib/booking-vehicle";
@@ -25,6 +26,10 @@ import {
   CLIENT_PAGE_SUBTITLE,
   CLIENT_PAGE_TITLE,
   CLIENT_PRIMARY_BUTTON,
+  CLIENT_SEGMENT,
+  CLIENT_SEGMENTED,
+  CLIENT_SEGMENT_ACTIVE,
+  CLIENT_SEGMENT_IDLE,
   CLIENT_TAG,
 } from "@/lib/client-ui";
 
@@ -77,6 +82,7 @@ type SearchParams = {
   lng?: string;
   radius?: string;
   vehicle?: string;
+  view?: string;
 };
 
 export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
@@ -218,11 +224,31 @@ export default async function GaragesPage({
     .map((garage) => ({
       id: garage.id,
       name: garage.name,
+      city: garage.city,
       latitude: garage.latitude,
       longitude: garage.longitude,
+      distance: garage.distanceKm !== null ? formatDistanceKm(garage.distanceKm) : null,
     }));
   // Same conditions under which GarageDiscoveryMap renders anything.
   const showMap = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) && mapGarages.length > 0;
+  // List (with the map beside it from lg) or a full map. The toggle only
+  // exists when there's a map to show.
+  const isMapView = showMap && filters.view === "map";
+  const viewHref = (view: "list" | "map") => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(filters)) {
+      if (key !== "view" && typeof value === "string" && value) params.set(key, value);
+    }
+    if (view === "map") params.set("view", "map");
+    const query = params.toString();
+    return `/${lang}/garages${query ? `?${query}` : ""}`;
+  };
+  const mapLabels = {
+    map: d.mapLabel,
+    book: d.bookAppointmentCta,
+    directions: dictionary.clientDashboard.directions,
+    close: d.closePreview,
+  };
 
   return (
     <div className={CLIENT_FIT_PAGE}>
@@ -250,9 +276,10 @@ export default async function GaragesPage({
           className="flex shrink-0 flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-200/80 bg-surface p-3 shadow-sm dark:border-hairline dark:shadow-none"
           resetLabel={d.clear}
           showReset={filtersActive}
-          keepOnReset={["vehicle"]}
+          keepOnReset={["vehicle", "view"]}
           resetClassName="h-10 shrink-0 rounded-xl px-3.5 text-sm font-semibold text-ink-muted transition-colors hover:bg-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 sm:ml-auto"
         >
+          {isMapView && <input type="hidden" name="view" value="map" />}
           {hasOrigin && (
             <>
               <input type="hidden" name="lat" value={filters.lat} />
@@ -375,16 +402,42 @@ export default async function GaragesPage({
             title={d.emergencyService}
             defaultChecked={filters.emergency === "1"}
           />
+
+          {showMap && (
+            <nav aria-label={d.viewToggle} className={`${CLIENT_SEGMENTED} shrink-0 shadow-none sm:ml-auto`}>
+              {(["list", "map"] as const).map((option) => {
+                const active = (option === "map") === isMapView;
+                const Icon = option === "map" ? MapIcon : List;
+                return (
+                  <Link
+                    key={option}
+                    href={viewHref(option)}
+                    scroll={false}
+                    aria-current={active ? "page" : undefined}
+                    className={`${CLIENT_SEGMENT} px-3 ${active ? CLIENT_SEGMENT_ACTIVE : CLIENT_SEGMENT_IDLE}`}
+                  >
+                    <Icon aria-hidden className="h-4 w-4" strokeWidth={2} />
+                    {option === "map" ? d.viewMap : d.viewList}
+                  </Link>
+                );
+              })}
+            </nav>
+          )}
         </InstantFilterForm>
 
-        {/* Split view from lg: the list scrolls in its panel, the map stays
-            beside it. Phones get the map above the list. */}
+        {/* List view: the cards, with the map beside them from lg (phones use
+            the toggle). Map view: the map alone, full size. */}
         <div
-          className={`grid min-h-0 flex-1 grid-cols-1 gap-4 ${showMap ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]" : ""}`}
+          className={`grid min-h-0 flex-1 grid-cols-1 gap-4 ${
+            showMap && !isMapView ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]" : ""
+          }`}
         >
           {/* Cards scroll in this column; the side padding keeps their
               shadow from being clipped by the scroll box. */}
-          <section aria-label={d.title} className="-mx-2 flex min-h-0 flex-col overflow-y-auto px-2 pb-2 lg:order-1">
+          <section
+            aria-label={d.title}
+            className={`-mx-2 min-h-0 flex-col overflow-y-auto px-2 pb-2 ${isMapView ? "hidden" : "flex"}`}
+          >
             {sorted.length > 0 ? (
               <ul className="flex flex-col gap-3">
                 {sorted.map((garage) => {
@@ -419,13 +472,21 @@ export default async function GaragesPage({
                           </h2>
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink-muted">
                             {garage.city && (
-                              <span className="inline-flex items-center gap-1">
+                              // Above the card's stretched link: opens directions,
+                              // not the workshop page.
+                              <a
+                                href={directionsUrl(garage) ?? undefined}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={dictionary.clientDashboard.directionsTo.replace("{name}", garage.name)}
+                                className="relative z-10 inline-flex items-center gap-1 rounded-md underline decoration-hairline underline-offset-4 transition-colors hover:text-ink hover:decoration-current"
+                              >
                                 <MapPin aria-hidden className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                                 {garage.city}
                                 {garage.distanceKm !== null && (
                                   <span className="tabular-nums">({formatDistanceKm(garage.distanceKm)})</span>
                                 )}
-                              </span>
+                              </a>
                             )}
                             {REVIEWS_ENABLED &&
                               (average !== null ? (
@@ -481,10 +542,13 @@ export default async function GaragesPage({
 
           {showMap && (
             <GarageDiscoveryMap
-              className="order-first h-56 overflow-hidden rounded-xl border border-hairline lg:order-2 lg:h-auto lg:min-h-0"
+              className={`overflow-hidden ${CLIENT_CARD} ${
+                isMapView ? "h-[70dvh] md:h-full md:min-h-[28rem]" : "hidden lg:block lg:h-full lg:min-h-0"
+              }`}
               garages={mapGarages}
               lang={lang}
               vehicleId={vehicleId}
+              labels={mapLabels}
             />
           )}
         </div>

@@ -18,6 +18,10 @@ type Garage = {
   country: string;
   registration_number: string | null;
   platform_terms_accepted_at: string | null;
+  address: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 let garage: Garage;
 vi.mock("@/lib/dal", () => ({
@@ -46,6 +50,13 @@ function makeBuilder(table: string) {
     ).then(resolve);
   return builder;
 }
+
+// Real shouldGeocode, stubbed network call.
+const geocodeAddress = vi.fn(async (): Promise<{ latitude: number; longitude: number } | null> => null);
+vi.mock("@/lib/geocode", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/geocode")>()),
+  geocodeAddress: (...args: unknown[]) => geocodeAddress(...(args as [])),
+}));
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(() => Promise.resolve({ from: (table: string) => makeBuilder(table) })),
@@ -89,7 +100,13 @@ beforeEach(() => {
     country: "LU",
     registration_number: VALID_LU_RCS,
     platform_terms_accepted_at: "2026-01-01T00:00:00Z",
+    address: "12 Rue de Hollerich",
+    city: "Luxembourg",
+    latitude: 49.6,
+    longitude: 6.1,
   };
+  geocodeAddress.mockReset();
+  geocodeAddress.mockResolvedValue(null);
 });
 
 describe("updateGarageProfile: details section", () => {
@@ -172,6 +189,33 @@ describe("updateGarageProfile: other sections", () => {
       latitude: 49.6,
       longitude: 6.1,
     });
+  });
+
+  it("geocodes a changed address when the pin wasn't moved", async () => {
+    geocodeAddress.mockResolvedValue({ latitude: 49.4958, longitude: 5.9806 });
+    await updateGarageProfile(
+      undefined,
+      form({ section: "location", address: "1 Rue de l'Alzette", city: "Esch-sur-Alzette", latitude: "49.6", longitude: "6.1" })
+    );
+    expect(geocodeAddress).toHaveBeenCalledWith({ address: "1 Rue de l'Alzette", city: "Esch-sur-Alzette", country: "LU" });
+    expect(garageUpdate()).toMatchObject({ latitude: 49.4958, longitude: 5.9806 });
+  });
+
+  it("keeps a hand-placed pin and the old pin when geocoding fails", async () => {
+    await updateGarageProfile(
+      undefined,
+      form({ section: "location", address: "1 Rue de l'Alzette", city: "Esch-sur-Alzette", latitude: "49.5", longitude: "5.98" })
+    );
+    expect(geocodeAddress).not.toHaveBeenCalled();
+    expect(garageUpdate()).toMatchObject({ latitude: 49.5, longitude: 5.98 });
+
+    ops = [];
+    await updateGarageProfile(
+      undefined,
+      form({ section: "location", address: "Nowhere 1", city: "Luxembourg", latitude: "49.6", longitude: "6.1" })
+    );
+    expect(geocodeAddress).toHaveBeenCalledTimes(1);
+    expect(garageUpdate()).toMatchObject({ latitude: 49.6, longitude: 6.1 });
   });
 
   it("no longer edits brands/specialties from the profile page", async () => {

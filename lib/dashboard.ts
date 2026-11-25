@@ -1,61 +1,6 @@
 import type { AvailabilityWindow } from "@/lib/slots";
 import { zonedDateTimeToUtc } from "@/lib/timezone";
 
-/**
- * The dashboard agenda's filter tabs. Lives here, not in the client
- * component: a server component importing a plain value from a
- * "use client" module only gets a client reference, not the array.
- */
-// No "pending approval" tab: bookings are confirmed on creation in the
-// pay-on-site pilot (0040). Older pending rows surface as a dashboard
-// callout instead.
-export const AGENDA_VIEWS = ["today", "week"] as const;
-export type AgendaView = (typeof AGENDA_VIEWS)[number];
-
-export function parseAgendaView(value: unknown): AgendaView {
-  return AGENDA_VIEWS.find((view) => view === value) ?? "today";
-}
-
-/**
- * What the garage dashboard shows on an appointment card. Derived, not
- * stored: the booking lifecycle (appointments.status) and the repair
- * tracker (appointments.repair_stage, 0024) stay separate in the DB, and
- * this folds them into one glanceable state.
- *
- *   pending                      -> awaiting_action (the garage must confirm)
- *   confirmed + stage or started -> in_progress
- *   confirmed                    -> confirmed
- *   completed / cancelled        -> themselves
- *
- * pending_payment never reaches the dashboard (checkout not finished), but
- * maps to awaiting_action defensively rather than throwing.
- */
-export type AgendaBadge =
-  | "awaiting_action"
-  | "confirmed"
-  | "in_progress"
-  | "completed"
-  | "cancelled";
-
-export function agendaBadge(
-  appointment: { status: string; repair_stage: string | null; start_time: string },
-  now: Date = new Date()
-): AgendaBadge {
-  switch (appointment.status) {
-    case "confirmed":
-      return appointment.repair_stage !== null ||
-        new Date(appointment.start_time).getTime() <= now.getTime()
-        ? "in_progress"
-        : "confirmed";
-    case "completed":
-      return "completed";
-    case "cancelled":
-      return "cancelled";
-    default:
-      return "awaiting_action";
-  }
-}
-
 export type DayCapacity =
   | { kind: "closed" }
   | { kind: "no_mechanics" }
