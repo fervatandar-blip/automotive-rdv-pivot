@@ -7,9 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthedUser, requireGarageMember, requireGarageOwner } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
 import { getStripe } from "@/lib/stripe";
-import { isInvoiceablePrice } from "@/lib/service-pricing";
 import { getAvailableSlotsForDate } from "@/lib/availability";
-import { dateKeyInAppZone, todayKeyInAppZone, zonedDateTimeToUtc } from "@/lib/timezone";
+import { dateKeyInAppZone, zonedDateTimeToUtc } from "@/lib/timezone";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { BookingFormSchema, RescheduleFormSchema } from "@/lib/definitions";
 import {
@@ -19,7 +18,6 @@ import {
   notifyWaitlistSlotOpened,
   notifyRepairStageChange,
 } from "@/lib/notifications";
-import { renderInvoicePdf } from "@/lib/invoice-pdf";
 import { REPAIR_STAGES } from "@/lib/definitions";
 import { MIN_JOB_MINUTES, isDateKey, parseCalendarView } from "@/lib/calendar-grid";
 
@@ -472,193 +470,12 @@ export async function updateRepairStage(formData: FormData) {
   revalidateLocalizedPath("/appointments");
 }
 
-async function generateInvoice(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  appointmentId: string,
-  garageId: string
-) {
-  try {
-    const { data: appointment } = await supabase
-      .from("appointments")
-      .select(
-        "start_time, client_id, garage_customer_id, client:profiles!appointments_client_id_fkey(full_name, email), walk_in:garage_customers(full_name, email, phone), garage:garages!appointments_garage_id_fkey(name, address, city, email, vat_number, registration_number), services(name, duration_minutes, pricing_type, price)"
-      )
-      .eq("id", appointmentId)
-      .single();
-
-    if (!appointment) return;
-
-    // The invoice recipient: a registered client, or a walk-in customer
-    // (0038) who may have no email at all.
-    const registered = appointment.client as unknown as {
-      full_name: string;
-      email: string;
-    } | null;
-    const walkIn = appointment.walk_in as unknown as {
-      full_name: string;
-      email: string | null;
-      phone: string | null;
-    } | null;
-    const recipient = registered
-      ? { name: registered.full_name, email: registered.email, phone: null }
-      : walkIn
-        ? { name: walkIn.full_name, email: walkIn.email, phone: walkIn.phone }
-        : null;
-    const garageInfo = appointment.garage as unknown as {
-      name: string;
-      address: string | null;
-      city: string | null;
-      email: string | null;
-      vat_number: string | null;
-      registration_number: string | null;
-    } | null;
-    const service = appointment.services as unknown as {
-      name: string;
-      duration_minutes: number;
-      pricing_type: string;
-      price: number | null;
-    } | null;
-
-    if (!recipient || !garageInfo || !service) return;
-
-    // A "from" or "on inspection" list price (0045) is not what the client
-    // owes, so no invoice is issued automatically for those services --
-    // the invoices page doesn't list them as missing either.
-    if (!isInvoiceablePrice(service)) return;
-
-    // increment_invoice_number must run before rendering (the number is
-    // printed inside the PDF itself, so it has to be known first) --
-    // meaning a failure in any step below it still permanently burns that
-    // number, with no invoice ever issued under it. Most EU VAT regimes
-    // (Luxembourg included) expect sequential invoice numbering, so a gap
-    // here isn't just cosmetic. This is a narrow, genuinely rare failure
-    // window (Storage/DB calls, not the payment itself), and closing it
-    // completely would need a two-phase claim/commit scheme this function
-    // doesn't have -- what it can and does have is recovery: see
-    // retryInvoiceGeneration below and the "missing invoice" list on
-    // app/[lang]/garage/invoices/page.tsx, so a failure here is visible
-    // and fixable instead of silent and permanent.
-    const { data: invoiceNumberValue } = await supabase.rpc(
-      "increment_invoice_number",
-      { target_garage_id: garageId }
-    );
-    if (typeof invoiceNumberValue !== "number") return;
-
-    // Year in the garage's zone: on a UTC server the first hour or two of
-    // 1 January local time would otherwise still be stamped with last year.
-    const invoiceNumber = `${todayKeyInAppZone().slice(0, 4)}-${String(
-      invoiceNumberValue
-    ).padStart(4, "0")}`;
-    const issuedAt = new Date().toISOString();
-
-    const pdfBuffer = await renderInvoicePdf({
-      invoiceNumber,
-      issuedAt,
-      garage: {
-        name: garageInfo.name,
-        address: garageInfo.address,
-        city: garageInfo.city,
-        email: garageInfo.email,
-        vatNumber: garageInfo.vat_number,
-        registrationNumber: garageInfo.registration_number,
-      },
-      client: recipient,
-      service: {
-        name: service.name,
-        durationMinutes: service.duration_minutes,
-        price: Number(service.price),
-      },
-      appointmentDate: appointment.start_time,
-      currency: "EUR",
-    });
-
-    const filePath = `${garageId}/${appointmentId}.pdf`;
-    const { error: uploadError } = await supabase.storage
-      .from("invoices")
-      .upload(filePath, pdfBuffer, {
-        contentType: "application/pdf",
-        upsert: true,
-      });
-
-    if (uploadError) {
-      console.error("[invoice] storage upload failed:", uploadError);
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("invoices").insert({
-      appointment_id: appointmentId,
-      garage_id: garageId,
-      client_id: appointment.client_id,
-      garage_customer_id: appointment.garage_customer_id,
-      invoice_number: invoiceNumber,
-      amount: Number(service.price),
-      currency: "EUR",
-      file_path: filePath,
-      issued_at: issuedAt,
-    });
-
-    if (insertError) {
-      // Previously unchecked -- the PDF is already uploaded to Storage at
-      // this point, but with no `invoices` row pointing at it, so it's
-      // orphaned and the appointment looks invoice-less just like any
-      // other failure in this function. retryInvoiceGeneration's own
-      // upload call uses upsert, so a retry safely overwrites this file.
-      console.error("[invoice] invoices row insert failed:", insertError);
-    }
-  } catch (err) {
-    // Invoice generation is best-effort: a PDF/storage failure shouldn't
-    // undo the appointment status change that already succeeded. Recovery
-    // is retryInvoiceGeneration, not automatic retry here.
-    console.error("[invoice] failed to generate:", err);
-  }
-}
-
-// The recovery path for generateInvoice's failure modes above: lets a
-// garage member manually re-run generation for a completed appointment
-// that never got one. Guards on both status and "no existing invoice" so
-// this can't be used to burn a second invoice number for an appointment
-// that already has one.
-export async function retryInvoiceGeneration(formData: FormData) {
-  const lang = parseLocale(formData.get("lang"));
-  const { garage } = await requireGarageMember(lang);
-  const id = formData.get("id");
-
-  if (typeof id !== "string" || !id) {
-    return;
-  }
-
-  const supabase = await createClient();
-
-  const { data: appointment } = await supabase
-    .from("appointments")
-    .select("id")
-    .eq("id", id)
-    .eq("garage_id", garage.id)
-    .eq("status", "completed")
-    .maybeSingle();
-
-  if (!appointment) {
-    return;
-  }
-
-  const { data: existingInvoice } = await supabase
-    .from("invoices")
-    .select("id")
-    .eq("appointment_id", id)
-    .maybeSingle();
-
-  if (existingInvoice) {
-    return;
-  }
-
-  await generateInvoice(supabase, id, garage.id);
-
-  revalidateLocalizedPath("/garage/invoices");
-}
-
+// Completing no longer issues an invoice: services carry no price since
+// 0050 (the workshop quotes and is paid on site), so there is no amount to
+// invoice. Invoices issued before 0050 stay listed and downloadable.
 export async function completeAppointment(formData: FormData) {
   const lang = parseLocale(formData.get("lang"));
-  const { garage } = await requireGarageMember(lang);
+  await requireGarageMember(lang);
   const id = formData.get("id");
 
   if (typeof id !== "string" || !id) {
@@ -675,7 +492,6 @@ export async function completeAppointment(formData: FormData) {
     const appointment = await fetchAppointmentParties(supabase, id);
     if (appointment) {
       await notifyStatusChange(appointment, "completed", "garage");
-      await generateInvoice(supabase, id, garage.id);
     }
   }
 

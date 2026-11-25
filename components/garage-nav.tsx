@@ -30,7 +30,7 @@ import { logout } from "@/app/actions/auth";
 import { locales, type Locale } from "@/lib/i18n/config";
 import { rememberLocale } from "@/lib/i18n/remember-locale";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { AnimatedLogo } from "@/components/animated-logo";
+import { BrandLogo, BrandMark } from "@/components/brand-mark";
 
 const LOCALE_LABELS: Record<Locale, string> = { fr: "FR", en: "EN" };
 const COLLAPSE_STORAGE_KEY = "garage-sidebar-collapsed";
@@ -116,9 +116,9 @@ function isActive(pathname: string, href: string) {
 }
 
 const NAV_ITEM_BASE =
-  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-600";
-const NAV_ITEM_ACTIVE = "bg-zinc-800/60 font-medium text-white";
-const NAV_ITEM_IDLE = "text-zinc-400 hover:bg-zinc-800/40 hover:text-zinc-100";
+  "flex h-10 items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30";
+const NAV_ITEM_ACTIVE = "bg-subtle font-semibold text-ink";
+const NAV_ITEM_IDLE = "text-ink-muted hover:bg-subtle/70 hover:text-ink";
 
 function NavLink({
   href,
@@ -209,7 +209,7 @@ function MobileNav({
         onClick={open}
         aria-label={labels.openMenu}
         aria-haspopup="dialog"
-        className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-black md:hidden dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50"
+        className="-ml-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-subtle hover:text-ink md:hidden"
       >
         <Menu className="h-5 w-5" strokeWidth={1.75} />
       </button>
@@ -220,19 +220,18 @@ function MobileNav({
           // A click on the dialog element itself is a click on the backdrop.
           if (event.target === dialogRef.current) close();
         }}
-        className="m-0 h-dvh max-h-none w-72 max-w-[85vw] bg-zinc-950 p-0 text-zinc-50 backdrop:bg-black/60 md:hidden"
+        className="m-0 h-dvh max-h-none w-72 max-w-[85vw] bg-surface p-0 text-ink backdrop:bg-black/60 md:hidden"
       >
         <div className="flex h-full flex-col overflow-y-auto px-4 pb-6 pt-4">
           <div className="mb-6 flex items-center justify-between gap-2 px-2">
             <Link href={`/${lang}/garage/dashboard`} onClick={close} className="flex items-center gap-2">
-              <AnimatedLogo size={28} />
-              <span className="text-lg font-bold tracking-tight">RDV</span>
+              <BrandLogo size={30} />
             </Link>
             <button
               type="button"
               onClick={close}
               aria-label={labels.closeMenu}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-800/40 hover:text-zinc-100"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-subtle hover:text-ink"
             >
               <X className="h-5 w-5" strokeWidth={1.75} />
             </button>
@@ -241,7 +240,7 @@ function MobileNav({
           <nav className="flex flex-col gap-6">
             {groups.map((group) => (
               <div key={group.label} className="flex flex-col gap-0.5">
-                <span className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                <span className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted">
                   {group.label}
                 </span>
                 {group.items.map((item) => (
@@ -261,7 +260,7 @@ function MobileNav({
 
           {quickActions && (
             // Light surface so the modals' ghost triggers read correctly.
-            <div className="mt-6 flex flex-col items-start gap-1 rounded-lg bg-zinc-900 p-1.5 [&>button]:w-full [&>button]:text-zinc-300 [&>button:hover]:bg-zinc-800 [&>button:hover]:text-zinc-50">
+            <div className="mt-6 flex flex-col items-start gap-1 rounded-xl bg-subtle p-1.5 [&>button]:w-full [&>button]:text-ink [&>button:hover]:bg-hairline [&>button:hover]:text-ink">
               {quickActions}
             </div>
           )}
@@ -269,7 +268,7 @@ function MobileNav({
           <div className="mt-auto pt-6">
             <SidebarUtilityBar lang={lang} pathname={pathname} labels={labels} collapsed={false} />
           </div>
-          <div className="flex flex-col gap-0.5 border-t border-zinc-800/60 pt-4">
+          <div className="flex flex-col gap-0.5 border-t border-hairline pt-4">
             {footerLinks.map((item) => (
               <div key={item.href} onClick={close}>
                 <NavLink
@@ -332,7 +331,7 @@ export function GarageTopBar({
   nav: { isOwner: boolean; needsVerification: boolean; labels: NavLabels };
 }) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-zinc-200/80 bg-white px-3 dark:border-zinc-800/60 dark:bg-zinc-950 sm:px-4 md:gap-3 md:px-6">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-hairline bg-surface px-3 sm:px-4 md:gap-3 md:px-6">
       <div className="flex min-w-0 shrink items-center gap-1.5 md:gap-2.5">
         <MobileNav
           lang={lang}
@@ -359,7 +358,7 @@ export function GarageTopBar({
             )
           }
         />
-        <p className="truncate text-sm font-semibold text-black dark:text-zinc-50">{garageName}</p>
+        <p className="truncate text-sm font-semibold text-ink">{garageName}</p>
         {status !== "approved" && (
           <span
             className={`hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium lg:inline ${STATUS_BADGE[status] ?? ""}`}
@@ -401,7 +400,7 @@ export function GarageTopBar({
               variant="icon"
             />
           </div>
-          <span aria-hidden className="mx-1.5 hidden h-5 w-px bg-zinc-200 md:block dark:bg-zinc-800" />
+          <span aria-hidden className="mx-1.5 hidden h-5 w-px bg-hairline md:block" />
           <QuickWalkInButton lang={lang} d={actions.walkIn} />
         </div>
       )}
@@ -438,13 +437,13 @@ function SidebarUtilityBar({
     const other = locales.find((locale) => locale !== lang) ?? lang;
     return (
       <div className="mb-3 flex flex-col items-center gap-1">
-        <ThemeToggle labels={themeLabels} collapsed />
+        <ThemeToggle labels={themeLabels} tone="adaptive" collapsed />
         <Link
           href={hrefFor(other)}
           onClick={() => rememberLocale(other)}
           title={labels.language}
           aria-label={`${labels.language}: ${LOCALE_LABELS[other]}`}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-zinc-400 transition-colors hover:bg-zinc-800/60 hover:text-zinc-50"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold text-ink-muted transition-colors hover:bg-subtle hover:text-ink"
         >
           {LOCALE_LABELS[other]}
         </Link>
@@ -454,8 +453,8 @@ function SidebarUtilityBar({
 
   return (
     <div className="mb-3 flex items-center justify-between gap-2 px-1">
-      <ThemeToggle labels={themeLabels} />
-      <div role="group" aria-label={labels.language} className="flex rounded-full bg-zinc-900 p-0.5 ring-1 ring-zinc-800">
+      <ThemeToggle labels={themeLabels} tone="adaptive" />
+      <div role="group" aria-label={labels.language} className="flex rounded-lg bg-subtle p-0.5 ring-1 ring-hairline">
         {locales.map((locale) => {
           const active = locale === lang;
           return (
@@ -465,8 +464,8 @@ function SidebarUtilityBar({
               onClick={() => rememberLocale(locale)}
               aria-current={active ? "true" : undefined}
               lang={locale}
-              className={`rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide transition-colors ${
-                active ? "bg-zinc-700 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-50"
+              className={`rounded-md px-2.5 py-1 text-[11px] font-semibold tabular-nums transition-colors ${
+                active ? "bg-surface text-ink shadow-sm ring-1 ring-hairline" : "text-ink-muted hover:text-ink"
               }`}
             >
               {LOCALE_LABELS[locale]}
@@ -513,7 +512,7 @@ export function GarageSidebar({
 
   return (
     <aside
-      className={`hidden shrink-0 flex-col bg-zinc-950 py-6 transition-[width] duration-150 md:flex ${
+      className={`sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-hairline bg-surface py-5 transition-[width] duration-150 md:flex ${
         collapsed ? "w-16 px-2" : "w-60 px-4"
       }`}
     >
@@ -528,18 +527,13 @@ export function GarageSidebar({
           href={`/${lang}/garage/dashboard`}
           className="flex items-center gap-2"
         >
-          <AnimatedLogo size={32} />
-          {!collapsed && (
-            <span className="text-lg font-bold tracking-tight text-zinc-50">
-              RDV
-            </span>
-          )}
+          {collapsed ? <BrandMark size={32} /> : <BrandLogo size={34} />}
         </Link>
         <button
           type="button"
           onClick={toggleCollapsed}
           aria-label={collapsed ? labels.expand : labels.collapse}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-800/40 hover:text-zinc-100"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-subtle hover:text-ink"
         >
           {collapsed ? (
             <PanelLeft className="h-4 w-4" strokeWidth={1.5} />
@@ -555,7 +549,7 @@ export function GarageSidebar({
             {collapsed ? (
               <span className="sr-only">{group.label}</span>
             ) : (
-              <span className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+              <span className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-ink-muted">
                 {group.label}
               </span>
             )}
@@ -575,7 +569,7 @@ export function GarageSidebar({
 
       <SidebarUtilityBar lang={lang} pathname={pathname} labels={labels} collapsed={collapsed} />
 
-      <div className="flex flex-col gap-0.5 border-t border-zinc-800/60 pt-4">
+      <div className="flex flex-col gap-0.5 border-t border-hairline pt-4">
         {footerLinks.map((item) => (
           <NavLink
             key={item.href}

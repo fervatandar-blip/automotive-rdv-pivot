@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { requireGarageOwner } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -54,7 +55,7 @@ export default async function GarageDocumentsPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <div className="flex items-start justify-between">
           <div>
@@ -62,12 +63,12 @@ export default async function GarageDocumentsPage({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; {d.backToDashboard}
+              <ArrowLeft aria-hidden className="mr-1 inline h-4 w-4 align-[-3px]" strokeWidth={2} />{d.backToDashboard}
             </Link>
-            <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">
               {garage.name} &mdash; {d.verificationDocumentsSuffix}
             </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
               {d.verificationLevel}
               <VerificationBadge level={garage.verification_level} labels={dictionary.verificationLevels} />
             </p>
@@ -78,11 +79,11 @@ export default async function GarageDocumentsPage({
         {DOCUMENT_CATEGORIES.map((category) => (
           <div key={category.key} className="flex flex-col gap-3">
             <div>
-              <h2 className="font-semibold text-black dark:text-zinc-50">
+              <h2 className="font-semibold text-ink">
                 {category.label}
               </h2>
               {category.description && (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="text-sm text-ink-muted">
                   {category.description}
                 </p>
               )}
@@ -99,10 +100,10 @@ export default async function GarageDocumentsPage({
                 return (
                   <div
                     key={type.key}
-                    className="flex flex-col gap-2 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-2 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-black dark:text-zinc-50">
+                      <p className="text-sm font-medium text-ink">
                         {type.label}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -118,7 +119,7 @@ export default async function GarageDocumentsPage({
                             href={signedUrls.get(type.key)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs font-medium underline text-zinc-600 dark:text-zinc-400"
+                            className="text-xs font-medium underline text-ink-muted"
                           >
                             {doc.file_name}
                           </a>
@@ -145,11 +146,11 @@ export default async function GarageDocumentsPage({
                         type="file"
                         name="file"
                         required
-                        className="w-40 text-xs text-zinc-600 file:mr-2 file:rounded-full file:border file:border-black/[.08] file:bg-white file:px-3 file:py-1 file:text-xs file:font-medium dark:text-zinc-400 dark:file:border-white/[.145] dark:file:bg-black"
+                        className="w-40 text-xs text-ink-muted file:mr-2 file:rounded-full file:border file:border-black/[.08] file:bg-white file:px-3 file:py-1 file:text-xs file:font-medium dark:file:border-white/[.145] dark:file:bg-black"
                       />
                       <button
                         type="submit"
-                        className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                        className="rounded-full border border-hairline px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
                       >
                         {doc ? d.replace : d.upload}
                       </button>

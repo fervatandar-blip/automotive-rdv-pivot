@@ -20,7 +20,7 @@ import { todayKeyInAppZone } from "@/lib/timezone";
 type D = Dictionary["walkIn"];
 
 const inputClass =
-  "w-full rounded-md border border-black/[.08] px-3 py-2 text-sm dark:border-white/[.145] dark:bg-black";
+  "w-full rounded-md border border-hairline px-3 py-2 text-sm bg-surface";
 const labelClass = "text-sm font-medium";
 
 function FieldError({ messages }: { messages?: string[] }) {
@@ -67,8 +67,8 @@ export function QuickWalkInButton({
         onClick={() => modalRef.current?.open()}
         title={label ? undefined : d.openButton}
         // Top bar (no label): a round "+" icon on phones, labelled from md up.
-        className={`flex shrink-0 items-center gap-1.5 rounded-full bg-brand-600 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600 ${
-          label ? "px-3.5 py-1.5" : "h-9 w-9 justify-center md:h-auto md:w-auto md:px-3.5 md:py-1.5"
+        className={`flex shrink-0 items-center gap-1.5 rounded-xl bg-ink text-sm font-semibold text-surface transition-colors hover:bg-ink/85 ${
+          label ? "px-3.5 py-2.5" : "h-9 w-9 justify-center md:h-auto md:w-auto md:px-3.5 md:py-1.5"
         }`}
       >
         <Plus aria-hidden className="h-4 w-4" strokeWidth={2.25} />
@@ -133,23 +133,23 @@ export function WalkInModal({
       ref={dialogRef}
       aria-labelledby={titleId}
       onClose={() => setFormKey((key) => key + 1)}
-      className="m-auto w-[min(100%-2rem,36rem)] rounded-2xl border border-black/[.08] bg-white p-0 text-black shadow-xl backdrop:bg-black/40 dark:border-white/[.145] dark:bg-zinc-950 dark:text-zinc-50"
+      className="m-auto w-[min(100%-2rem,36rem)] rounded-2xl border border-hairline bg-surface p-0 text-ink shadow-xl backdrop:bg-black/40"
     >
       <div className="flex max-h-[85vh] flex-col">
-        <div className="flex items-center justify-between border-b border-black/[.08] px-5 py-4 dark:border-white/[.145]">
+        <div className="flex items-center justify-between border-b border-hairline px-5 py-4">
           <h2 id={titleId} className="text-lg font-semibold">
             {preset ? d.newAppointmentTitle : d.title}
           </h2>
-          <button type="button" onClick={close} aria-label={d.close} className="rounded-full p-1.5 hover:bg-black/[.04] dark:hover:bg-white/[.06]">
+          <button type="button" onClick={close} aria-label={d.close} className="rounded-full p-1.5 hover:bg-subtle">
             <X className="h-5 w-5" strokeWidth={1.75} />
           </button>
         </div>
 
         <div className="overflow-y-auto px-5 py-4">
-          {loading && !options && <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.loading}</p>}
+          {loading && !options && <p className="text-sm text-ink-muted">{d.loading}</p>}
           {loadError && <p role="alert" className="text-sm text-red-600">{d.loadError}</p>}
           {options && options.services.length === 0 && (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-ink-muted">
               {d.noServices}{" "}
               <Link href={`/${lang}/garage/services`} className="font-medium underline" onClick={close}>
                 {d.addServices}
@@ -277,14 +277,14 @@ function WalkInForm({
           <Link
             href={`/${lang}/garage/calendar`}
             onClick={onDone}
-            className="rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+            className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-surface hover:bg-ink/85"
           >
             {d.openCalendar}
           </Link>
           <button
             type="button"
             onClick={onAnother}
-            className="rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.06]"
+            className="rounded-full border border-hairline px-4 py-2 text-sm font-medium hover:bg-subtle"
           >
             {d.addAnother}
           </button>
@@ -358,16 +358,16 @@ function WalkInForm({
                       className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left text-sm ${
                         isSelected
                           ? "border-brand-600 bg-brand-600/[.06] dark:border-brand-500"
-                          : "border-black/[.06] hover:bg-black/[.03] dark:border-white/[.1] dark:hover:bg-white/[.04]"
+                          : "border-hairline hover:bg-subtle"
                       }`}
                     >
                       <span className="min-w-0">
                         <span className="block truncate font-medium">{customer.name}</span>
-                        <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">
+                        <span className="block truncate text-xs text-ink-muted">
                           {[customer.detail, customer.vehicles[0]?.label].filter(Boolean).join(" · ")}
                         </span>
                       </span>
-                      <span className="shrink-0 rounded-full bg-black/[.04] px-2 py-0.5 text-[11px] font-medium dark:bg-white/[.08]">
+                      <span className="shrink-0 rounded-full bg-subtle px-2 py-0.5 text-[11px] font-medium">
                         {customer.kind === "client" ? d.badgeClient : d.badgeWalkIn}
                       </span>
                     </button>
@@ -404,7 +404,7 @@ function WalkInForm({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
                 <label htmlFor={`${fieldId}-plate`} className="sr-only">{d.plateLabel}</label>
-                <input id={`${fieldId}-plate`} name="plate" placeholder={d.plateLabel} autoCapitalize="characters" className={`${inputClass} font-mono uppercase`} />
+                <input id={`${fieldId}-plate`} name="plate" placeholder={d.plateLabel} autoCapitalize="characters" className={`${inputClass} tabular-nums uppercase`} />
                 <FieldError messages={errors.plate} />
               </div>
               <div className="flex flex-col gap-1">
@@ -422,7 +422,7 @@ function WalkInForm({
               </div>
               <div className="flex flex-col gap-1">
                 <label htmlFor={`${fieldId}-vin`} className="sr-only">{d.vinLabel}</label>
-                <input id={`${fieldId}-vin`} name="vin" placeholder={d.vinLabel} maxLength={24} spellCheck={false} className={`${inputClass} font-mono uppercase`} />
+                <input id={`${fieldId}-vin`} name="vin" placeholder={d.vinLabel} maxLength={24} spellCheck={false} className={`${inputClass} tabular-nums uppercase`} />
                 <FieldError messages={errors.vin} />
               </div>
             </div>
@@ -484,7 +484,7 @@ function WalkInForm({
               min={today}
               defaultValue={preset?.date ?? today}
               aria-label={d.dateLabel}
-              className="rounded-md border border-black/[.08] px-3 py-1.5 text-sm dark:border-white/[.145] dark:bg-black"
+              className="rounded-md border border-hairline px-3 py-1.5 text-sm bg-surface"
             />
             <input
               name="time"
@@ -493,7 +493,7 @@ function WalkInForm({
               step={300}
               defaultValue={preset?.time}
               aria-label={d.timeLabel}
-              className="rounded-md border border-black/[.08] px-3 py-1.5 text-sm dark:border-white/[.145] dark:bg-black"
+              className="rounded-md border border-hairline px-3 py-1.5 text-sm bg-surface"
             />
           </div>
         )}
@@ -507,14 +507,14 @@ function WalkInForm({
         </p>
       )}
 
-      <div className="flex items-center justify-end gap-2 border-t border-black/[.08] pt-4 dark:border-white/[.145]">
-        <button type="button" onClick={onDone} className="rounded-full px-4 py-2 text-sm font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06]">
+      <div className="flex items-center justify-end gap-2 border-t border-hairline pt-4">
+        <button type="button" onClick={onDone} className="rounded-full px-4 py-2 text-sm font-medium hover:bg-subtle">
           {d.cancel}
         </button>
         <button
           type="submit"
           disabled={pending || (!isNewCustomer && !selected)}
-          className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+          className="rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85 disabled:opacity-50"
         >
           {pending ? d.creating : d.create}
         </button>
@@ -541,7 +541,7 @@ function ChoiceChip({
       className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
         checked
           ? "border-brand-600 bg-brand-600 text-white dark:border-brand-500 dark:bg-brand-500"
-          : "border-black/[.08] hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-white/[.06]"
+          : "border-hairline hover:bg-subtle"
       }`}
     >
       {children}

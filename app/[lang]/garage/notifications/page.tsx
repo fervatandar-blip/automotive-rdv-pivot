@@ -19,13 +19,13 @@ export default async function GarageNotificationsPage({
   const { saved } = await searchParams;
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+        <h1 className="text-2xl font-bold tracking-tight text-ink">
           {d.title}
         </h1>
 
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-ink-muted">
           {d.description}
         </p>
 
@@ -37,7 +37,7 @@ export default async function GarageNotificationsPage({
 
         <form
           action={updateNotificationPreferences}
-          className="flex flex-col gap-6 rounded-xl border border-zinc-200/80 bg-white p-6 dark:border-zinc-800/60 dark:bg-zinc-900/40"
+          className="flex flex-col gap-6 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6"
         >
           <input type="hidden" name="lang" value={lang} />
 
@@ -49,36 +49,36 @@ export default async function GarageNotificationsPage({
                 label={d.newBookings}
                 defaultChecked={garage.notify_new_booking}
               />
-              <p className="mt-1 pl-7 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-1 pl-7 text-sm text-ink-muted">
                 {d.newBookingsDescription}
               </p>
             </div>
 
-            <div className="border-t border-black/[.08] pt-4 dark:border-white/[.145]">
+            <div className="border-t border-hairline pt-4">
               <CheckboxChip
                 id="notifyCancellation"
                 name="notifyCancellation"
                 label={d.cancellations}
                 defaultChecked={garage.notify_cancellation}
               />
-              <p className="mt-1 pl-7 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-1 pl-7 text-sm text-ink-muted">
                 {d.cancellationsDescription}
               </p>
             </div>
 
-            <div className="border-t border-black/[.08] pt-4 dark:border-white/[.145]">
+            <div className="border-t border-hairline pt-4">
               <CheckboxChip
                 id="notifyMessage"
                 name="notifyMessage"
                 label={d.newMessages}
                 defaultChecked={garage.notify_message}
               />
-              <p className="mt-1 pl-7 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-1 pl-7 text-sm text-ink-muted">
                 {d.newMessagesDescription}
               </p>
             </div>
 
-            <div className="border-t border-black/[.08] pt-4 opacity-50 dark:border-white/[.145]">
+            <div className="border-t border-hairline pt-4 opacity-50">
               <div className="pointer-events-none">
                 <CheckboxChip
                   id="notifySms"
@@ -87,7 +87,7 @@ export default async function GarageNotificationsPage({
                   defaultChecked={false}
                 />
               </div>
-              <p className="mt-1 pl-7 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-1 pl-7 text-sm text-ink-muted">
                 {d.smsAlertsDescription}
               </p>
             </div>
@@ -95,7 +95,7 @@ export default async function GarageNotificationsPage({
 
           <button
             type="submit"
-            className="self-start rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+            className="self-start rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85"
           >
             {d.savePreferences}
           </button>

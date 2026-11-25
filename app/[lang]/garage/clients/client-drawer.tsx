@@ -42,12 +42,12 @@ export type TimelineEntry =
     };
 
 const PLATE_PILL =
-  "inline-flex items-center rounded border border-zinc-300 bg-zinc-100 px-2 py-0.5 font-mono text-xs uppercase tracking-wide text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";
+  "inline-flex items-center rounded border border-hairline bg-subtle px-2 py-0.5 tabular-nums text-xs uppercase tracking-wide text-ink";
 
 const STATUS_TEXT: Record<string, string> = {
   confirmed: "text-green-700 dark:text-green-400",
   pending: "text-amber-700 dark:text-amber-400",
-  completed: "text-zinc-600 dark:text-zinc-400",
+  completed: "text-ink-muted",
   cancelled: "text-red-700 dark:text-red-400",
 };
 
@@ -113,10 +113,10 @@ export function ClientDrawer({
               {d.vip}
             </span>
           )}
-          <span className="rounded-full bg-zinc-100 px-2 py-0.5 font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+          <span className="rounded-full bg-subtle px-2 py-0.5 font-medium text-ink-muted">
             {client.kind === "walk_in" ? d.walkInBadge : d.rdvClientBadge}
           </span>
-          <span className="text-zinc-500 dark:text-zinc-400">
+          <span className="text-ink-muted">
             {client.appointmentCount} {client.appointmentCount === 1 ? d.appointment : d.appointments}
           </span>
         </div>
@@ -148,7 +148,7 @@ export function ClientDrawer({
         />
 
         <section aria-labelledby="client-vehicles" className="flex flex-col gap-3">
-          <h3 id="client-vehicles" className="text-sm font-semibold text-black dark:text-zinc-50">
+          <h3 id="client-vehicles" className="text-sm font-semibold text-ink">
             {d.vehiclesTitle}
           </h3>
           {client.vehicles.length > 0 ? (
@@ -156,19 +156,19 @@ export function ClientDrawer({
               {client.vehicles.map((vehicle) => (
                 <li
                   key={vehicle.id}
-                  className="flex flex-wrap items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-800"
+                  className="flex flex-wrap items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-sm"
                 >
                   <Car aria-hidden className="h-4 w-4 shrink-0 text-zinc-400" />
-                  <span className="font-medium text-black dark:text-zinc-50">{vehicle.label}</span>
+                  <span className="font-medium text-ink">{vehicle.label}</span>
                   {vehicle.licensePlate && <span className={PLATE_PILL}>{vehicle.licensePlate}</span>}
                   {vehicle.vin && (
-                    <span className="font-mono text-xs text-zinc-500 dark:text-zinc-400">VIN {vehicle.vin}</span>
+                    <span className="tabular-nums text-xs text-ink-muted">VIN {vehicle.vin}</span>
                   )}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.noVehicles}</p>
+            <p className="text-sm text-ink-muted">{d.noVehicles}</p>
           )}
           {client.kind === "walk_in" && !client.anonymized ? (
             <AddVehicleForm
@@ -179,40 +179,40 @@ export function ClientDrawer({
               brands={brands}
             />
           ) : client.kind === "client" ? (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">{d.clientVehiclesNote}</p>
+            <p className="text-xs text-ink-muted">{d.clientVehiclesNote}</p>
           ) : null}
         </section>
 
         <section aria-labelledby="client-history" className="flex flex-col gap-3">
-          <h3 id="client-history" className="text-sm font-semibold text-black dark:text-zinc-50">
+          <h3 id="client-history" className="text-sm font-semibold text-ink">
             {d.historyTitle}
           </h3>
           {timeline.length === 0 ? (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.noHistory}</p>
+            <p className="text-sm text-ink-muted">{d.noHistory}</p>
           ) : (
-            <ol className="relative flex flex-col gap-4 border-l border-zinc-200 pl-5 dark:border-zinc-800">
+            <ol className="relative flex flex-col gap-4 border-l border-hairline pl-5">
               {timeline.map((entry) => (
                 <li key={`${entry.kind}:${entry.id}`} className="relative">
                   <span
                     aria-hidden
-                    className="absolute -left-[1.85rem] flex h-6 w-6 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400"
+                    className="absolute -left-[1.85rem] flex h-6 w-6 items-center justify-center rounded-full border border-hairline bg-surface text-ink-muted"
                   >
                     {entry.kind === "job" ? <Wrench className="h-3 w-3" /> : <Receipt className="h-3 w-3" />}
                   </span>
                   {entry.kind === "job" ? (
                     <div className="flex flex-col gap-0.5">
                       <p className="flex flex-wrap items-center gap-x-2 text-sm">
-                        <span className="font-medium text-black dark:text-zinc-50">{entry.title}</span>
+                        <span className="font-medium text-ink">{entry.title}</span>
                         <span className={`text-xs font-medium ${STATUS_TEXT[entry.status] ?? STATUS_TEXT.pending}`}>
                           {statusLabels[entry.status as keyof typeof statusLabels] ?? entry.status}
                         </span>
                       </p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      <p className="text-xs text-ink-muted">
                         {dateTime.format(new Date(entry.at))}
                         {entry.mechanic && ` · ${entry.mechanic}`}
                       </p>
                       {(entry.plate || entry.vehicle) && (
-                        <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+                        <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                           {entry.plate && <span className={PLATE_PILL}>{entry.plate}</span>}
                           {entry.vehicle}
                         </p>
@@ -221,10 +221,10 @@ export function ClientDrawer({
                   ) : (
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <p className="text-sm font-medium text-black dark:text-zinc-50">
+                        <p className="text-sm font-medium text-ink">
                           {d.invoiceNumber.replace("{number}", entry.number)}
                         </p>
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        <p className="text-xs text-ink-muted">
                           {dateOnly.format(new Date(entry.at))} · {money(entry.amount, entry.currency)}
                         </p>
                       </div>
@@ -252,7 +252,7 @@ export function ClientDrawer({
             <form action={anonymizeGarageCustomer} className="mt-2 flex flex-col gap-2">
               <input type="hidden" name="lang" value={lang} />
               <input type="hidden" name="customerId" value={client.subjectId} />
-              <p className="text-zinc-600 dark:text-zinc-400">{d.anonymizeConfirm}</p>
+              <p className="text-ink-muted">{d.anonymizeConfirm}</p>
               <button
                 type="submit"
                 className="self-start rounded-full border border-red-200 px-3 py-1 font-medium text-red-700 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"

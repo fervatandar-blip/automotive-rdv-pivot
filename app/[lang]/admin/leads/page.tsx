@@ -1,3 +1,4 @@
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { requireSuperAdmin } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -19,7 +20,7 @@ const STATUS_BADGE: Record<string, string> = {
     "bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-400",
   converted:
     "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-400",
-  archived: "bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400",
+  archived: "bg-subtle text-ink-muted",
 };
 
 type LeadRow = {
@@ -65,11 +66,11 @@ export default async function AdminLeadsPage({
   const rows = (leads ?? []) as LeadRow[];
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+            <h1 className="text-2xl font-semibold text-ink">
               {d.title}
             </h1>
             <div className="mt-1 flex gap-4 text-sm font-medium underline">
@@ -98,14 +99,14 @@ export default async function AdminLeadsPage({
             rows.map((lead) => (
               <div
                 key={lead.id}
-                className="flex flex-col gap-3 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+                className="flex flex-col gap-3 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-4"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-medium text-black dark:text-zinc-50">
+                    <p className="font-medium text-ink">
                       {lead.first_name} {lead.last_name}
                     </p>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-ink-muted">
                       {lead.business_email}
                       {lead.phone ? ` · ${lead.phone}` : ""}
                     </p>
@@ -118,8 +119,8 @@ export default async function AdminLeadsPage({
                   </span>
                 </div>
 
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {lead.garage_name} &middot;{" "}
+                <p className="text-sm text-ink-muted">
+                  {lead.garage_name}<span aria-hidden className="mx-2 inline-block h-1 w-1 rounded-full bg-current align-middle opacity-40" />
                   {COUNTRY_NAMES[lead.country as keyof typeof COUNTRY_NAMES] ??
                     lead.country}
                   {lead.garage_size_type
@@ -132,12 +133,12 @@ export default async function AdminLeadsPage({
                 </p>
 
                 {lead.message && (
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  <p className="text-sm text-ink-muted">
                     {lead.message}
                   </p>
                 )}
 
-                <p className="text-xs text-zinc-500 dark:text-zinc-500">
+                <p className="text-xs text-ink-muted">
                   {d.submittedPrefix}{" "}
                   {new Date(lead.created_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                 </p>
@@ -147,7 +148,7 @@ export default async function AdminLeadsPage({
                     href={`/${lang}/admin/garages/${lead.converted_garage_id}`}
                     className="self-start text-sm font-medium underline"
                   >
-                    {d.viewGarage} &rarr;
+                    {d.viewGarage}<ArrowRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" strokeWidth={2} />
                   </Link>
                 ) : (
                   <div className="flex flex-wrap gap-2">
@@ -156,7 +157,7 @@ export default async function AdminLeadsPage({
                       <input type="hidden" name="lang" value={lang} />
                       <button
                         type="submit"
-                        className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                        className="rounded-full border border-hairline px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
                       >
                         {d.markContacted}
                       </button>
@@ -176,7 +177,7 @@ export default async function AdminLeadsPage({
                       <input type="hidden" name="lang" value={lang} />
                       <button
                         type="submit"
-                        className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                        className="rounded-full border border-hairline px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
                       >
                         {d.archive}
                       </button>
@@ -186,7 +187,7 @@ export default async function AdminLeadsPage({
               </div>
             ))
           ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-ink-muted">
               {d.noLeadsYet}
             </p>
           )}

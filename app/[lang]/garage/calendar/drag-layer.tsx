@@ -426,14 +426,14 @@ export function CalendarDragLayer({
                 role="dialog"
                 aria-modal="false"
                 aria-labelledby="move-confirm-text"
-                className="fixed inset-x-4 bottom-4 z-[70] mx-auto flex max-w-lg flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
+                className="fixed inset-x-4 bottom-4 z-[70] mx-auto flex max-w-lg flex-col gap-3 rounded-xl border border-hairline bg-surface p-4 shadow-2xl"
               >
-                <p id="move-confirm-text" className="flex items-start gap-2 text-sm text-black dark:text-zinc-50">
+                <p id="move-confirm-text" className="flex items-start gap-2 text-sm text-ink">
                   <MoveRight aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-brand-600 dark:text-brand-400" />
                   <span>{pendingText}</span>
                 </p>
                 {pending.notify && (
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{d.moveNotify}</p>
+                  <p className="text-xs text-ink-muted">{d.moveNotify}</p>
                 )}
                 {error && (
                   <p role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
@@ -445,7 +445,7 @@ export function CalendarDragLayer({
                     type="button"
                     onClick={reset}
                     disabled={saving}
-                    className="rounded-full px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    className="rounded-full px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-subtle disabled:opacity-50"
                   >
                     {d.moveCancel}
                   </button>
@@ -454,7 +454,7 @@ export function CalendarDragLayer({
                     onClick={confirmMove}
                     disabled={saving}
                     autoFocus
-                    className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-wait disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-600"
+                    className="rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85 disabled:cursor-wait disabled:opacity-60"
                   >
                     {saving ? d.moving : d.moveAction}
                   </button>

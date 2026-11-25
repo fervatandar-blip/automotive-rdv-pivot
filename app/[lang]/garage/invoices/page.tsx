@@ -2,9 +2,7 @@ import { requireGarageOwner } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { retryInvoiceGeneration } from "@/app/actions/appointments";
 import { APP_TIME_ZONE } from "@/lib/timezone";
-import { isInvoiceablePrice } from "@/lib/service-pricing";
 
 type InvoiceRow = {
   id: string;
@@ -19,14 +17,6 @@ type InvoiceRow = {
     client: { full_name: string } | null;
     walk_in?: { full_name: string } | null;
   } | null;
-};
-
-type CompletedAppointmentRow = {
-  id: string;
-  start_time: string;
-  services: { name: string; pricing_type: string; price: number | null } | null;
-  client: { full_name: string } | null;
-  walk_in?: { full_name: string } | null;
 };
 
 type PaymentRow = {
@@ -70,7 +60,7 @@ export default async function GarageInvoicesPage({
   const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   const supabase = await createClient();
 
-  const [{ data: invoices }, { data: payments }, { data: completedAppointments }] =
+  const [{ data: invoices }, { data: payments }] =
     await Promise.all([
       supabase
         .from("invoices")
@@ -86,39 +76,10 @@ export default async function GarageInvoicesPage({
         )
         .eq("garage_id", garage.id)
         .order("created_at", { ascending: false }),
-      supabase
-        .from("appointments")
-        .select(
-          "id, start_time, services(name, pricing_type, price), client:profiles!appointments_client_id_fkey(full_name), walk_in:garage_customers(full_name)"
-        )
-        .eq("garage_id", garage.id)
-        .eq("status", "completed")
-        .order("start_time", { ascending: false }),
     ]);
 
   const invoiceRows = (invoices ?? []) as unknown as InvoiceRow[];
   const paymentRows = (payments ?? []) as unknown as PaymentRow[];
-  const completedAppointmentRows = (completedAppointments ??
-    []) as unknown as CompletedAppointmentRow[];
-
-  // generateInvoice (app/actions/appointments.ts) is best-effort: a PDF
-  // render or Storage failure leaves a completed appointment with no
-  // invoice and no other visible sign anything went wrong. Diffed
-  // client-side rather than a NOT IN subquery, matching the pattern
-  // already used elsewhere in this app for the same kind of "per-parent
-  // latest/missing child row" problem (see garage/messages/page.tsx).
-  const invoicedAppointmentIds = new Set(
-    invoiceRows.map((invoice) => invoice.appointment_id)
-  );
-  // Services without a fixed price (0045) are never auto-invoiced, so
-  // they're not "missing" one either.
-  const missingInvoiceAppointments = completedAppointmentRows.filter(
-    (appointment) =>
-      !invoicedAppointmentIds.has(appointment.id) &&
-      appointment.services !== null &&
-      isInvoiceablePrice(appointment.services)
-  );
-
   // One batched Storage call instead of one sequential round-trip per
   // invoice -- createSignedUrls preserves input order, so results line up
   // with invoiceRows by index.
@@ -155,45 +116,45 @@ export default async function GarageInvoicesPage({
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
-        <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+        <h1 className="text-2xl font-bold tracking-tight text-ink">
           {garage.name} &mdash; {d.titleSuffix}
         </h1>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
+          <div className="rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
               {d.totalRevenue}
             </p>
-            <p className="mt-1 text-xl font-semibold text-black dark:text-zinc-50">
+            <p className="mt-1 text-xl font-semibold text-ink">
               {formatMoney(totalRevenue, "eur")}
             </p>
           </div>
-          <div className="rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
+          <div className="rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
               {d.totalCommission}
             </p>
-            <p className="mt-1 text-xl font-semibold text-black dark:text-zinc-50">
+            <p className="mt-1 text-xl font-semibold text-ink">
               {formatMoney(totalCommission, "eur")}
             </p>
           </div>
-          <div className="rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
-            <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-500">
+          <div className="rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
               {d.totalPayout}
             </p>
-            <p className="mt-1 text-xl font-semibold text-black dark:text-zinc-50">
+            <p className="mt-1 text-xl font-semibold text-ink">
               {formatMoney(totalPayout, "eur")}
             </p>
           </div>
         </div>
 
         <div className="flex flex-col gap-4">
-          <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
+          <h2 className="text-lg font-semibold text-ink">
             {d.payments}
           </h2>
           {paymentRows.length === 0 ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-ink-muted">
               {d.noPaymentsYet}
             </p>
           ) : (
@@ -201,25 +162,25 @@ export default async function GarageInvoicesPage({
               {paymentRows.map((payment) => (
                 <div
                   key={payment.id}
-                  className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+                  className="flex items-center justify-between rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6"
                 >
                   <div>
-                    <h3 className="font-semibold text-black dark:text-zinc-50">
+                    <h3 className="font-semibold text-ink">
                       {payment.appointments?.services?.name ?? d.serviceFallback}
                     </h3>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="mt-1 text-sm text-ink-muted">
                       {payment.appointments?.client?.full_name ?? d.clientFallback}{" "}
-                      &middot;{" "}
+<span aria-hidden className="mx-2 inline-block h-1 w-1 rounded-full bg-current align-middle opacity-40" />
                       {new Date(payment.created_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                     </p>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="mt-1 text-sm text-ink-muted">
                       {d.charged} {formatMoney(payment.amount, payment.currency)}{" "}
-                      &middot; {d.commission}{" "}
+<span aria-hidden className="mx-2 inline-block h-1 w-1 rounded-full bg-current align-middle opacity-40" />{d.commission}{" "}
                       {formatMoney(
                         payment.commission_amount,
                         payment.currency
                       )}{" "}
-                      &middot; {d.payout}{" "}
+<span aria-hidden className="mx-2 inline-block h-1 w-1 rounded-full bg-current align-middle opacity-40" />{d.payout}{" "}
                       <span className="font-medium">
                         {formatMoney(payment.payout_amount, payment.currency)}
                       </span>
@@ -238,51 +199,12 @@ export default async function GarageInvoicesPage({
           )}
         </div>
 
-        {missingInvoiceAppointments.length > 0 && (
-          <div className="flex flex-col gap-4">
-            <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
-              {d.missingInvoices}
-            </h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {d.missingInvoicesDescription}
-            </p>
-            <div className="flex flex-col gap-3">
-              {missingInvoiceAppointments.map((appointment) => (
-                <div
-                  key={appointment.id}
-                  className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-900 dark:bg-amber-950"
-                >
-                  <div>
-                    <h3 className="font-semibold text-black dark:text-zinc-50">
-                      {appointment.services?.name ?? d.serviceFallback}
-                    </h3>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                      {appointment.client?.full_name ?? appointment.walk_in?.full_name ?? d.clientFallback} &middot;{" "}
-                      {new Date(appointment.start_time).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
-                    </p>
-                  </div>
-                  <form action={retryInvoiceGeneration}>
-                    <input type="hidden" name="id" value={appointment.id} />
-                    <input type="hidden" name="lang" value={lang} />
-                    <button
-                      type="submit"
-                      className="rounded-full border border-amber-300 bg-white px-4 py-1.5 text-sm font-medium transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-zinc-950 dark:hover:bg-amber-900"
-                    >
-                      {d.generateInvoice}
-                    </button>
-                  </form>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         <div className="flex flex-col gap-4">
-          <h2 className="text-lg font-semibold text-black dark:text-zinc-50">
+          <h2 className="text-lg font-semibold text-ink">
             {d.invoices}
           </h2>
           {invoiceRows.length === 0 ? (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-ink-muted">
               {d.noInvoicesYet}
             </p>
           ) : (
@@ -290,29 +212,29 @@ export default async function GarageInvoicesPage({
               {invoiceRows.map((invoice) => (
                 <div
                   key={invoice.id}
-                  className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+                  className="flex items-center justify-between rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6"
                 >
                   <div>
-                    <h3 className="font-semibold text-black dark:text-zinc-50">
+                    <h3 className="font-semibold text-ink">
                       {invoice.invoice_number}
                     </h3>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="mt-1 text-sm text-ink-muted">
                       {invoice.appointments?.services?.name ?? d.serviceFallback}{" "}
                       {d.for}{" "}
                       {invoice.appointments?.client?.full_name ??
                         invoice.appointments?.walk_in?.full_name ??
                         d.clientFallbackLowercase}
                     </p>
-                    <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="mt-1 text-sm text-ink-muted">
                       {formatMoney(invoice.amount, invoice.currency)}{" "}
-                      &middot;{" "}
+<span aria-hidden className="mx-2 inline-block h-1 w-1 rounded-full bg-current align-middle opacity-40" />
                       {new Date(invoice.issued_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                     </p>
                   </div>
                   {signedUrls.has(invoice.id) && (
                     <a
                       href={signedUrls.get(invoice.id)}
-                      className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                      className="rounded-full border border-hairline px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
                     >
                       {d.download}
                     </a>

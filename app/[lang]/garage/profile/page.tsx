@@ -46,18 +46,18 @@ export default async function GarageProfilePage({
     status === "approved" ? p.statusApproved : status === "rejected" ? p.statusRejected : p.statusPending;
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-8 sm:py-10">
+    <div className="flex flex-1 flex-col bg-canvas px-4 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <header className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">{p.title}</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-ink">{p.title}</h1>
             <span
               className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${STATUS_STYLES[status] ?? STATUS_STYLES.pending}`}
             >
               {statusLabel}
             </span>
           </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{p.subtitle}</p>
+          <p className="text-sm text-ink-muted">{p.subtitle}</p>
           {status === "approved" ? (
             <Link
               href={`/${lang}/garages/${garage.id}`}
@@ -68,7 +68,7 @@ export default async function GarageProfilePage({
               <ExternalLink className="h-3.5 w-3.5" strokeWidth={1.75} />
             </Link>
           ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-ink-muted">
               {p.publicPageHidden}{" "}
               <Link href={`/${lang}/garage/documents`} className="font-medium underline">
                 {p.verificationLink}

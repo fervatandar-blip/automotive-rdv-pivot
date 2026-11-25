@@ -85,9 +85,9 @@ export default async function GarageMessagesPage({
     });
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+        <h1 className="text-2xl font-bold tracking-tight text-ink">
           {d.title}
         </h1>
 
@@ -97,29 +97,29 @@ export default async function GarageMessagesPage({
               <Link
                 key={appointment.id}
                 href={`/${lang}/appointments/${appointment.id}/messages`}
-                className="flex flex-col gap-1 rounded-xl border border-black/[.08] bg-white p-4 transition-colors hover:border-brand-600 hover:bg-brand-50 dark:border-white/[.145] dark:bg-zinc-950 dark:hover:border-brand-500 dark:hover:bg-brand-950"
+                className="flex flex-col gap-1 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-4 transition-colors hover:border-brand-600 hover:bg-brand-50 dark:hover:border-brand-500 dark:hover:bg-brand-950"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-black dark:text-zinc-50">
+                  <span className="font-medium text-ink">
                     {appointment.client?.full_name ?? d.clientFallback}
                   </span>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-500">
+                  <span className="text-xs text-ink-muted">
                     {formatDateTime(
                       lastMessage?.created_at ?? appointment.start_time,
                       dateLocale
                     )}
                   </span>
                 </div>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="text-sm text-ink-muted">
                   {appointment.services?.name ?? d.serviceFallback}
                 </p>
-                <p className="mt-1 truncate text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="mt-1 truncate text-sm text-ink-muted">
                   {lastMessage?.body ?? d.noMessagesYet}
                 </p>
               </Link>
             ))
           ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-ink-muted">
               {d.noConversationsYet}
             </p>
           )}

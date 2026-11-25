@@ -136,7 +136,7 @@ function AddClientForm({
   return (
     <form action={action} className="flex flex-col gap-5">
       <input type="hidden" name="lang" value={lang} />
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.intro}</p>
+      <p className="text-sm text-ink-muted">{d.intro}</p>
 
       <fieldset className="flex flex-col gap-3">
         <legend className="mb-2 text-sm font-medium">{d.contactSection}</legend>
@@ -189,7 +189,7 @@ function AddClientForm({
             />
           </div>
         </div>
-        <p id={`${id}-contact-hint`} className="text-xs text-zinc-500 dark:text-zinc-400">
+        <p id={`${id}-contact-hint`} className="text-xs text-ink-muted">
           {d.contactHint}
         </p>
         <FieldError messages={errors.phone} translate={translate} />
@@ -211,7 +211,7 @@ function AddClientForm({
               autoCapitalize="characters"
               spellCheck={false}
               aria-invalid={Boolean(errors.plate)}
-              className={`${FIELD_INPUT_CLASS} font-mono uppercase`}
+              className={`${FIELD_INPUT_CLASS} tabular-nums uppercase`}
             />
             <FieldError messages={errors.plate} translate={translate} />
           </div>
@@ -276,7 +276,7 @@ function AddClientForm({
               spellCheck={false}
               autoCapitalize="characters"
               aria-invalid={Boolean(errors.vin)}
-              className={`${FIELD_INPUT_CLASS} font-mono uppercase`}
+              className={`${FIELD_INPUT_CLASS} tabular-nums uppercase`}
             />
             <FieldError messages={errors.vin} translate={translate} />
           </div>
@@ -292,18 +292,18 @@ function AddClientForm({
         </p>
       )}
 
-      <div className="flex items-center justify-end gap-2 border-t border-black/[.08] pt-4 dark:border-white/[.145]">
+      <div className="flex items-center justify-end gap-2 border-t border-hairline pt-4">
         <button
           type="button"
           onClick={onDone}
-          className="rounded-full px-4 py-2 text-sm font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+          className="rounded-full px-4 py-2 text-sm font-medium hover:bg-subtle"
         >
           {d.cancel}
         </button>
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+          className="rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85 disabled:opacity-50"
         >
           {pending ? d.submitting : d.submit}
         </button>

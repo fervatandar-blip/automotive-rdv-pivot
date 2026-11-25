@@ -140,7 +140,7 @@ export function RepairStageTrack({
           {done && <CheckCircle2 aria-hidden className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
           {labels[REPAIR_STAGES[current]]}
         </span>
-        <span className="font-mono text-xs font-medium text-ink-muted">
+        <span className="tabular-nums text-xs font-medium text-ink-muted">
           {current + 1}/{REPAIR_STAGES.length}
         </span>
       </div>
@@ -176,7 +176,7 @@ export function RepairStageText({
         <CheckCircle2 aria-hidden className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
       )}
       <span className="font-semibold text-ink">{labels[REPAIR_STAGES[current]]}</span>
-      <span className="font-mono text-xs">
+      <span className="tabular-nums text-xs">
         {current + 1}/{REPAIR_STAGES.length}
       </span>
     </span>
@@ -223,7 +223,7 @@ export function TimeTag({ iso, lang }: { iso: string; lang: Locale }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-sm text-ink-muted">
       <Clock aria-hidden className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-      <span className="font-mono font-medium text-ink">{formatTime(iso, lang)}</span>
+      <span className="tabular-nums font-medium text-ink">{formatTime(iso, lang)}</span>
     </span>
   );
 }

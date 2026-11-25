@@ -44,7 +44,6 @@
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-jakarta), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Automotive cobalt, kept for primary CTAs, links and focus rings.
      Values match Tailwind's own blue-* hex exactly, so retrofitting
@@ -79,12 +78,6 @@ body {
   h3 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
-  }
-
-  /* Plates, VINs, times and prices line up in columns. */
-  .font-mono {
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0;
   }
 }
 

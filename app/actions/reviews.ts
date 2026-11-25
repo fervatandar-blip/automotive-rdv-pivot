@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthedUser } from "@/lib/dal";
 import { locales, parseLocale } from "@/lib/i18n/config";
 import { ReviewFormSchema } from "@/lib/definitions";
+import { REVIEWS_ENABLED } from "@/lib/features";
 
 function revalidateLocalizedPath(path: string) {
   for (const locale of locales) {
@@ -16,6 +17,10 @@ function revalidateLocalizedPath(path: string) {
 export async function submitReview(formData: FormData) {
   const lang = parseLocale(formData.get("lang"));
   const user = await getAuthedUser(lang);
+  // The form isn't rendered while reviews are off; refuse a hand-made POST too.
+  if (!REVIEWS_ENABLED) {
+    redirect(`/${lang}/appointments?tab=past`);
+  }
 
   const validatedFields = ReviewFormSchema.safeParse({
     appointmentId: formData.get("appointmentId"),

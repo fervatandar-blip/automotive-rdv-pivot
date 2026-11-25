@@ -251,10 +251,15 @@
     "reviewGarage": "Atelier",
     "reviewService": "Prestation",
     "reviewWhen": "Quand",
-    "reviewPrice": "Prix",
-    "confirmBooking": "Confirmer la réservation",
+    "confirmBooking": "Confirmer le rendez-vous",
     "confirming": "Réservation…",
-    "changeTime": "Changer d'horaire"
+    "changeTime": "Changer d'horaire",
+    "yourAppointment": "Votre rendez-vous",
+    "pickServiceFirst": "Choisissez un service pour voir les créneaux disponibles.",
+    "pickTimeFirst": "Choisissez un horaire pour continuer",
+    "servicesTitle": "Prestations",
+    "selected": "Sélectionné",
+    "infoTitle": "Informations sur l'atelier"
   },
   "vehicles": {
     "title": "Mes véhicules",
@@ -350,7 +355,11 @@
       "nameTooShort": "Saisissez au moins 2 caractères.",
       "nameTooLong": "120 caractères maximum.",
       "phoneInvalid": "Saisissez un numéro valide (chiffres, espaces et + uniquement)."
-    }
+    },
+    "tabProfile": "Profil",
+    "tabNotifications": "Notifications",
+    "tabSecurity": "Sécurité",
+    "sections": "Sections du compte"
   },
   "appointmentMessages": {
     "backToDashboard": "Retour au tableau de bord",
@@ -556,8 +565,8 @@
     "resizeHandle": "Faites glisser pour changer la durée"
   },
   "garageServices": {
-    "title": "Prestations & tarifs",
-    "subtitle": "Ce que les clients peuvent réserver en ligne, la durée et le mode de tarification.",
+    "title": "Prestations",
+    "subtitle": "Ce que les clients peuvent réserver en ligne et la durée de chaque prestation.",
     "listTitle": "Vos prestations",
     "noServicesYet": "Aucune prestation pour l’instant. Ajoutez la première ci-dessous.",
     "addTitle": "Ajouter une prestation",
@@ -578,16 +587,7 @@
       "optional": "facultatif",
       "categoryLabel": "Catégorie",
       "categoryPlaceholder": "Choisir une catégorie",
-      "durationLabel": "Durée (minutes)",
-      "pricingTypeLabel": "Tarification",
-      "pricingFixed": "Prix fixe",
-      "pricingFrom": "À partir de",
-      "pricingOnInspection": "Sur devis",
-      "pricingFixedHint": "Les clients voient le prix exact, par ex. 89,00 €.",
-      "pricingFromHint": "Les clients voient un prix de départ, par ex. « À partir de 89,00 € ». Le prix final dépend du véhicule.",
-      "pricingOnInspectionHint": "Aucun prix affiché : les clients voient « Prix sur devis ». Vous établissez le devis après avoir vu le véhicule.",
-      "priceLabel": "Prix",
-      "startingPriceLabel": "Prix de départ"
+      "durationLabel": "Durée (minutes)"
     }
   },
   "garageAvailability": {
@@ -786,9 +786,6 @@
       "refunded": "Remboursé",
       "failed": "Échoué"
     },
-    "missingInvoices": "Factures manquantes",
-    "missingInvoicesDescription": "Ces rendez-vous sont terminés mais la génération de facture n'a pas abouti. Relancez-la ci-dessous.",
-    "generateInvoice": "Générer la facture",
     "invoices": "Factures",
     "noInvoicesYet": "Aucune facture pour le moment.",
     "for": "pour",
@@ -1002,7 +999,7 @@
     "daysOpenSuffix": "jours sur 7 ouverts",
     "reviewCapabilities": "Capacités",
     "evCapableShort": "Compatible VE",
-    "mobileServiceShort": "Service mobile",
+    "mobileServiceShort": "Intervention mobile",
     "emergencyServiceShort": "Assistance d'urgence",
     "noneCapabilities": "Aucune",
     "reviewPricingTechnicians": "Tarification / techniciens",
@@ -1308,7 +1305,7 @@
     "calendar": "Calendrier et agenda",
     "clients": "Répertoire clients",
     "messages": "Messages",
-    "services": "Prestations et tarifs",
+    "services": "Prestations",
     "settings": "Paramètres",
     "profile": "Profil de l'atelier",
     "hours": "Horaires",
@@ -1319,7 +1316,7 @@
     "expand": "Déplier le menu",
     "collapse": "Replier le menu",
     "logOut": "Déconnexion",
-    "servicesGroup": "Prestations",
+    "servicesGroup": "Catalogue et messagerie",
     "openMenu": "Ouvrir le menu",
     "closeMenu": "Fermer le menu",
     "themeLight": "Clair",
@@ -1349,10 +1346,6 @@
     "appointments": "Rendez-vous",
     "appointmentsShort": "RDV",
     "accountSettings": "Paramètres du compte"
-  },
-  "servicePrice": {
-    "priceFrom": "À partir de {price}",
-    "priceOnInspection": "Prix sur devis"
   },
   "serviceCategories": {
     "maintenance": "Entretien",

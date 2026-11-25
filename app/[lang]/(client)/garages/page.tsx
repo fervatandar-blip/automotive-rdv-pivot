@@ -11,6 +11,9 @@ import { TogglePill } from "@/components/toggle-pill";
 import { NearMeButton } from "@/components/near-me-button";
 import { averageRating } from "@/lib/ratings";
 import { RatingPill } from "@/components/star-rating";
+import { CapabilityPill, capabilityList } from "@/components/capability-pills";
+import { REVIEWS_ENABLED } from "@/lib/features";
+import { monogram } from "@/lib/monogram";
 import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
 import { VerificationBadge } from "@/components/verification-badge";
 import { parseBookingVehicle, withBookingVehicle } from "@/lib/booking-vehicle";
@@ -35,17 +38,6 @@ const TOOLBAR_DIVIDER = "mx-1 hidden h-6 w-px shrink-0 bg-hairline sm:block";
 
 const MAX_CATEGORY_TAGS = 3;
 
-/** Up to two initials for the card's monogram: "Garage Muller" -> "GM". */
-function monogram(name: string) {
-  const words = name
-    .replace(/\(.*?\)/g, " ")
-    .split(/[\s&+-]+/)
-    .filter((word) => /\p{L}/u.test(word));
-  const letters = (words.length > 1 ? [words[0], words[1]] : [words[0] ?? name]).map((word) =>
-    (word.match(/\p{L}/u)?.[0] ?? "").toUpperCase()
-  );
-  return letters.join("") || "?";
-}
 
 /** A workshop's service categories in display order, "other" left out. */
 function categoriesOf(services: { category: string | null }[]): ServiceCategory[] {
@@ -67,7 +59,8 @@ type GarageRow = {
   pricing_category: string | null;
   verification_level: string | null;
   services: { id: string; category: string | null }[];
-  reviews: { rating: number }[];
+  // Only selected while REVIEWS_ENABLED.
+  reviews?: { rating: number }[];
 };
 
 type GarageWithDistance = GarageRow & { distanceKm: number | null };
@@ -115,7 +108,9 @@ export default async function GaragesPage({
   const { data: garages } = await supabase
     .from("garages")
     .select(
-      "id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, verification_level, services(id, category), reviews(rating)"
+      `id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, verification_level, services(id, category)${
+        REVIEWS_ENABLED ? ", reviews(rating)" : ""
+      }`
     )
     .eq("status", "approved")
     .is("deleted_at", null)
@@ -148,7 +143,9 @@ export default async function GaragesPage({
     new Set(rows.map((garage) => garage.city).filter((city): city is string => !!city))
   ).sort();
 
-  const minRating = filters.minRating ? Number(filters.minRating) : 0;
+  // Ratings are ignored entirely while reviews are off (old ?minRating= and
+  // ?sort=rating links just fall back to the defaults).
+  const minRating = REVIEWS_ENABLED && filters.minRating ? Number(filters.minRating) : 0;
   const query = filters.q?.trim().toLowerCase() ?? "";
 
   const originLat = filters.lat ? Number(filters.lat) : null;
@@ -175,7 +172,7 @@ export default async function GaragesPage({
     if (filters.mobile === "1" && !garage.mobile_service) return false;
     if (filters.emergency === "1" && !garage.emergency_service) return false;
     if (minRating > 0) {
-      const average = averageRating(garage.reviews.map((review) => review.rating));
+      const average = averageRating((garage.reviews ?? []).map((review) => review.rating));
       if (average === null || average < minRating) return false;
     }
     if (hasOrigin && radiusKm !== null) {
@@ -184,7 +181,9 @@ export default async function GaragesPage({
     return true;
   });
 
-  const effectiveSort = filters.sort ?? (hasOrigin ? "distance" : "name");
+  const requestedSort =
+    filters.sort === "rating" && !REVIEWS_ENABLED ? undefined : filters.sort === "distance" && !hasOrigin ? undefined : filters.sort;
+  const effectiveSort = requestedSort ?? (hasOrigin ? "distance" : "name");
   const filtersActive = Boolean(
     query ||
       filters.city ||
@@ -192,7 +191,7 @@ export default async function GaragesPage({
       filters.mobile === "1" ||
       filters.emergency === "1" ||
       minRating > 0 ||
-      filters.sort ||
+      requestedSort ||
       hasOrigin ||
       filters.radius
   );
@@ -204,8 +203,8 @@ export default async function GaragesPage({
       return distanceA - distanceB;
     }
     if (effectiveSort === "rating") {
-      const ratingA = averageRating(a.reviews.map((review) => review.rating)) ?? -1;
-      const ratingB = averageRating(b.reviews.map((review) => review.rating)) ?? -1;
+      const ratingA = averageRating((a.reviews ?? []).map((review) => review.rating)) ?? -1;
+      const ratingB = averageRating((b.reviews ?? []).map((review) => review.rating)) ?? -1;
       return ratingB - ratingA;
     }
     return a.name.localeCompare(b.name);
@@ -230,7 +229,7 @@ export default async function GaragesPage({
       <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-4">
         <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
           <h1 className={CLIENT_PAGE_TITLE}>{d.title}</h1>
-          <p className={`${CLIENT_PAGE_SUBTITLE} font-mono`}>
+          <p className={`${CLIENT_PAGE_SUBTITLE} tabular-nums`}>
             {d.resultCount.replace("{count}", String(sorted.length))}
           </p>
         </header>
@@ -298,21 +297,25 @@ export default async function GaragesPage({
             ))}
           </StyledSelect>
 
-          <label htmlFor="minRating" className="sr-only">
-            {d.minRating}
-          </label>
-          <StyledSelect
-            id="minRating"
-            name="minRating"
-            defaultValue={filters.minRating ?? ""}
-            variant="bare"
-            className={TOOLBAR_SELECT}
-            wrapperClassName={TOOLBAR_SELECT_WRAPPER}
-          >
-            <option value="">{d.any}</option>
-            <option value="4">{d.fourPlusStars}</option>
-            <option value="3">{d.threePlusStars}</option>
-          </StyledSelect>
+          {REVIEWS_ENABLED && (
+            <>
+              <label htmlFor="minRating" className="sr-only">
+                {d.minRating}
+              </label>
+              <StyledSelect
+                id="minRating"
+                name="minRating"
+                defaultValue={filters.minRating ?? ""}
+                variant="bare"
+                className={TOOLBAR_SELECT}
+                wrapperClassName={TOOLBAR_SELECT_WRAPPER}
+              >
+                <option value="">{d.any}</option>
+                <option value="4">{d.fourPlusStars}</option>
+                <option value="3">{d.threePlusStars}</option>
+              </StyledSelect>
+            </>
+          )}
 
           <label htmlFor="sort" className="sr-only">
             {d.sortBy}
@@ -326,7 +329,7 @@ export default async function GaragesPage({
             wrapperClassName={TOOLBAR_SELECT_WRAPPER}
           >
             <option value="name">{d.sortByName}</option>
-            <option value="rating">{d.sortByRating}</option>
+            {REVIEWS_ENABLED && <option value="rating">{d.sortByRating}</option>}
             {hasOrigin && <option value="distance">{d.sortByDistance}</option>}
           </StyledSelect>
 
@@ -386,7 +389,8 @@ export default async function GaragesPage({
               <ul className="flex flex-col gap-3">
                 {sorted.map((garage) => {
                   const href = withBookingVehicle(`/${lang}/garages/${garage.id}`, vehicleId);
-                  const ratings = garage.reviews.map((review) => review.rating);
+                  const ratings = (garage.reviews ?? []).map((review) => review.rating);
+                  const capabilities = capabilityList(garage, dictionary.garageOnboarding);
                   const average = averageRating(ratings);
                   const categories = categoriesOf(garage.services);
                   const extraCategories = categories.length - MAX_CATEGORY_TAGS;
@@ -419,24 +423,28 @@ export default async function GaragesPage({
                                 <MapPin aria-hidden className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                                 {garage.city}
                                 {garage.distanceKm !== null && (
-                                  <span className="font-mono text-xs">({formatDistanceKm(garage.distanceKm)})</span>
+                                  <span className="tabular-nums">({formatDistanceKm(garage.distanceKm)})</span>
                                 )}
                               </span>
                             )}
-                            {average !== null ? (
-                              <RatingPill
-                                average={average}
-                                count={ratings.length}
-                                label={dictionary.common.ratingSummary
-                                  .replace("{rating}", average.toFixed(1))
-                                  .replace("{count}", String(ratings.length))}
-                              />
-                            ) : (
-                              <span>{d.noReviewsYet}</span>
-                            )}
+                            {REVIEWS_ENABLED &&
+                              (average !== null ? (
+                                <RatingPill
+                                  average={average}
+                                  count={ratings.length}
+                                  label={dictionary.common.ratingSummary
+                                    .replace("{rating}", average.toFixed(1))
+                                    .replace("{count}", String(ratings.length))}
+                                />
+                              ) : (
+                                <span>{d.noReviewsYet}</span>
+                              ))}
                             {showBadge && (
                               <VerificationBadge level={garage.verification_level} labels={dictionary.verificationLevels} />
                             )}
+                            {capabilities.map(({ key, icon, label }) => (
+                              <CapabilityPill key={key} icon={icon} label={label} />
+                            ))}
                           </div>
                           {categories.length > 0 && (
                             <ul className="flex flex-wrap gap-1.5 pt-1">

@@ -1,3 +1,4 @@
+import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { requireSuperAdmin } from "@/lib/dal";
@@ -27,9 +28,9 @@ async function headCount(
 
 function StatTile({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950">
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">{label}</p>
-      <p className="mt-1 text-2xl font-semibold text-black dark:text-zinc-50">
+    <div className="rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-4">
+      <p className="text-sm text-ink-muted">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-ink">
         {value}
       </p>
     </div>
@@ -45,7 +46,7 @@ function StatSection({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+      <h2 className="text-sm font-medium text-ink-muted">
         {title}
       </h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{children}</div>
@@ -117,18 +118,18 @@ export default async function AdminStatsPage({
   );
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+            <h1 className="text-2xl font-semibold text-ink">
               {d.title}
             </h1>
             <Link
               href={`/${lang}/admin/garages`}
               className="text-sm font-medium underline"
             >
-              {d.garagesListLink} &rarr;
+              {d.garagesListLink}<ArrowRight aria-hidden className="ml-1 inline h-4 w-4 align-[-3px]" strokeWidth={2} />
             </Link>
           </div>
           <div className="flex items-center gap-4">
@@ -136,7 +137,7 @@ export default async function AdminStatsPage({
               <input type="hidden" name="lang" value={lang} />
               <button
                 type="submit"
-                className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                className="rounded-full border border-hairline px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
               >
                 {d.runRetentionSweep}
               </button>
@@ -192,26 +193,26 @@ export default async function AdminStatsPage({
 
         {pendingDeletions && pendingDeletions.length > 0 && (
           <div className="flex flex-col gap-3">
-            <h2 className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            <h2 className="text-sm font-medium text-ink-muted">
               {d.pendingDeletionsSection}
             </h2>
             <div className="flex flex-col gap-3">
               {pendingDeletions.map((request) => (
                 <div
                   key={request.id}
-                  className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950"
+                  className="flex items-center justify-between rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-4"
                 >
                   <div>
-                    <p className="font-medium text-black dark:text-zinc-50">
+                    <p className="font-medium text-ink">
                       {request.full_name}{" "}
-                      <span className="font-normal text-zinc-500 dark:text-zinc-500">
-                        &middot; {request.role}
+                      <span className="font-normal text-ink-muted">
+<span aria-hidden className="mx-2 inline-block h-1 w-1 rounded-full bg-current align-middle opacity-40" />{request.role}
                       </span>
                     </p>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-ink-muted">
                       {request.email}
                     </p>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-ink-muted">
                       {d.requestedPrefix}{" "}
                       {new Date(
                         request.deletion_requested_at as string
@@ -223,7 +224,7 @@ export default async function AdminStatsPage({
                     <input type="hidden" name="lang" value={lang} />
                     <button
                       type="submit"
-                      className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                      className="rounded-full border border-hairline px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
                     >
                       {d.processNow}
                     </button>

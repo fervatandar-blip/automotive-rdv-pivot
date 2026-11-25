@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getAuthedUser } from "@/lib/dal";
@@ -66,13 +67,13 @@ export default async function AppointmentMessagesPage({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; {d.backToDashboard}
+              <ArrowLeft aria-hidden className="mr-1 inline h-4 w-4 align-[-3px]" strokeWidth={2} />{d.backToDashboard}
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
               {service?.name ?? d.appointmentFallback}
             </h1>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-              {client.full_name} &middot; {garage.name}
+              {client.full_name}<span aria-hidden className="mx-2 inline-block h-1 w-1 rounded-full bg-current align-middle opacity-40" />{garage.name}
             </p>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
               {new Date(appointment.start_time).toLocaleString(dateLocale, {

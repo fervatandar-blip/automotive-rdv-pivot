@@ -30,14 +30,14 @@ function Panel({
   return (
     <section
       aria-labelledby={id}
-      className="overflow-hidden rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800/60 dark:bg-zinc-900/40"
+      className="overflow-hidden rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-zinc-200/80 px-4 py-4 sm:px-5 dark:border-zinc-800/60">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-hairline px-4 py-4 sm:px-5">
         <div>
-          <h2 id={id} className="text-base font-semibold text-black dark:text-zinc-50">
+          <h2 id={id} className="text-base font-semibold text-ink">
             {title}
           </h2>
-          <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
+          <p className="mt-0.5 text-sm text-ink-muted">{description}</p>
         </div>
         {action}
       </div>
@@ -47,7 +47,7 @@ function Panel({
 }
 
 const REMOVE_BUTTON =
-  "rounded-full px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+  "rounded-full px-3 py-1 text-xs font-medium text-ink-muted transition-colors hover:bg-subtle hover:text-ink";
 
 /**
  * Working hours & availability: the weekly schedule (with lunch breaks),
@@ -110,20 +110,20 @@ export default async function GarageAvailabilityPage({
   });
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-8 sm:py-10">
+    <div className="flex flex-1 flex-col bg-canvas px-4 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">{d.title}</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{d.subtitle}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-ink">{d.title}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{d.subtitle}</p>
         </header>
 
         {/* The schedule is the page's main form: plain rows, no card. */}
         <section aria-labelledby="weekly-hours" className="flex flex-col gap-1">
           <div>
-            <h2 id="weekly-hours" className="text-base font-semibold text-black dark:text-zinc-50">
+            <h2 id="weekly-hours" className="text-base font-semibold text-ink">
               {d.weeklyTitle}
             </h2>
-            <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{d.weeklyDescription}</p>
+            <p className="mt-0.5 text-sm text-ink-muted">{d.weeklyDescription}</p>
           </div>
           <WeeklyHoursForm lang={lang} d={d} initialDays={weekFormFromWindows(availability ?? [])} />
         </section>
@@ -132,7 +132,7 @@ export default async function GarageAvailabilityPage({
           <div className="flex flex-col gap-5 px-4 py-4 sm:px-5">
             <ClosedDatesForm lang={lang} d={d} today={todayKey} />
             {closures.length > 0 || specialHours.length > 0 ? (
-              <ul className="-mx-4 divide-y divide-zinc-200/80 border-t border-zinc-200/80 sm:-mx-5 dark:divide-zinc-800/60 dark:border-zinc-800/60">
+              <ul className="-mx-4 divide-y divide-hairline border-t border-hairline sm:-mx-5">
                 {closures.map((run) => {
                   const days =
                     Math.round(
@@ -142,8 +142,8 @@ export default async function GarageAvailabilityPage({
                   return (
                     <li key={run.from} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
                       <span className="min-w-0">
-                        <span className="font-medium text-black first-letter:uppercase dark:text-zinc-50">{label}</span>
-                        <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        <span className="font-medium text-ink first-letter:uppercase">{label}</span>
+                        <span className="ml-2 text-xs text-ink-muted">
                           {d.closedDays.replace("{count}", String(days))}
                         </span>
                       </span>
@@ -161,10 +161,10 @@ export default async function GarageAvailabilityPage({
                 {specialHours.map((override) => (
                   <li key={override.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
                     <span>
-                      <span className="font-medium text-black first-letter:uppercase dark:text-zinc-50">
+                      <span className="font-medium text-ink first-letter:uppercase">
                         {formatDay(override.date)}
                       </span>
-                      <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      <span className="ml-2 text-xs text-ink-muted">
                         {d.specialHours
                           .replace("{from}", String(override.start_time).slice(0, 5))
                           .replace("{to}", String(override.end_time).slice(0, 5))}
@@ -181,7 +181,7 @@ export default async function GarageAvailabilityPage({
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.noClosures}</p>
+              <p className="text-sm text-ink-muted">{d.noClosures}</p>
             )}
           </div>
         </Panel>
@@ -195,18 +195,18 @@ export default async function GarageAvailabilityPage({
           }
         >
           {blocks && blocks.length > 0 ? (
-            <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <ul className="divide-y divide-hairline">
               {blocks.map((block) => {
                 const range = `${timeFormatter.format(new Date(block.starts_at))}–${timeFormatter.format(new Date(block.ends_at))}`;
                 const date = dayFormatter.format(new Date(block.starts_at));
                 return (
                   <li key={block.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
                     <span className="min-w-0">
-                      <span className="font-medium text-black first-letter:uppercase dark:text-zinc-50">
+                      <span className="font-medium text-ink first-letter:uppercase">
                         {date} · <span className="tabular-nums">{range}</span>
                       </span>
                       {block.reason && (
-                        <span className="ml-2 truncate text-xs text-zinc-500 dark:text-zinc-400">{block.reason}</span>
+                        <span className="ml-2 truncate text-xs text-ink-muted">{block.reason}</span>
                       )}
                     </span>
                     <form action={deleteAvailabilityBlock}>
@@ -221,7 +221,7 @@ export default async function GarageAvailabilityPage({
               })}
             </ul>
           ) : (
-            <p className="px-4 py-4 text-sm text-zinc-500 sm:px-5 dark:text-zinc-400">{d.noUpcomingBlocks}</p>
+            <p className="px-4 py-4 text-sm text-ink-muted sm:px-5">{d.noUpcomingBlocks}</p>
           )}
         </Panel>
       </div>

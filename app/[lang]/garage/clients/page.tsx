@@ -367,11 +367,11 @@ export default async function GarageClientsPage({
   const initialQuery = typeof query.q === "string" ? query.q : "";
 
   return (
-    <div className="flex flex-1 flex-col gap-6 bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-8 sm:py-10">
+    <div className="flex flex-1 flex-col gap-6 bg-canvas px-4 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">{d.title}</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{d.subtitle}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-ink">{d.title}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{d.subtitle}</p>
         </div>
         <DirectoryStats stats={directoryStats(directory)} d={d} />
         {query.anonymized === "1" && (

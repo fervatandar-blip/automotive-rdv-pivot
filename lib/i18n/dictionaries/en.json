@@ -251,10 +251,15 @@
     "reviewGarage": "Workshop",
     "reviewService": "Service",
     "reviewWhen": "When",
-    "reviewPrice": "Price",
-    "confirmBooking": "Confirm booking",
+    "confirmBooking": "Confirm appointment",
     "confirming": "Booking…",
-    "changeTime": "Change time"
+    "changeTime": "Change time",
+    "yourAppointment": "Your appointment",
+    "pickServiceFirst": "Choose a service to see available times.",
+    "pickTimeFirst": "Choose a time to continue",
+    "servicesTitle": "Services",
+    "selected": "Selected",
+    "infoTitle": "Workshop information"
   },
   "vehicles": {
     "title": "My vehicles",
@@ -350,7 +355,11 @@
       "nameTooShort": "Enter at least 2 characters.",
       "nameTooLong": "Use 120 characters or fewer.",
       "phoneInvalid": "Enter a valid phone number (digits, spaces and + only)."
-    }
+    },
+    "tabProfile": "Profile",
+    "tabNotifications": "Notifications",
+    "tabSecurity": "Security",
+    "sections": "Account sections"
   },
   "appointmentMessages": {
     "backToDashboard": "Back to dashboard",
@@ -556,8 +565,8 @@
     "resizeHandle": "Drag to change the length"
   },
   "garageServices": {
-    "title": "Services & pricing",
-    "subtitle": "What clients can book online, how long it takes and how it is priced.",
+    "title": "Services",
+    "subtitle": "What clients can book online and how long each service takes.",
     "listTitle": "Your services",
     "noServicesYet": "No services yet. Add your first one below.",
     "addTitle": "Add a service",
@@ -578,16 +587,7 @@
       "optional": "optional",
       "categoryLabel": "Category",
       "categoryPlaceholder": "Choose a category",
-      "durationLabel": "Duration (minutes)",
-      "pricingTypeLabel": "Pricing",
-      "pricingFixed": "Fixed price",
-      "pricingFrom": "Starting from",
-      "pricingOnInspection": "On inspection",
-      "pricingFixedHint": "Clients see the exact price, e.g. 89,00 €.",
-      "pricingFromHint": "Clients see a starting price, e.g. “From 89,00 €”. The final price depends on the vehicle.",
-      "pricingOnInspectionHint": "No price is shown; clients see “Price on inspection”. You quote after looking at the car.",
-      "priceLabel": "Price",
-      "startingPriceLabel": "Starting price"
+      "durationLabel": "Duration (minutes)"
     }
   },
   "garageAvailability": {
@@ -786,9 +786,6 @@
       "refunded": "Refunded",
       "failed": "Failed"
     },
-    "missingInvoices": "Missing invoices",
-    "missingInvoicesDescription": "These appointments are completed but invoice generation did not finish. Retry below.",
-    "generateInvoice": "Generate invoice",
     "invoices": "Invoices",
     "noInvoicesYet": "No invoices yet.",
     "for": "for",
@@ -1308,7 +1305,7 @@
     "calendar": "Calendar & Agenda",
     "clients": "Client Directory",
     "messages": "Messages",
-    "services": "Services & Pricing",
+    "services": "Services",
     "settings": "Settings",
     "profile": "Workshop Profile",
     "hours": "Working Hours",
@@ -1319,7 +1316,7 @@
     "expand": "Expand sidebar",
     "collapse": "Collapse sidebar",
     "logOut": "Log out",
-    "servicesGroup": "Services",
+    "servicesGroup": "Catalog & inbox",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "themeLight": "Light",
@@ -1349,10 +1346,6 @@
     "appointments": "Appointments",
     "appointmentsShort": "Bookings",
     "accountSettings": "Account settings"
-  },
-  "servicePrice": {
-    "priceFrom": "From {price}",
-    "priceOnInspection": "Price on inspection"
   },
   "serviceCategories": {
     "maintenance": "Maintenance",

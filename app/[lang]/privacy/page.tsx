@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
@@ -38,7 +39,7 @@ export default async function PrivacyPage({
         <div className="flex items-start justify-between">
           <div>
             <Link href={`/${lang}`} className="text-sm font-medium underline">
-              &larr; {d.back}
+              <ArrowLeft aria-hidden className="mr-1 inline h-4 w-4 align-[-3px]" strokeWidth={2} />{d.back}
             </Link>
             <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
               {d.title}

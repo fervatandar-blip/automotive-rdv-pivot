@@ -1,5 +1,6 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
+import { REVIEWS_ENABLED } from "@/lib/features";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -68,7 +69,7 @@ export async function loadClientAppointments(supabase: SupabaseClient, clientId:
 
   const completedIds = past.filter((row) => row.status === "completed").map((row) => row.id);
   const reviewed = new Set<string>();
-  if (completedIds.length > 0) {
+  if (REVIEWS_ENABLED && completedIds.length > 0) {
     const { data: reviews } = await supabase
       .from("reviews")
       .select("appointment_id")

@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
@@ -41,7 +42,7 @@ export default async function GarageWaitlistPage({
   const rows = (entries ?? []) as unknown as WaitlistRow[];
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <div className="flex items-start justify-between">
           <div>
@@ -49,12 +50,12 @@ export default async function GarageWaitlistPage({
               href={`/${lang}/dashboard`}
               className="text-sm font-medium underline"
             >
-              &larr; {d.backToDashboard}
+              <ArrowLeft aria-hidden className="mr-1 inline h-4 w-4 align-[-3px]" strokeWidth={2} />{d.backToDashboard}
             </Link>
-            <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
+            <h1 className="mt-2 text-2xl font-bold tracking-tight text-ink">
               {garage.name} &mdash; {d.waitlistSuffix}
             </h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-1 text-sm text-ink-muted">
               {d.description}
             </p>
           </div>
@@ -62,7 +63,7 @@ export default async function GarageWaitlistPage({
         </div>
 
         {rows.length === 0 ? (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-ink-muted">
             {d.noOneWaiting}
           </p>
         ) : (
@@ -70,21 +71,21 @@ export default async function GarageWaitlistPage({
             {rows.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+                className="flex items-center justify-between rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6"
               >
                 <div>
-                  <h3 className="font-semibold text-black dark:text-zinc-50">
+                  <h3 className="font-semibold text-ink">
                     {entry.services?.name ?? d.serviceFallback} &mdash;{" "}
                     {dateKeyToDisplayDate(entry.date).toLocaleDateString(
                       dateLocale,
                       { timeZone: APP_TIME_ZONE, weekday: "short", month: "short", day: "numeric" }
                     )}
                   </h3>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    {entry.client?.full_name ?? d.clientFallback} &middot;{" "}
+                  <p className="mt-1 text-sm text-ink-muted">
+                    {entry.client?.full_name ?? d.clientFallback}<span aria-hidden className="mx-2 inline-block h-1 w-1 rounded-full bg-current align-middle opacity-40" />
                     {entry.client?.email ?? ""}
                   </p>
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  <p className="mt-1 text-sm text-ink-muted">
                     {d.joined}{" "}
                     {new Date(entry.created_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                     {entry.notified_at &&
@@ -96,7 +97,7 @@ export default async function GarageWaitlistPage({
                   <input type="hidden" name="lang" value={lang} />
                   <button
                     type="submit"
-                    className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                    className="rounded-full border border-hairline px-4 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
                   >
                     {d.remove}
                   </button>

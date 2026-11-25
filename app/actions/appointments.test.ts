@@ -40,9 +40,6 @@ vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: vi.fn(),
 }));
 
-vi.mock("@/lib/invoice-pdf", () => ({
-  renderInvoicePdf: vi.fn(),
-}));
 
 const FAKE_GARAGE = { id: "garage-1", name: "Test Garage" };
 const FAKE_USER = { id: "client-1" };

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { LocateFixed, Loader2 } from "lucide-react";
 
 const DEFAULT_CLASS =
-  "flex shrink-0 items-center gap-2 rounded-full border border-black/[.08] bg-white px-4 py-2.5 text-sm font-medium transition-colors hover:bg-black/[.04] disabled:opacity-60 dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.06]";
+  "flex shrink-0 items-center gap-2 rounded-full border border-hairline bg-surface px-4 py-2.5 text-sm font-medium transition-colors hover:bg-subtle disabled:opacity-60";
 
 export function NearMeButton({ label = "Near me", className = DEFAULT_CLASS }: { label?: string; className?: string }) {
   const router = useRouter();

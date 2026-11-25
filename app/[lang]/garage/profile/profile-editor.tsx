@@ -47,10 +47,10 @@ export type ProfileGarage = {
 };
 
 const inputClass =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-black placeholder:text-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-brand-500";
-const labelClass = "text-sm font-medium text-black dark:text-zinc-50";
+  "w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:focus:border-brand-500";
+const labelClass = "text-sm font-medium text-ink";
 const CARD =
-  "flex flex-col gap-4 rounded-xl border border-zinc-200/80 bg-white p-5 dark:border-zinc-800/60 dark:bg-zinc-900/40";
+  "flex flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-5";
 
 /**
  * One independently-saved profile section: its own form, its own action
@@ -80,10 +80,10 @@ function ProfileSection({
       <input type="hidden" name="section" value={section} />
 
       <div>
-        <h2 id={`section-${section}-title`} className="font-semibold text-black dark:text-zinc-50">
+        <h2 id={`section-${section}-title`} className="font-semibold text-ink">
           {title}
         </h2>
-        <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{description}</p>
+        <p className="mt-0.5 text-sm text-ink-muted">{description}</p>
       </div>
 
       {children(errors)}
@@ -92,7 +92,7 @@ function ProfileSection({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-brand-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+          className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85 disabled:opacity-50"
         >
           {pending ? p.saving : p.save}
         </button>
@@ -172,7 +172,7 @@ function DetailsFields({
           </label>
           <span
             className={`text-xs tabular-nums ${
-              descriptionLength > GARAGE_DESCRIPTION_MAX_LENGTH ? "text-red-600" : "text-zinc-500 dark:text-zinc-400"
+              descriptionLength > GARAGE_DESCRIPTION_MAX_LENGTH ? "text-red-600" : "text-ink-muted"
             }`}
           >
             {descriptionLength}/{GARAGE_DESCRIPTION_MAX_LENGTH}
@@ -210,12 +210,12 @@ function DetailsFields({
         />
       </Field>
 
-      <fieldset className="flex flex-col gap-3 border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60">
-        <legend className="float-left mb-1 w-full text-sm font-semibold text-black dark:text-zinc-50">
+      <fieldset className="flex flex-col gap-3 border-t border-hairline pt-4">
+        <legend className="float-left mb-1 w-full text-sm font-semibold text-ink">
           {p.legalTitle}
         </legend>
         {identityLocked && (
-          <p className="flex items-start gap-2 text-xs text-zinc-600 dark:text-zinc-400">
+          <p className="flex items-start gap-2 text-xs text-ink-muted">
             <Lock className="mt-px h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
             {p.legalLockedNote}
           </p>
@@ -223,7 +223,7 @@ function DetailsFields({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field id="country" label={d.countryLabel} error={errors.country}>
             {identityLocked ? (
-              <input id="country" readOnly value={COUNTRY_NAMES[country]} className={`${inputClass} text-zinc-500 dark:text-zinc-400`} />
+              <input id="country" readOnly value={COUNTRY_NAMES[country]} className={`${inputClass} text-ink-muted`} />
             ) : (
               <StyledSelect
                 id="country"
@@ -249,10 +249,10 @@ function DetailsFields({
               readOnly={identityLocked}
               defaultValue={garage.registration_number ?? ""}
               placeholder={registrationConfig.placeholder}
-              className={`${inputClass} ${identityLocked ? "text-zinc-500 dark:text-zinc-400" : ""}`}
+              className={`${inputClass} ${identityLocked ? "text-ink-muted" : ""}`}
             />
             {!identityLocked && (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">{registrationConfig.hint}</p>
+              <p className="text-xs text-ink-muted">{registrationConfig.hint}</p>
             )}
             <FieldError messages={errors.registrationNumber} />
           </div>
@@ -262,7 +262,7 @@ function DetailsFields({
             {d.vatNumberLabel}
           </label>
           <input id="vatNumber" name="vatNumber" defaultValue={garage.vat_number ?? ""} placeholder="LU12345678" className={inputClass} />
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">{d.vatNumberHint}</p>
+          <p className="text-xs text-ink-muted">{d.vatNumberHint}</p>
         </div>
       </fieldset>
     </div>
@@ -288,14 +288,14 @@ function OpeningHoursSummary({
     <section aria-labelledby="section-hours-title" className={CARD}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 id="section-hours-title" className="font-semibold text-black dark:text-zinc-50">
+          <h2 id="section-hours-title" className="font-semibold text-ink">
             {d.openingHoursTitle}
           </h2>
-          <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{p.hoursDescription}</p>
+          <p className="mt-0.5 text-sm text-ink-muted">{p.hoursDescription}</p>
         </div>
         <Link
           href={`/${lang}/garage/availability`}
-          className="shrink-0 rounded-full border border-zinc-200 px-3 py-1 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+          className="shrink-0 rounded-full border border-hairline px-3 py-1 text-sm font-medium text-ink transition-colors hover:bg-subtle hover:text-ink"
         >
           {p.manageHours}
         </Link>
@@ -304,8 +304,8 @@ function OpeningHoursSummary({
         <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1 text-sm">
           {week.map((day) => (
             <div key={day.dayOfWeek} className="contents">
-              <dt className="text-zinc-600 dark:text-zinc-400">{d.days[day.dayOfWeek]}</dt>
-              <dd className="font-medium tabular-nums text-black dark:text-zinc-50">
+              <dt className="text-ink-muted">{d.days[day.dayOfWeek]}</dt>
+              <dd className="font-medium tabular-nums text-ink">
                 {day.ranges.length > 0 ? day.ranges.join(", ") : d.closed}
               </dd>
             </div>

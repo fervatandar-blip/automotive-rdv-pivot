@@ -33,11 +33,11 @@ export default async function AdminGaragesPage({
     .order("created_at", { ascending: false });
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+            <h1 className="text-2xl font-semibold text-ink">
               {d.title}
             </h1>
             <div className="mt-1 flex gap-4 text-sm font-medium underline">
@@ -55,14 +55,14 @@ export default async function AdminGaragesPage({
               <Link
                 key={garage.id}
                 href={`/${lang}/admin/garages/${garage.id}`}
-                className="flex items-center justify-between rounded-xl border border-black/[.08] bg-white p-4 transition-colors hover:bg-black/[.02] dark:border-white/[.145] dark:bg-zinc-950 dark:hover:bg-white/[.03]"
+                className="flex items-center justify-between rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-4 transition-colors hover:bg-subtle"
               >
                 <div>
-                  <p className="font-medium text-black dark:text-zinc-50">
+                  <p className="font-medium text-ink">
                     {garage.name}
                   </p>
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {garage.city ?? d.noCitySet} &middot;{" "}
+                  <p className="text-sm text-ink-muted">
+                    {garage.city ?? d.noCitySet}<span aria-hidden className="mx-2 inline-block h-1 w-1 rounded-full bg-current align-middle opacity-40" />
                     {garage.verification_level}
                   </p>
                 </div>
@@ -75,7 +75,7 @@ export default async function AdminGaragesPage({
               </Link>
             ))
           ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-ink-muted">
               {d.noGaragesYet}
             </p>
           )}

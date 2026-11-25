@@ -132,29 +132,7 @@ export const ServiceFormSchema = z.object({
   category: z.enum(SERVICE_CATEGORIES, {
     error: "Choose a category for this service.",
   }),
-  // 0045: fixed / from / on_inspection.
-  pricingType: z.enum(["fixed", "from", "on_inspection"], {
-    error: "Choose how this service is priced.",
-  }),
-  // Raw form text; the refinement below turns it into a number or null.
-  // (z.coerce.number would read an empty field as 0 and silently list the
-  // service at 0,00 €.)
-  price: z.string().trim().optional(),
-}).transform((data, ctx) => {
-  if (data.pricingType === "on_inspection") {
-    return { ...data, price: null };
-  }
-  const raw = (data.price ?? "").replace(",", ".");
-  if (raw === "") {
-    ctx.addIssue({ code: "custom", path: ["price"], message: "Enter a price, or choose “Price on inspection”." });
-    return z.NEVER;
-  }
-  const price = Number(raw);
-  if (!Number.isFinite(price) || price < 0 || price > 100_000) {
-    ctx.addIssue({ code: "custom", path: ["price"], message: "Enter a valid price in euros." });
-    return z.NEVER;
-  }
-  return { ...data, price: Math.round(price * 100) / 100 };
+  // Services carry no price since 0050: the workshop quotes on site.
 });
 
 export type ServiceFormState =
@@ -164,8 +142,6 @@ export type ServiceFormState =
         description?: string[];
         durationMinutes?: string[];
         category?: string[];
-        pricingType?: string[];
-        price?: string[];
       };
       message?: string;
     }

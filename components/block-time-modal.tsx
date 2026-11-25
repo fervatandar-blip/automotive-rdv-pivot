@@ -141,7 +141,7 @@ function BlockTimeForm({
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="lang" value={lang} />
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.intro}</p>
+      <p className="text-sm text-ink-muted">{d.intro}</p>
 
       <div className="flex flex-col gap-1">
         <label htmlFor={`${id}-date`} className="text-sm font-medium">
@@ -220,18 +220,18 @@ function BlockTimeForm({
         </p>
       )}
 
-      <div className="flex items-center justify-end gap-2 border-t border-black/[.08] pt-4 dark:border-white/[.145]">
+      <div className="flex items-center justify-end gap-2 border-t border-hairline pt-4">
         <button
           type="button"
           onClick={onDone}
-          className="rounded-full px-4 py-2 text-sm font-medium hover:bg-black/[.04] dark:hover:bg-white/[.06]"
+          className="rounded-full px-4 py-2 text-sm font-medium hover:bg-subtle"
         >
           {d.cancel}
         </button>
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+          className="rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85 disabled:opacity-50"
         >
           {pending ? d.submitting : d.submit}
         </button>

@@ -192,7 +192,7 @@ export function ChatThread({
                 <div className={`flex flex-col ${isSelf ? "items-end" : "items-start"}`}>
                   <span className="flex items-center gap-2 text-xs text-ink-muted">
                     <span className="font-semibold">{labelFor(message.sender_id)}</span>
-                    <span className="font-mono">
+                    <span className="tabular-nums">
                       {new Date(message.created_at).toLocaleString(timeLocale, {
                         timeZone: APP_TIME_ZONE,
                         ...(isPane ? { day: "numeric", month: "short" } : {}),

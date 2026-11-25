@@ -54,7 +54,7 @@ export function AgendaTabs({
           <div
             role="tablist"
             aria-label={label}
-            className="inline-flex gap-1 rounded-full border border-zinc-200 bg-zinc-100/80 p-1 dark:border-zinc-800/80 dark:bg-zinc-900/60"
+            className="inline-flex gap-1 rounded-full border border-hairline bg-subtle p-1"
           >
             {tabs.map((tab, index) => {
               const selected = tab.id === active;
@@ -74,8 +74,8 @@ export function AgendaTabs({
                   onKeyDown={(event) => onKeyDown(event, index)}
                   className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 ${
                     selected
-                      ? "bg-white text-black shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-50 dark:ring-zinc-700/60"
-                      : "text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                      ? "bg-white text-ink shadow-sm ring-1 ring-hairline dark:bg-zinc-800"
+                      : "text-ink-muted hover:text-ink"
                   }`}
                 >
                   {tab.label}
@@ -83,7 +83,7 @@ export function AgendaTabs({
                     className={`min-w-5 rounded-full px-1.5 text-center text-xs tabular-nums ${
                       selected
                         ? "bg-brand-600 text-white dark:bg-brand-500"
-                        : "bg-zinc-200/80 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                        : "bg-zinc-200/80 text-ink-muted dark:bg-zinc-800"
                     }`}
                   >
                     {tab.count}

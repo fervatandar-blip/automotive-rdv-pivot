@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
 import { getDictionary, type Dictionary } from "@/lib/i18n/get-dictionary";
 import { leaveWaitlist } from "@/app/actions/waitlist";
+import { REVIEWS_ENABLED } from "@/lib/features";
 import { dateKeyToDisplayDate } from "@/lib/timezone";
 import {
   loadClientAppointments,
@@ -246,7 +247,7 @@ export default async function AppointmentsPage({
               >
                 {tabLabel[key]}
                 <span
-                  className={`rounded-md px-1.5 py-0.5 font-mono text-xs ${
+                  className={`rounded-md px-1.5 py-0.5 tabular-nums text-xs ${
                     active ? "bg-surface/15 text-surface" : "bg-subtle text-ink-muted"
                   }`}
                 >
@@ -285,7 +286,7 @@ export default async function AppointmentsPage({
                     lang={lang}
                     dictionary={dictionary}
                     invoiceUrl={invoiceUrls.get(appointment.id)}
-                    reviewable={appointment.status === "completed" && !reviewed.has(appointment.id)}
+                    reviewable={REVIEWS_ENABLED && appointment.status === "completed" && !reviewed.has(appointment.id)}
                   />
                 ))}
               </ol>

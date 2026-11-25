@@ -23,9 +23,9 @@ export type ActionsMenuLabels = {
 };
 
 const ITEM =
-  "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:bg-zinc-100 focus-visible:outline-none dark:text-zinc-300 dark:hover:bg-zinc-800/70 dark:hover:text-zinc-50 dark:focus-visible:bg-zinc-800/70";
+  "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm text-ink transition-colors hover:bg-subtle hover:text-ink focus-visible:bg-subtle focus-visible:outline-none";
 const SECTION_LABEL =
-  "px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500";
+  "px-2.5 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-ink-muted";
 const DIVIDER = "my-1 h-px bg-zinc-200/80 dark:bg-zinc-800/60";
 
 /**
@@ -108,8 +108,8 @@ export function AppointmentActionsMenu({
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         onClick={() => (open ? close({ restoreFocus: false }) : setOpen(true))}
-        className={`flex h-8 w-8 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 dark:text-zinc-400 dark:hover:bg-zinc-800/70 dark:hover:text-zinc-50 ${
-          open ? "bg-zinc-100 text-black dark:bg-zinc-800/70 dark:text-zinc-50" : ""
+        className={`flex h-8 w-8 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 ${
+          open ? "bg-subtle text-ink" : ""
         }`}
       >
         <MoreHorizontal aria-hidden className="h-4 w-4" strokeWidth={2} />
@@ -118,17 +118,17 @@ export function AppointmentActionsMenu({
       {open && (
         <div
           id={panelId}
-          className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-zinc-200/80 bg-white p-1 shadow-lg shadow-black/5 dark:border-zinc-800/80 dark:bg-zinc-900 dark:shadow-black/40"
+          className="absolute right-0 top-full z-30 mt-1 w-56 rounded-lg border border-hairline bg-surface p-1 shadow-lg shadow-black/5 dark:shadow-black/40"
         >
           {confirmingCancel ? (
             <div className="flex flex-col gap-2 p-2">
-              <p className="text-sm font-medium text-black dark:text-zinc-50">{labels.cancelConfirm}</p>
+              <p className="text-sm font-medium text-ink">{labels.cancelConfirm}</p>
               <div className="flex gap-2">
                 <button
                   type="button"
                   autoFocus
                   onClick={() => setConfirmingCancel(false)}
-                  className="flex-1 rounded-md border border-zinc-200 px-2.5 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700/80 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="flex-1 rounded-md border border-hairline px-2.5 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-subtle"
                 >
                   {labels.cancelKeep}
                 </button>
@@ -190,7 +190,7 @@ export function AppointmentActionsMenu({
                           disabled={current}
                           aria-current={current ? "true" : undefined}
                           className={`${ITEM} justify-between disabled:cursor-default disabled:hover:bg-transparent ${
-                            current ? "font-medium text-black dark:text-zinc-50" : ""
+                            current ? "font-medium text-ink" : ""
                           }`}
                         >
                           {stage.label}

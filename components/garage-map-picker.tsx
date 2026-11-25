@@ -31,11 +31,11 @@ export function GarageMapPicker({
             <input type="hidden" name="longitude" value={position.lng} />
           </>
         )}
-        <p className="text-sm text-zinc-500 dark:text-zinc-500">
+        <p className="text-sm text-ink-muted">
           Map picker unavailable (Google Maps isn&apos;t configured yet).
         </p>
         {position && (
-          <p className="text-xs text-zinc-500 dark:text-zinc-500">
+          <p className="text-xs text-ink-muted">
             Current pin: {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
           </p>
         )}
@@ -70,10 +70,10 @@ export function GarageMapPicker({
         name="longitude"
         value={position?.lng ?? ""}
       />
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">
+      <p className="text-sm text-ink-muted">
         Click the map to place a pin at your garage, or drag it into place.
       </p>
-      <div className="h-72 w-full overflow-hidden rounded-xl border border-black/[.08] dark:border-white/[.145]">
+      <div className="h-72 w-full overflow-hidden rounded-xl border border-hairline">
         <APIProvider apiKey={apiKey}>
           <Map
             defaultCenter={position ?? LUXEMBOURG_CITY}

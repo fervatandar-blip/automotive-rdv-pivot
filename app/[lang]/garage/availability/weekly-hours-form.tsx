@@ -10,7 +10,7 @@ import type { Dictionary } from "@/lib/i18n/get-dictionary";
 type D = Dictionary["garageAvailability"];
 
 const TIME_INPUT =
-  "w-[6.25rem] rounded-md border border-transparent bg-zinc-100 px-2 py-1 text-sm tabular-nums text-black transition-colors hover:bg-zinc-200/70 focus:border-brand-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:bg-zinc-900 dark:text-zinc-50 dark:[color-scheme:dark] dark:hover:bg-zinc-800 dark:focus:border-brand-500 dark:focus:bg-zinc-950";
+  "w-[6.25rem] rounded-md border border-transparent bg-subtle px-2 py-1 text-sm tabular-nums text-ink transition-colors hover:bg-zinc-200/70 focus:border-brand-600 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:[color-scheme:dark] dark:hover:bg-zinc-800 dark:focus:border-brand-500";
 
 // Mon-Fri, for "Copy Monday to weekdays".
 const WEEKDAYS = [1, 2, 3, 4, 5];
@@ -66,7 +66,7 @@ export function WeeklyHoursForm({
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="week" value={JSON.stringify(days)} />
 
-      <ul className="divide-y divide-zinc-200/80 dark:divide-zinc-800/50">
+      <ul className="divide-y divide-hairline">
         {days.map((day) => {
           const label = d.days[day.dayOfWeek];
           const error = dayErrors[day.dayOfWeek];
@@ -74,7 +74,7 @@ export function WeeklyHoursForm({
           return (
             <li key={day.dayOfWeek} className="flex flex-col gap-1.5 py-3">
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 sm:grid sm:min-h-9 sm:grid-cols-[7rem_7.5rem_1fr]">
-                <span id={`${rowId}-label`} className="w-24 shrink-0 text-sm font-medium text-black sm:w-auto dark:text-zinc-50">
+                <span id={`${rowId}-label`} className="w-24 shrink-0 text-sm font-medium text-ink sm:w-auto">
                   {label}
                 </span>
 
@@ -100,7 +100,7 @@ export function WeeklyHoursForm({
                       }`}
                     />
                   </span>
-                  <span className={day.open ? "text-black dark:text-zinc-50" : "text-zinc-500 dark:text-zinc-400"}>
+                  <span className={day.open ? "text-ink" : "text-ink-muted"}>
                     {day.open ? d.open : d.closed}
                   </span>
                 </button>
@@ -116,7 +116,7 @@ export function WeeklyHoursForm({
                         aria-label={d.opensAt.replace("{day}", label)}
                         className={TIME_INPUT}
                       />
-                      <span aria-hidden className="text-zinc-400 dark:text-zinc-600">–</span>
+                      <span aria-hidden className="text-ink-muted">–</span>
                       <input
                         type="time"
                         step={300}
@@ -129,7 +129,7 @@ export function WeeklyHoursForm({
 
                     {day.lunch ? (
                       <div className="flex items-center gap-1.5">
-                        <span className="mr-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">{d.lunchBreak}</span>
+                        <span className="mr-0.5 text-xs font-medium text-ink-muted">{d.lunchBreak}</span>
                         <input
                           type="time"
                           step={300}
@@ -138,7 +138,7 @@ export function WeeklyHoursForm({
                           aria-label={d.lunchStartsAt.replace("{day}", label)}
                           className={TIME_INPUT}
                         />
-                        <span aria-hidden className="text-zinc-400 dark:text-zinc-600">–</span>
+                        <span aria-hidden className="text-ink-muted">–</span>
                         <input
                           type="time"
                           step={300}
@@ -151,7 +151,7 @@ export function WeeklyHoursForm({
                           type="button"
                           onClick={() => update(day.dayOfWeek, { lunch: false })}
                           aria-label={d.removeLunchBreak.replace("{day}", label)}
-                          className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-black dark:text-zinc-500 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                          className="flex h-7 w-7 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-subtle hover:text-ink"
                         >
                           <X aria-hidden className="h-3.5 w-3.5" />
                         </button>
@@ -161,7 +161,7 @@ export function WeeklyHoursForm({
                         type="button"
                         onClick={() => update(day.dayOfWeek, { lunch: true })}
                         aria-label={d.addLunchBreakFor.replace("{day}", label)}
-                        className="inline-flex items-center gap-1 rounded-full border border-dashed border-zinc-300 px-2.5 py-1 text-xs font-medium text-zinc-600 transition-colors hover:border-zinc-400 hover:text-black dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-zinc-500 dark:hover:text-zinc-50"
+                        className="inline-flex items-center gap-1 rounded-full border border-dashed border-hairline px-2.5 py-1 text-xs font-medium text-ink-muted transition-colors hover:border-zinc-400 hover:text-ink dark:hover:border-zinc-500"
                       >
                         <Plus aria-hidden className="h-3 w-3" />
                         {d.addLunchBreak}
@@ -183,11 +183,11 @@ export function WeeklyHoursForm({
         })}
       </ul>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200/80 pt-4 dark:border-zinc-800/50">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-4">
         <button
           type="button"
           onClick={copyMondayToWeekdays}
-          className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 px-3.5 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+          className="inline-flex items-center gap-1.5 rounded-full border border-hairline px-3.5 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-subtle hover:text-ink"
         >
           <Copy aria-hidden className="h-3.5 w-3.5" />
           {d.copyMonday}
@@ -197,7 +197,7 @@ export function WeeklyHoursForm({
             {state?.message ? (
               <span className="text-red-600 dark:text-red-400">{d.errors[state.message]}</span>
             ) : dirty ? (
-              <span className="text-zinc-500 dark:text-zinc-400">{d.unsaved}</span>
+              <span className="text-ink-muted">{d.unsaved}</span>
             ) : state?.saved ? (
               <span className="inline-flex items-center gap-1 text-green-700 dark:text-green-400">
                 <Check aria-hidden className="h-4 w-4" />
@@ -208,7 +208,7 @@ export function WeeklyHoursForm({
           <button
             type="submit"
             disabled={pending || !dirty}
-            className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+            className="rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {pending ? d.saving : d.saveHours}
           </button>

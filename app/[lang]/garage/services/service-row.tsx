@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { deleteService, updateService } from "@/app/actions/services";
-import { formatServicePrice } from "@/lib/service-pricing";
+import { Clock } from "lucide-react";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import type { ServiceCategoryLabels } from "@/lib/service-categories";
 import { ServiceFields } from "./service-fields";
@@ -14,22 +14,18 @@ export type Service = {
   description: string | null;
   category: string;
   duration_minutes: number;
-  pricing_type: string;
-  price: number | string | null;
 };
 
 const GHOST_BUTTON =
-  "rounded-full px-3 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+  "rounded-xl px-3.5 py-2 text-sm font-semibold text-ink transition-colors hover:bg-subtle hover:text-ink";
 
 export function ServiceRow({
   service,
   d,
-  priceLabels,
   categoryLabels,
 }: {
   service: Service;
   d: Dictionary["garageServices"];
-  priceLabels: Dictionary["servicePrice"];
   categoryLabels: ServiceCategoryLabels;
 }) {
   const [editing, setEditing] = useState(false);
@@ -49,16 +45,14 @@ export function ServiceRow({
     return (
       <li className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h4 className="font-medium text-black dark:text-zinc-50">{service.name}</h4>
+          <h4 className="font-semibold text-ink">{service.name}</h4>
           {service.description && (
-            <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-400">{service.description}</p>
+            <p className="mt-0.5 text-sm text-ink-muted">{service.description}</p>
           )}
-          <p className="mt-1.5 text-sm text-zinc-600 dark:text-zinc-400">
-            {service.duration_minutes} min ·{" "}
-            <span className="font-medium tabular-nums text-black dark:text-zinc-50">
-              {formatServicePrice(service, priceLabels)}
-            </span>
-          </p>
+          <span className="mt-2 inline-flex items-center gap-1 rounded-full bg-subtle px-2.5 py-1 text-xs font-semibold tabular-nums text-ink-muted">
+            <Clock aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
+            {service.duration_minutes} min
+          </span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {confirmingDelete ? (
@@ -111,8 +105,6 @@ export function ServiceRow({
             description: service.description,
             category: service.category,
             durationMinutes: service.duration_minutes,
-            pricingType: service.pricing_type,
-            price: service.price,
           }}
         />
 
@@ -126,7 +118,7 @@ export function ServiceRow({
           <button
             disabled={pending}
             type="submit"
-            className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-600"
+            className="rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85 disabled:opacity-60"
           >
             {pending ? d.saving : d.save}
           </button>

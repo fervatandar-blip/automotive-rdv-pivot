@@ -1,10 +1,11 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { getGarageMembership } from "@/lib/dal";
 import { resolveLocale } from "@/lib/i18n/config";
 import { GarageSidebar, GarageTopBar } from "@/components/garage-nav";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { AnimatedLogo } from "@/components/animated-logo";
+import { BrandLogo } from "@/components/brand-mark";
 import { todayKeyInAppZone } from "@/lib/timezone";
 
 // /garage/login and /garage/signup are public -- an anonymous visitor must
@@ -47,18 +48,21 @@ export default async function GarageLayout({
 
   const { garage, isOwner } = membership;
 
+  const dictionary = await getDictionary(lang);
+
   if (!garage.platform_terms_accepted_at) {
     return (
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-center gap-4 px-6 py-6">
           <Link href={`/${lang}/dashboard`}>
-            <AnimatedLogo size={40} />
+            <BrandLogo size={36} />
           </Link>
           <Link
             href={`/${lang}/dashboard`}
-            className="text-sm font-medium underline"
+            className="text-sm font-semibold text-ink-muted hover:text-ink"
           >
-            &larr; Back to dashboard
+            <ArrowLeft aria-hidden className="mr-1 inline h-4 w-4 align-[-3px]" strokeWidth={2} />
+            {dictionary.garageWaitlist.backToDashboard}
           </Link>
         </header>
         <main className="flex flex-1 flex-col">{children}</main>
@@ -66,10 +70,8 @@ export default async function GarageLayout({
     );
   }
 
-  const dictionary = await getDictionary(lang);
-
   return (
-    <div className="flex flex-1">
+    <div className="flex flex-1 bg-canvas">
       <GarageSidebar
         lang={lang}
         isOwner={isOwner}

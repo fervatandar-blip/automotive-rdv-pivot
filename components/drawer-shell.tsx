@@ -54,15 +54,15 @@ export function DrawerShell({
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="relative flex h-full w-full max-w-md flex-col border-l border-zinc-200 bg-white shadow-2xl outline-none dark:border-zinc-800 dark:bg-zinc-900"
+        className="relative flex h-full w-full max-w-md flex-col border-l border-hairline bg-surface shadow-2xl outline-none"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4 dark:border-zinc-800">
-          <h2 className="truncate text-base font-semibold text-black dark:text-zinc-50">{title}</h2>
+        <div className="flex items-center justify-between gap-3 border-b border-hairline px-5 py-4">
+          <h2 className="truncate text-base font-semibold text-ink">{title}</h2>
           <Link
             href={closeHref}
             scroll={false}
             aria-label={closeLabel}
-            className="rounded-full p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-black dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+            className="rounded-full p-1.5 text-ink-muted transition-colors hover:bg-subtle hover:text-ink"
           >
             <X className="h-5 w-5" strokeWidth={1.75} />
           </Link>

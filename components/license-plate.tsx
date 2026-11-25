@@ -14,7 +14,7 @@ export function LicensePlate({ plate, label }: { plate: string; label: string })
       <span aria-hidden className="w-2 bg-[#003399]" />
       <span
         aria-hidden
-        className="px-1.5 py-1 font-mono font-semibold uppercase tracking-wider text-black"
+        className="px-1.5 py-1 tabular-nums font-semibold uppercase tracking-wider text-black"
       >
         {plate}
       </span>

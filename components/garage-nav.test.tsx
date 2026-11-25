@@ -23,8 +23,8 @@ describe("GarageSidebar", () => {
       "Dashboard",
       "Calendar &amp; Agenda",
       "Client Directory",
+      "Catalog &amp; inbox",
       "Services",
-      "Services &amp; Pricing",
       "Messages",
       "Settings",
       "Workshop Profile",
@@ -59,7 +59,7 @@ describe("GarageSidebar", () => {
     const html = render({ isOwner: true, needsVerification: false });
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html).toMatch(/href="\/en\/garage\/calendar"[^>]*aria-current="page"|aria-current="page"[^>]*href="\/en\/garage\/calendar"/);
-    expect(html).toContain("bg-zinc-800/60");
+    expect(html).toContain("bg-subtle font-semibold text-ink");
     expect(html).not.toContain("bg-brand-600");
   });
 });

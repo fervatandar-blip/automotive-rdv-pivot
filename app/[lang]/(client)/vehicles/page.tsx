@@ -126,7 +126,7 @@ export default async function VehiclesPage({
                         </div>
                         <div className="min-w-0">
                           <h2 className="truncate text-lg font-bold tracking-tight text-ink">{name}</h2>
-                          <p className={`text-sm text-ink-muted ${vehicle.year ? "font-mono" : ""}`}>
+                          <p className={`text-sm text-ink-muted ${vehicle.year ? "tabular-nums" : ""}`}>
                             {vehicle.year ?? d.noDetailsAdded}
                           </p>
                         </div>
@@ -139,7 +139,7 @@ export default async function VehiclesPage({
                         <dt className="text-xs font-semibold text-ink-muted">
                           {d.vinLabel}
                         </dt>
-                        <dd className="truncate font-mono text-ink">{vehicle.vin}</dd>
+                        <dd className="truncate tabular-nums text-ink">{vehicle.vin}</dd>
                       </dl>
                     )}
 

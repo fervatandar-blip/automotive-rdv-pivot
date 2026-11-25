@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CLIENT_CARD, CLIENT_SECTION_LABEL } from "@/lib/client-ui";
 import { redirect } from "next/navigation";
 import {
   AlertCircle,
@@ -68,14 +69,13 @@ const AGENDA_STATUSES = ["pending", "confirmed", "completed"];
 // Surfaces: one quiet style for the whole page -- a single hairline border,
 // no fill in dark mode, never a box inside a box. Light mode keeps a white
 // fill so cards lift off the zinc-50 page.
-const CARD =
-  "rounded-xl border border-zinc-200/80 bg-white dark:border-zinc-800/60 dark:bg-transparent";
-const CARD_INTERACTIVE = `${CARD} transition-colors hover:border-zinc-300 dark:hover:border-zinc-700/80 dark:hover:bg-zinc-900/40`;
+// Same elevated cards as the client portal (lib/client-ui.ts).
+const CARD = CLIENT_CARD;
+const CARD_INTERACTIVE = `${CARD} transition-shadow hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] dark:hover:bg-subtle/40`;
 // KPI strip: a swipeable row on phones (the next card peeks in so the row
 // reads as scrollable), a 2x2 grid from sm, one row of four from lg.
 const KPI_ITEM = "w-[72%] max-w-[17rem] shrink-0 snap-start sm:w-auto sm:max-w-none";
-const SECTION_LABEL =
-  "text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400";
+const SECTION_LABEL = CLIENT_SECTION_LABEL;
 
 function isUpcoming(appointment: { status: string; start_time: string }) {
   return (
@@ -138,7 +138,7 @@ const BADGE_STYLES: Record<
   },
   confirmed: {
     icon: CheckCircle2,
-    className: "text-zinc-600 dark:text-zinc-400",
+    className: "text-ink-muted",
     labelKey: "badgeConfirmed",
   },
   in_progress: {
@@ -223,10 +223,10 @@ function AppointmentRow({
     .join(" · ");
 
   return (
-    <li className="flex flex-col gap-2.5 px-4 py-3.5 transition-colors hover:bg-zinc-50/70 sm:px-5 md:flex-row md:items-center md:gap-4 dark:hover:bg-zinc-900/40">
+    <li className="flex flex-col gap-2.5 px-4 py-3.5 transition-colors hover:bg-subtle sm:px-5 md:flex-row md:items-center md:gap-4">
       <div className="flex items-center justify-between gap-3 md:contents">
         <div className="flex items-center gap-2 md:order-1 md:w-16 md:shrink-0 md:flex-col md:items-start md:gap-0.5">
-          <span className="rounded-md bg-zinc-100 px-1.5 py-0.5 text-sm font-semibold tabular-nums text-black dark:bg-zinc-800/70 dark:text-zinc-50">
+          <span className="rounded-md bg-subtle px-1.5 py-0.5 text-sm font-semibold tabular-nums text-ink">
             {timeFormatter(lang).format(start)}
           </span>
           {showDay && (
@@ -270,25 +270,25 @@ function AppointmentRow({
 
       <div className="flex min-w-0 flex-col gap-1 md:order-2 md:flex-1 md:gap-0.5">
         <p className="flex flex-wrap items-baseline gap-x-2 break-words">
-          <span className="font-medium text-black dark:text-zinc-50">
+          <span className="font-medium text-ink">
             {customerName(appointment, d)}
           </span>
           {phone && (
             <a
               href={`tel:${phone.replace(/[^\d+]/g, "")}`}
-              className="text-sm tabular-nums text-zinc-500 hover:text-black hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="text-sm tabular-nums text-ink-muted hover:text-ink hover:underline"
             >
               {phone}
             </a>
           )}
         </p>
         {(plate || vehicleText) && (
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-muted">
             {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
             {vehicleText && <span>{vehicleText}</span>}
           </p>
         )}
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">{serviceLine}</p>
+        <p className="text-sm text-ink-muted">{serviceLine}</p>
       </div>
 
       {(isPending || isConfirmed) && (
@@ -315,7 +315,7 @@ function AppointmentRow({
 /** The agenda's single frame: rows divided by hairlines, no per-row boxes. */
 function AppointmentList({ children }: { children: React.ReactNode }) {
   return (
-    <ul className={`${CARD} divide-y divide-zinc-200/80 dark:divide-zinc-800/60`}>{children}</ul>
+    <ul className={`${CARD} divide-y divide-hairline`}>{children}</ul>
   );
 }
 
@@ -403,12 +403,12 @@ function EmptyAgenda({
   return (
     <div className={`${CARD} flex flex-col items-center gap-4 px-6 py-12 text-center`}>
       <EmptyCalendarGraphic />
-      <p className="text-sm text-zinc-600 dark:text-zinc-400">{text}</p>
+      <p className="text-sm text-ink-muted">{text}</p>
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
         <QuickWalkInButton lang={lang} d={walkIn} label={d.logWalkIn} />
         <Link
           href={`/${lang}/garage/calendar`}
-          className="inline-flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+          className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink"
         >
           {d.viewFullCalendar}
           <ArrowRight aria-hidden className="h-4 w-4" />
@@ -441,15 +441,15 @@ function KpiCard({
         <Icon
           aria-hidden
           className={`h-4 w-4 shrink-0 ${
-            highlight ? "text-amber-600 dark:text-amber-400" : "text-zinc-400 dark:text-zinc-500"
+            highlight ? "text-amber-600 dark:text-amber-400" : "text-ink-muted"
           }`}
           strokeWidth={1.75}
         />
       </div>
-      <p className="text-3xl font-semibold tabular-nums tracking-tight text-black dark:text-zinc-50">
+      <p className="text-3xl font-semibold tabular-nums tracking-tight text-ink">
         {value}
       </p>
-      <p className="text-xs text-zinc-500 group-hover:text-zinc-700 dark:text-zinc-500 dark:group-hover:text-zinc-300">
+      <p className="text-xs text-ink-muted group-hover:text-ink">
         {hint}
       </p>
     </Link>
@@ -528,7 +528,7 @@ function CapacityRing({
           />
         )}
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums text-black dark:text-zinc-50">
+      <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums text-ink">
         {percent === null ? "—" : `${percent}%`}
       </span>
     </div>
@@ -555,7 +555,7 @@ function CapacityKpi({ capacity, lang, d }: { capacity: DayCapacity; lang: Local
     >
       <div className="flex items-center justify-between gap-2">
         <p className={SECTION_LABEL}>{d.capacityTitle}</p>
-        <Gauge aria-hidden className="h-4 w-4 shrink-0 text-zinc-400 dark:text-zinc-500" strokeWidth={1.75} />
+        <Gauge aria-hidden className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} />
       </div>
       <div className="flex items-center gap-3">
         <CapacityRing
@@ -564,9 +564,9 @@ function CapacityKpi({ capacity, lang, d }: { capacity: DayCapacity; lang: Local
           valueText={open ? `${open.percent}% · ${bookedText}` : stateText}
         />
         <div className="min-w-0">
-          <p className="text-sm font-medium text-black dark:text-zinc-50">{stateText}</p>
+          <p className="text-sm font-medium text-ink">{stateText}</p>
           {bookedText && (
-            <p className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{bookedText}</p>
+            <p className="text-xs tabular-nums text-ink-muted">{bookedText}</p>
           )}
         </div>
       </div>
@@ -643,7 +643,7 @@ function LogoutButton({ lang, d }: { lang: Locale; d: D }) {
       <input type="hidden" name="lang" value={lang} />
       <button
         type="submit"
-        className="rounded-full border border-black/[.08] px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+        className="rounded-full border border-hairline px-5 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
       >
         {d.logOut}
       </button>
@@ -709,29 +709,29 @@ export default async function GarageDashboardPage({
         : null;
 
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-zinc-50 px-4 py-16 dark:bg-black">
-        <div className="flex w-full max-w-md flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-zinc-950">
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-canvas px-4 py-16">
+        <div className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-8">
+          <h1 className="text-2xl font-bold tracking-tight text-ink">
             {pendingInvites.length > 0 ? d.invitesTitle : d.noGarageTitle}
           </h1>
           {resultKey && (
             <p
               role="status"
-              className="rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300"
+              className="rounded-md bg-subtle px-3 py-2 text-sm text-ink"
             >
               {d[resultKey]}
             </p>
           )}
           {pendingInvites.length > 0 ? (
             <div className="flex flex-col gap-3">
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.invitesDescription}</p>
+              <p className="text-sm text-ink-muted">{d.invitesDescription}</p>
               {pendingInvites.map((invite) => (
                 <div
                   key={invite.id}
-                  className="flex flex-col gap-3 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145]"
+                  className="flex flex-col gap-3 rounded-lg border border-hairline p-4"
                 >
                   <div>
-                    <p className="font-medium text-black dark:text-zinc-50">{invite.garage_name}</p>
+                    <p className="font-medium text-ink">{invite.garage_name}</p>
                     <p className="text-xs text-zinc-500">
                       {d.inviteExpires.replace(
                         "{date}",
@@ -759,7 +759,7 @@ export default async function GarageDashboardPage({
                       <input type="hidden" name="inviteId" value={invite.id} />
                       <button
                         type="submit"
-                        className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                        className="rounded-full border border-hairline px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
                       >
                         {d.declineInvite}
                       </button>
@@ -769,7 +769,7 @@ export default async function GarageDashboardPage({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.noGarageDescription}</p>
+            <p className="text-sm text-ink-muted">{d.noGarageDescription}</p>
           )}
           <Link href={`/${lang}/account`} className="text-sm font-medium underline">
             {d.account}
@@ -796,8 +796,8 @@ export default async function GarageDashboardPage({
   });
   const pageHeader = (
     <header className="flex flex-col gap-1">
-      <p className="text-sm font-medium capitalize text-zinc-500 dark:text-zinc-400">{todayLabel}</p>
-      <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50 sm:text-3xl">
+      <p className="text-sm font-medium capitalize text-ink-muted">{todayLabel}</p>
+      <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">
         {d.title}
       </h1>
     </header>
@@ -818,7 +818,7 @@ export default async function GarageDashboardPage({
     const other = rows.filter((appointment) => !upcoming.includes(appointment));
 
     return (
-      <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8 sm:py-10">
+      <div className="flex flex-1 flex-col bg-canvas px-4 py-8 sm:px-8 sm:py-10">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
           {pageHeader}
           <section className="flex flex-col gap-3">
@@ -1021,7 +1021,7 @@ export default async function GarageDashboardPage({
   const legacyPending = pendingCount ?? 0;
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-black sm:px-8 sm:py-10">
+    <div className="flex flex-1 flex-col bg-canvas px-4 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         {pageHeader}
 
@@ -1086,7 +1086,7 @@ export default async function GarageDashboardPage({
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <section aria-labelledby="agenda-title" className="flex min-w-0 flex-col gap-4">
-            <h2 id="agenda-title" className="text-lg font-semibold text-black dark:text-zinc-50">
+            <h2 id="agenda-title" className="text-lg font-semibold text-ink">
               {d.agendaTitle}
             </h2>
             <AgendaTabs
@@ -1096,7 +1096,7 @@ export default async function GarageDashboardPage({
               trailing={
                 <Link
                   href={`/${lang}/garage/calendar`}
-                  className="inline-flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-ink-muted hover:text-ink"
                 >
                   {d.viewFullCalendar}
                   <ArrowRight aria-hidden className="h-4 w-4" />
@@ -1127,58 +1127,58 @@ export default async function GarageDashboardPage({
               </h2>
               <dl className="mt-4 flex flex-col gap-3 text-sm">
                 <div className="flex items-start justify-between gap-4">
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.glanceHours}</dt>
-                  <dd className="text-right font-medium tabular-nums text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.glanceHours}</dt>
+                  <dd className="text-right font-medium tabular-nums text-ink">
                     {hoursText}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.glanceRemaining}</dt>
-                  <dd className="font-medium tabular-nums text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.glanceRemaining}</dt>
+                  <dd className="font-medium tabular-nums text-ink">
                     {openToday.length}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.glanceDone}</dt>
-                  <dd className="font-medium tabular-nums text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.glanceDone}</dt>
+                  <dd className="font-medium tabular-nums text-ink">
                     {completedToday.length}
                   </dd>
                 </div>
-                <div className="flex flex-col gap-1 border-t border-zinc-200/80 pt-3 dark:border-zinc-800/60">
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.glanceNextUp}</dt>
-                  <dd className="text-black dark:text-zinc-50">
+                <div className="flex flex-col gap-1 border-t border-hairline pt-3">
+                  <dt className="text-ink-muted">{d.glanceNextUp}</dt>
+                  <dd className="text-ink">
                     {nextUp ? (
                       <>
                         <span className="font-semibold tabular-nums">
                           {formatTime(nextUp.start_time)}
                         </span>{" "}
                         · {nextUp.services?.name ?? d.serviceFallback}
-                        <span className="block truncate text-zinc-500 dark:text-zinc-400">
+                        <span className="block truncate text-ink-muted">
                           {customerName(nextUp, d)}
                         </span>
                       </>
                     ) : (
-                      <span className="text-zinc-500 dark:text-zinc-400">{d.glanceNothingNext}</span>
+                      <span className="text-ink-muted">{d.glanceNothingNext}</span>
                     )}
                   </dd>
                 </div>
               </dl>
             </section>
 
-            <section aria-labelledby="team-title" className="border-t border-zinc-200/80 pt-8 dark:border-zinc-800/60">
+            <section aria-labelledby="team-title" className="border-t border-hairline pt-8">
               <div className="flex items-center justify-between gap-2">
                 <h2 id="team-title" className={SECTION_LABEL}>
                   {d.teamTitle}
                 </h2>
                 <Link
                   href={`/${lang}/garage/staff`}
-                  className="text-xs font-medium text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                  className="text-xs font-medium text-ink-muted hover:text-ink"
                 >
                   {d.teamManage}
                 </Link>
               </div>
               {mechanics.length === 0 ? (
-                <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">{d.teamEmpty}</p>
+                <p className="mt-4 text-sm text-ink-muted">{d.teamEmpty}</p>
               ) : (
                 <ul className="mt-4 flex flex-col gap-3">
                   {mechanics.map((mechanic) => {
@@ -1192,21 +1192,21 @@ export default async function GarageDashboardPage({
                       <li key={mechanic.id} className="flex items-center gap-3">
                         <span
                           aria-hidden
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-subtle text-xs font-semibold text-ink"
                         >
                           {initials(mechanic.name)}
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-black dark:text-zinc-50">
+                          <p className="truncate text-sm font-medium text-ink">
                             {mechanic.name}
                             {mechanic.id === profile.id && (
-                              <span className="font-normal text-zinc-500 dark:text-zinc-400">
+                              <span className="font-normal text-ink-muted">
                                 {" "}
                                 ({d.teamYou})
                               </span>
                             )}
                           </p>
-                          <p className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                          <p className="flex items-center gap-1.5 text-xs text-ink-muted">
                             <span
                               aria-hidden
                               className={`h-1.5 w-1.5 shrink-0 rounded-full ${TEAM_DOT[status.kind]}`}

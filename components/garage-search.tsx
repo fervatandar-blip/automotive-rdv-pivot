@@ -51,7 +51,7 @@ export function GarageSearch({
       <Form action={action} role="search" className="relative hidden w-full max-w-sm md:block">
         <Search
           aria-hidden
-          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500"
+          className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
           strokeWidth={1.75}
         />
         <input
@@ -63,11 +63,11 @@ export function GarageSearch({
           autoComplete="off"
           spellCheck={false}
           enterKeyHint="search"
-          className="h-9 w-full rounded-lg border border-zinc-200/80 bg-zinc-50 pl-10 pr-10 text-sm text-black placeholder:text-zinc-400 focus:border-brand-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-800/60 dark:bg-zinc-900/40 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-brand-500 dark:focus:bg-zinc-900"
+          className="h-9 w-full rounded-lg border border-hairline bg-subtle pl-10 pr-10 text-sm text-ink placeholder:text-ink-muted focus:border-brand-600 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:focus:border-brand-500"
         />
         <kbd
           aria-hidden
-          className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-zinc-200 px-1.5 font-sans text-[11px] text-zinc-400 lg:block dark:border-zinc-700 dark:text-zinc-500"
+          className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md border border-hairline px-1.5 font-sans text-[11px] text-ink-muted lg:block"
         >
           /
         </kbd>
@@ -77,7 +77,7 @@ export function GarageSearch({
         href={action}
         aria-label={label}
         title={label}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-black md:hidden dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-subtle hover:text-ink md:hidden"
       >
         <Search className="h-4 w-4" strokeWidth={2} />
       </Link>

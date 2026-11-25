@@ -2,85 +2,53 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  BatteryCharging,
+  ArrowLeft,
+  Banknote,
+  BellPlus,
   Check,
   ChevronLeft,
-  Clock,
   ChevronRight,
+  Clock,
   Globe,
   Mail,
+  MapPin,
   Phone,
-  Siren,
-  Truck,
-  Banknote,
 } from "lucide-react";
 import { getOptionalAuthedUser } from "@/lib/dal";
 import { SubmitButton } from "@/components/submit-button";
-import { CLIENT_PRIMARY_BUTTON } from "@/lib/client-ui";
 import { createClient } from "@/lib/supabase/server";
 import { getAvailableSlotsForDate } from "@/lib/availability";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
-import { formatServicePrice } from "@/lib/service-pricing";
+import { closedDateKeys } from "@/lib/closed-days";
 import { groupServicesByCategory } from "@/lib/service-categories";
 import { normalizeVerificationLevel } from "@/lib/verification";
 import { VerificationBadge } from "@/components/verification-badge";
+import { CapabilityPill, capabilityList } from "@/components/capability-pills";
 import { parseBookingVehicle, withBookingVehicle } from "@/lib/booking-vehicle";
 import { GarageMapDisplay } from "@/components/garage-map-display";
 import { bookAppointment } from "@/app/actions/appointments";
 import { joinWaitlist } from "@/app/actions/waitlist";
-import { averageRating } from "@/lib/ratings";
-import { RatingPill, StarRating } from "@/components/star-rating";
 import { hasAnyOpeningHours, summarizeWeeklyHours } from "@/lib/opening-hours";
 import { APP_TIME_ZONE, dateKeyToDisplayDate, todayKeyInAppZone } from "@/lib/timezone";
+import { monogram } from "@/lib/monogram";
+import { REVIEWS_ENABLED } from "@/lib/features";
+import { averageRating } from "@/lib/ratings";
+import { RatingPill, StarRating } from "@/components/star-rating";
+import {
+  CLIENT_CARD,
+  CLIENT_PAGE,
+  CLIENT_PRIMARY_BUTTON,
+  CLIENT_SECONDARY_BUTTON,
+  CLIENT_SECTION_LABEL,
+  CLIENT_TEXT_LINK,
+} from "@/lib/client-ui";
 
-type StepStatus = "complete" | "current" | "upcoming";
-
-function BookingStepIndicator({ steps }: { steps: { label: string; status: StepStatus }[] }) {
-  return (
-    <div className="flex items-center">
-      {steps.map((step, index) => (
-        <div key={step.label} className="flex flex-1 items-center last:flex-none">
-          <div className="flex flex-col items-center gap-1.5">
-            <div
-              className={
-                step.status === "complete"
-                  ? "flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-white dark:bg-brand-500"
-                  : step.status === "current"
-                    ? "flex h-7 w-7 items-center justify-center rounded-full border-2 border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-400"
-                    : "flex h-7 w-7 items-center justify-center rounded-full border-2 border-hairline text-ink-muted"
-              }
-            >
-              {step.status === "complete" ? (
-                <Check className="h-4 w-4" strokeWidth={2.5} />
-              ) : (
-                <span className="text-xs font-semibold">{index + 1}</span>
-              )}
-            </div>
-            <span
-              className={
-                step.status === "upcoming"
-                  ? "text-xs font-medium text-ink-muted"
-                  : "text-xs font-medium text-ink"
-              }
-            >
-              {step.label}
-            </span>
-          </div>
-          {index < steps.length - 1 && (
-            <div
-              className={
-                step.status === "complete"
-                  ? "mx-2 h-0.5 flex-1 rounded-full bg-brand-600 dark:bg-brand-500"
-                  : "mx-2 h-0.5 flex-1 rounded-full bg-black/[.08] dark:bg-white/[.145]"
-              }
-            />
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
+const FIELD =
+  "w-full rounded-xl border border-hairline bg-surface px-3.5 py-2.5 text-sm text-ink focus:border-ink/40 focus:outline-none focus:ring-2 focus:ring-ink/10";
+const CARD_HEADING = "text-sm font-bold tracking-tight text-ink";
+const MONTH_NAV =
+  "flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-subtle hover:text-ink";
 
 function toDateKey(date: Date) {
   const year = date.getFullYear();
@@ -93,10 +61,7 @@ function monthKey(year: number, monthIndex: number) {
   return `${year}-${(monthIndex + 1).toString().padStart(2, "0")}`;
 }
 
-function parseMonthKey(
-  month: string | undefined,
-  fallback: { year: number; monthIndex: number }
-) {
+function parseMonthKey(month: string | undefined, fallback: { year: number; monthIndex: number }) {
   if (month && /^\d{4}-\d{2}$/.test(month)) {
     const [year, m] = month.split("-").map(Number);
     return { year, monthIndex: m - 1 };
@@ -155,7 +120,7 @@ export default async function GarageDetailPage({
     month?: string;
     error?: string;
     waitlisted?: string;
-    // The slot picked for review; nothing is booked until "Confirm booking".
+    // The slot picked for review; nothing is booked until "Confirm".
     time?: string;
     // Vehicle to pre-select at the confirm step (lib/booking-vehicle.ts).
     vehicle?: string;
@@ -165,6 +130,7 @@ export default async function GarageDetailPage({
   const lang = resolveLocale(rawLang);
   const dictionary = await getDictionary(lang);
   const d = dictionary.garageDetail;
+  const fields = dictionary.garageOnboarding;
   const dateLocale = lang === "fr" ? "fr-FR" : "en-US";
   // Public discovery/detail page -- no auth required to browse or reach the
   // booking form. `user` is only used below to personalize (own vehicles,
@@ -202,17 +168,16 @@ export default async function GarageDetailPage({
 
   // Opening hours = the weekly availability windows bookings are made from
   // (one source of truth; see lib/opening-hours.ts).
-  const { data: availabilityRows } = await supabase
-    .from("availability")
-    .select("day_of_week, start_time, end_time")
-    .eq("garage_id", garageId);
+  const [{ data: availabilityRows }, { data: services }] = await Promise.all([
+    supabase.from("availability").select("day_of_week, start_time, end_time").eq("garage_id", garageId),
+    supabase
+      .from("services")
+      .select("id, name, description, category, duration_minutes")
+      .eq("garage_id", garageId)
+      .order("created_at", { ascending: true }),
+  ]);
   const weeklyHours = summarizeWeeklyHours(availabilityRows ?? []);
-  const fields = dictionary.garageOnboarding;
-  const capabilities = [
-    garage.ev_capable && { icon: BatteryCharging, label: fields.evCapableShort },
-    garage.mobile_service && { icon: Truck, label: fields.mobileServiceShort },
-    garage.emergency_service && { icon: Siren, label: fields.emergencyServiceShort },
-  ].filter((item): item is { icon: typeof Truck; label: string } => Boolean(item));
+  const capabilities = capabilityList(garage, fields);
   const pricingLabel =
     garage.pricing_category === "budget"
       ? fields.pricingBudget
@@ -222,24 +187,18 @@ export default async function GarageDetailPage({
           ? fields.pricingPremium
           : null;
   const languageLabels = (garage.languages_spoken ?? []).map(
-    (language: string) =>
-      fields.languageLabels[language as keyof typeof fields.languageLabels] ?? language
+    (language: string) => fields.languageLabels[language as keyof typeof fields.languageLabels] ?? language
   );
-
-  const { data: services } = await supabase
-    .from("services")
-    .select("id, name, description, category, duration_minutes, pricing_type, price")
-    .eq("garage_id", garageId)
-    .order("created_at", { ascending: true });
   const serviceGroups = groupServicesByCategory(services ?? []);
-  const verificationLevel = normalizeVerificationLevel(garage.verification_level);
 
-  const { data: reviews } = await supabase
-    .from("reviews")
-    .select("id, rating, comment, created_at, profiles(full_name)")
-    .eq("garage_id", garageId)
-    .order("created_at", { ascending: false });
-
+  // Off for launch (lib/features.ts); kept wired so the switch restores it.
+  const { data: reviews } = REVIEWS_ENABLED
+    ? await supabase
+        .from("reviews")
+        .select("id, rating, comment, created_at, profiles(full_name)")
+        .eq("garage_id", garageId)
+        .order("created_at", { ascending: false })
+    : { data: null };
   const reviewRows = (reviews ?? []) as unknown as {
     id: string;
     rating: number;
@@ -248,28 +207,49 @@ export default async function GarageDetailPage({
     profiles: { full_name: string } | null;
   }[];
   const ratingAverage = averageRating(reviewRows.map((review) => review.rating));
+  const verificationLevel = normalizeVerificationLevel(garage.verification_level);
 
-  const selectedService =
-    services?.find((service) => service.id === serviceParam) ??
-    // Default to the first service as displayed (grouped), not as stored.
-    serviceGroups[0]?.services[0];
+  // No service is preselected: the booking card asks for one first, so the
+  // first thing a client does is say what the car needs.
+  const selectedService = services?.find((service) => service.id === serviceParam);
 
   // "Today" is the garage's local date, not the server's (UTC on Vercel),
   // or between 00:00 and 01:00/02:00 local time the picker would still offer
   // yesterday. The calendar grid itself is pure date-key arithmetic.
   const todayKey = todayKeyInAppZone();
-  const selectedDate = dateParam ?? todayKey;
+  const requestedDate =
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) && dateParam >= todayKey ? dateParam : null;
 
   const [todayYear, todayMonth] = todayKey.split("-").map(Number);
   const currentMonth = { year: todayYear, monthIndex: todayMonth - 1 };
   const { year, monthIndex } = parseMonthKey(monthParam, currentMonth);
   const displayedMonthKey = monthKey(year, monthIndex);
-  const monthLabel = dateKeyToDisplayDate(`${monthKey(year, monthIndex)}-01`).toLocaleDateString(dateLocale, {
+  const monthLabel = dateKeyToDisplayDate(`${displayedMonthKey}-01`).toLocaleDateString(dateLocale, {
     timeZone: APP_TIME_ZONE,
     month: "long",
     year: "numeric",
   });
   const calendarCells = buildCalendarGrid(year, monthIndex);
+
+  // Days the workshop is closed (no weekly hours that weekday, or a closed
+  // override) can't be picked. Same rules as slot computation
+  // (lib/closed-days.ts mirrors lib/availability.ts).
+  const monthKeys = calendarCells.filter((cell) => cell.inMonth).map((cell) => toDateKey(cell.date));
+  const { data: overrideRows } = await supabase
+    .from("availability_overrides")
+    .select("date, is_closed")
+    .eq("garage_id", garageId)
+    .gte("date", monthKeys[0])
+    .lte("date", monthKeys[monthKeys.length - 1]);
+  const closedDays = closedDateKeys({
+    dateKeys: monthKeys,
+    openWeekdays: new Set((availabilityRows ?? []).map((row) => row.day_of_week)),
+    overrides: overrideRows ?? [],
+  });
+  const isPickable = (key: string) => key >= todayKey && !closedDays.has(key);
+  // Without a chosen date, open on the first day the workshop is open this
+  // month rather than on a closed "today".
+  const selectedDate = requestedDate ?? monthKeys.find(isPickable) ?? todayKey;
 
   const prevMonthDate = new Date(year, monthIndex - 1, 1);
   const nextMonthDate = new Date(year, monthIndex + 1, 1);
@@ -278,8 +258,7 @@ export default async function GarageDetailPage({
   const currentMonthKey = monthKey(currentMonth.year, currentMonth.monthIndex);
   const canGoPrevMonth = displayedMonthKey > currentMonthKey;
   const maxMonthDate = new Date(currentMonth.year, currentMonth.monthIndex + 3, 1);
-  const canGoNextMonth =
-    nextMonthKeyValue <= monthKey(maxMonthDate.getFullYear(), maxMonthDate.getMonth());
+  const canGoNextMonth = nextMonthKeyValue <= monthKey(maxMonthDate.getFullYear(), maxMonthDate.getMonth());
 
   let slots: string[] = [];
   let isClosedOverride = false;
@@ -307,7 +286,7 @@ export default async function GarageDetailPage({
     }
   }
 
-  // ?time= only selects a slot for review; it must still be one of today's
+  // ?time= only selects a slot for review; it must still be one of the
   // offered slots (it may have been taken since the link was opened).
   const selectedTime = timeParam && slots.includes(timeParam) ? timeParam : null;
   const staleTime = Boolean(timeParam) && !selectedTime;
@@ -317,18 +296,18 @@ export default async function GarageDetailPage({
     day: "numeric",
     month: "long",
   });
-  const slotBaseHref = selectedService
-    ? keepVehicle(
-        `/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}${
-          monthParam ? `&month=${monthParam}` : ""
-        }`
-      )
-    : "";
+
+  const pageHref = (query: Record<string, string | undefined>) => {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) if (value) params.set(key, value);
+    return keepVehicle(`/${lang}/garages/${garageId}?${params.toString()}`);
+  };
+  const month = monthParam ? displayedMonthKey : undefined;
 
   const { data: vehicles } = user
     ? await supabase
         .from("vehicles")
-        .select("id, model, year, brands(name)")
+        .select("id, model, year, license_plate, brands(name)")
         .eq("client_id", user.id)
         .order("created_at", { ascending: false })
     : { data: null };
@@ -337,425 +316,483 @@ export default async function GarageDetailPage({
     id: string;
     model: string | null;
     year: number | null;
+    license_plate: string | null;
     brands: { name: string } | null;
   }[];
 
   const vehicleLabel = (vehicle: (typeof vehicleRows)[number]) =>
-    [vehicle.brands?.name, vehicle.model, vehicle.year]
+    [[vehicle.brands?.name, vehicle.model, vehicle.year].filter(Boolean).join(" "), vehicle.license_plate]
       .filter(Boolean)
-      .join(" ") || d.vehicleFallback;
+      .join(", ") || d.vehicleFallback;
 
-  const bookingSteps: { label: string; status: StepStatus }[] = [
-    { label: d.stepVehicle, status: vehicleRows.length > 0 ? "complete" : "upcoming" },
-    { label: d.stepService, status: serviceParam ? "complete" : "current" },
-    {
-      label: d.stepDateTime,
-      status: dateParam ? "complete" : serviceParam ? "current" : "upcoming",
-    },
-  ];
+  const errorMessage = error ? d.errors[error as keyof typeof d.errors] : undefined;
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <div>
-          <Link
-            href={keepVehicle(`/${lang}/garages`)}
-            className="text-sm font-medium underline"
+    <div className={CLIENT_PAGE}>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+        <Link href={keepVehicle(`/${lang}/garages`)} className={`${CLIENT_TEXT_LINK} self-start`}>
+          <ArrowLeft aria-hidden className="h-4 w-4" strokeWidth={2} />
+          {d.backToGarages}
+        </Link>
+
+        {/* Header: who, where, what they offer. */}
+        <header className={`${CLIENT_CARD} flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6`}>
+          <span
+            aria-hidden
+            className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-ink font-display text-2xl font-bold tracking-[-0.02em] text-surface"
           >
-            &larr; {d.backToGarages}
-          </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
-            {garage.name}
-          </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <VerificationBadge level={verificationLevel} labels={dictionary.verificationLevels} />
-            <span aria-hidden className="text-xs text-ink-muted">
-              {dictionary.verificationLevels[verificationLevel].description}
-            </span>
-          </div>
-          {(garage.address || garage.city) && (
-            <p className="mt-1 text-sm text-ink-muted">
-              {[garage.address, garage.city].filter(Boolean).join(", ")}
-            </p>
-          )}
-          <div className="mt-2 text-sm text-ink-muted">
-            {ratingAverage !== null ? (
-              <RatingPill
-                average={ratingAverage}
-                count={reviewRows.length}
-                label={dictionary.common.ratingSummary
-                  .replace("{rating}", ratingAverage.toFixed(1))
-                  .replace("{count}", String(reviewRows.length))}
-              />
-            ) : (
-              d.noReviewsYet
+            {monogram(garage.name)}
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">{garage.name}</h1>
+            {(garage.address || garage.city) && (
+              <p className="inline-flex items-center gap-1.5 text-sm text-ink-muted">
+                <MapPin aria-hidden className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                {[garage.address, garage.city].filter(Boolean).join(", ")}
+              </p>
             )}
-          </div>
-          {(capabilities.length > 0 || pricingLabel) && (
-            <ul className="mt-3 flex flex-wrap gap-2" aria-label={fields.servicesCapabilitiesTitle}>
-              {capabilities.map(({ icon: Icon, label }) => (
-                <li
-                  key={label}
-                  className="flex items-center gap-1.5 rounded-full border border-hairline bg-surface px-3 py-1 text-xs font-medium text-ink"
-                >
-                  <Icon className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400" strokeWidth={1.75} />
-                  {label}
+            <ul className="flex flex-wrap items-center gap-2 pt-1" aria-label={fields.servicesCapabilitiesTitle}>
+              <li>
+                <VerificationBadge level={verificationLevel} labels={dictionary.verificationLevels} />
+              </li>
+              {REVIEWS_ENABLED && ratingAverage !== null && (
+                <li>
+                  <RatingPill
+                    average={ratingAverage}
+                    count={reviewRows.length}
+                    label={dictionary.common.ratingSummary
+                      .replace("{rating}", ratingAverage.toFixed(1))
+                      .replace("{count}", String(reviewRows.length))}
+                  />
+                </li>
+              )}
+              {capabilities.map(({ key, icon, label }) => (
+                <li key={key}>
+                  <CapabilityPill icon={icon} label={label} />
                 </li>
               ))}
               {pricingLabel && (
-                <li className="rounded-full border border-hairline bg-surface px-3 py-1 text-xs font-medium text-ink-muted">
+                <li className="inline-flex items-center rounded-full bg-subtle px-2.5 py-1 text-xs font-semibold text-ink-muted">
                   {fields.pricingCategoryLabel}: {pricingLabel}
                 </li>
               )}
             </ul>
-          )}
-        </div>
-
-        {garage.description && (
-          <section aria-labelledby="about-title" className="flex flex-col gap-2">
-            <h2 id="about-title" className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-              {d.aboutTitle}
-            </h2>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
-              {garage.description}
-            </p>
-          </section>
-        )}
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <section
-            aria-labelledby="hours-title"
-            className="flex flex-col gap-3 rounded-xl border border-hairline bg-surface p-4"
-          >
-            <h2 id="hours-title" className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-              {fields.openingHoursTitle}
-            </h2>
-            {hasAnyOpeningHours(weeklyHours) ? (
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-                {weeklyHours.map((day) => (
-                  <div key={day.dayOfWeek} className="contents">
-                    <dt className="text-ink-muted">{fields.days[day.dayOfWeek]}</dt>
-                    <dd className="text-right font-medium text-ink">
-                      {day.ranges.length > 0 ? day.ranges.join(", ") : fields.closed}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            ) : (
-              <p className="text-sm text-ink-muted">{d.hoursNotPublished}</p>
-            )}
-          </section>
-
-          <section
-            aria-labelledby="contact-title"
-            className="flex flex-col gap-3 rounded-xl border border-hairline bg-surface p-4"
-          >
-            <h2 id="contact-title" className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-              {d.contactTitle}
-            </h2>
-            {garage.phone || garage.email || garage.website ? (
-              <ul className="flex flex-col gap-2 text-sm">
-                {garage.phone && (
-                  <li>
-                    <a href={`tel:${garage.phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-2 font-medium underline-offset-2 hover:underline">
-                      <Phone className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
-                      {garage.phone}
-                    </a>
-                  </li>
-                )}
-                {garage.email && (
-                  <li>
-                    <a href={`mailto:${garage.email}`} className="flex items-center gap-2 break-all font-medium underline-offset-2 hover:underline">
-                      <Mail className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
-                      {garage.email}
-                    </a>
-                  </li>
-                )}
-                {garage.website && (
-                  <li>
-                    <a
-                      href={garage.website}
-                      target="_blank"
-                      rel="noopener noreferrer nofollow"
-                      className="flex items-center gap-2 break-all font-medium underline-offset-2 hover:underline"
-                    >
-                      <Globe className="h-4 w-4 shrink-0 text-zinc-500" strokeWidth={1.75} />
-                      {garage.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
-                    </a>
-                  </li>
-                )}
-              </ul>
-            ) : (
-              <p className="text-sm text-ink-muted">{d.noContactDetails}</p>
-            )}
-          </section>
-        </div>
-
-        {languageLabels.length > 0 && (
-          <section className="flex flex-col gap-2 rounded-xl border border-hairline bg-surface p-4">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{fields.languagesSpokenLabel}</h2>
-            <p className="text-sm text-ink">{languageLabels.join(", ")}</p>
-          </section>
-        )}
-
-        {garage.latitude !== null && garage.longitude !== null && (
-          <GarageMapDisplay
-            latitude={garage.latitude}
-            longitude={garage.longitude}
-          />
-        )}
-
-        {error && d.errors[error as keyof typeof d.errors] && (
-          <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400">
-            {d.errors[error as keyof typeof d.errors]}
-          </p>
-        )}
-
-        {waitlisted === "1" && (
-          <p className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 dark:border-green-900 dark:bg-green-950 dark:text-green-400">
-            {d.waitlistedNotice}
-          </p>
-        )}
-
-        <BookingStepIndicator steps={bookingSteps} />
-
-        {/* "Book" on a search result card lands here. */}
-        <div id="book" className="flex scroll-mt-20 flex-col gap-3">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-            {d.chooseService}
-          </h2>
-          <div className="flex flex-col gap-5">
-            {serviceGroups.length > 0 ? (
-              serviceGroups.map((group) => (
-                <section
-                  key={group.category}
-                  aria-labelledby={`service-category-${group.category}`}
-                  className="flex flex-col gap-2"
-                >
-                  <h3
-                    id={`service-category-${group.category}`}
-                    className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted"
-                  >
-                    {dictionary.serviceCategories[group.category]}
-                  </h3>
-                  {group.services.map((service) => (
-                    <Link
-                      key={service.id}
-                      href={keepVehicle(`/${lang}/garages/${garageId}?service=${service.id}&date=${selectedDate}`)}
-                      className={`rounded-xl border p-4 transition-colors ${
-                        selectedService?.id === service.id
-                          ? "border-brand-600 bg-surface ring-1 ring-brand-600 dark:border-brand-500 dark:ring-brand-500"
-                          : "border-hairline bg-surface hover:border-hairline"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-ink">
-                          {service.name}
-                        </span>
-                        <span className="flex shrink-0 items-center gap-3 text-sm text-ink-muted">
-                          <span className="inline-flex items-center gap-1">
-                            <Clock aria-hidden className="h-4 w-4" strokeWidth={1.75} />
-                            <span className="font-mono">
-                              {service.duration_minutes} {d.min}
-                            </span>
-                          </span>
-                          <span className="font-mono font-semibold text-ink">
-                            {formatServicePrice(service, dictionary.servicePrice)}
-                          </span>
-                        </span>
-                      </div>
-                      {service.description && (
-                        <p className="mt-1 text-sm text-ink-muted">
-                          {service.description}
-                        </p>
-                      )}
-                    </Link>
-                  ))}
-                </section>
-              ))
-            ) : (
-              <p className="text-sm text-ink-muted">
-                {d.noServicesYet}
-              </p>
-            )}
           </div>
-        </div>
+        </header>
 
-        {selectedService && (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                  {d.chooseDate}
+        <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-12">
+          {/* Left: what the car needs, then everything about the workshop. */}
+          <div className="flex min-w-0 flex-col gap-8 lg:col-span-7">
+            <section id="book" aria-labelledby="services-title" className="flex scroll-mt-6 flex-col gap-5">
+              <div className="flex flex-col gap-1">
+                <h2 id="services-title" className="text-xl font-bold tracking-tight text-ink">
+                  {d.chooseService}
                 </h2>
-                <div className="flex items-center gap-1">
-                  {canGoPrevMonth ? (
-                    <Link
-                      href={keepVehicle(`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}&month=${prevMonthKey}`)}
-                      aria-label={d.previousMonth}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-subtle"
-                    >
-                      <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
-                    </Link>
+              </div>
+
+              {serviceGroups.length > 0 ? (
+                serviceGroups.map((group) => (
+                  <section
+                    key={group.category}
+                    aria-labelledby={`service-category-${group.category}`}
+                    className="flex flex-col gap-2.5"
+                  >
+                    <h3 id={`service-category-${group.category}`} className={CLIENT_SECTION_LABEL}>
+                      {dictionary.serviceCategories[group.category]}
+                    </h3>
+                    <ul className="flex flex-col gap-2.5">
+                      {group.services.map((service) => {
+                        const selected = selectedService?.id === service.id;
+                        return (
+                          <li key={service.id}>
+                            <Link
+                              href={pageHref({ service: service.id, date: dateParam, month })}
+                              scroll={false}
+                              aria-current={selected ? "true" : undefined}
+                              className={`flex items-start gap-4 rounded-2xl border bg-surface p-4 transition-all sm:p-5 ${
+                                selected
+                                  ? "border-ink shadow-[0_2px_8px_rgba(0,0,0,0.06)] ring-1 ring-ink"
+                                  : "border-zinc-200/70 shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:border-zinc-300 dark:border-hairline dark:shadow-none dark:hover:border-ink-muted/40"
+                              }`}
+                            >
+                              {/* Radio indicator */}
+                              <span
+                                aria-hidden
+                                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                                  selected ? "border-ink bg-ink text-surface" : "border-hairline"
+                                }`}
+                              >
+                                {selected && <Check className="h-3 w-3" strokeWidth={3.5} />}
+                              </span>
+                              <span className="flex min-w-0 flex-1 flex-col gap-1.5">
+                                <span className="text-base font-bold tracking-tight text-ink">{service.name}</span>
+                                {service.description && (
+                                  <span className="text-sm text-ink-muted">{service.description}</span>
+                                )}
+                                <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-full bg-subtle px-2.5 py-1 text-xs font-semibold tabular-nums text-ink-muted">
+                                  <Clock aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
+                                  {service.duration_minutes} {d.min}
+                                </span>
+                                {selected && <span className="sr-only">{d.selected}</span>}
+                              </span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </section>
+                ))
+              ) : (
+                <p className={`${CLIENT_CARD} p-6 text-sm text-ink-muted`}>{d.noServicesYet}</p>
+              )}
+            </section>
+
+            <section aria-labelledby="info-title" className="flex flex-col gap-4">
+              <h2 id="info-title" className="text-xl font-bold tracking-tight text-ink">
+                {d.infoTitle}
+              </h2>
+
+              {garage.description && (
+                <div className={`${CLIENT_CARD} flex flex-col gap-2 p-5 sm:p-6`}>
+                  <h3 className={CARD_HEADING}>{d.aboutTitle}</h3>
+                  <p className="whitespace-pre-line text-sm leading-relaxed text-ink-muted">{garage.description}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className={`${CLIENT_CARD} flex flex-col gap-3 p-5 sm:p-6`}>
+                  <h3 className={CARD_HEADING}>{fields.openingHoursTitle}</h3>
+                  {hasAnyOpeningHours(weeklyHours) ? (
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                      {weeklyHours.map((day) => (
+                        <div key={day.dayOfWeek} className="contents">
+                          <dt className="text-ink-muted">{fields.days[day.dayOfWeek]}</dt>
+                          <dd className="text-right font-medium tabular-nums text-ink">
+                            {day.ranges.length > 0 ? day.ranges.join(", ") : fields.closed}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
                   ) : (
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-300 dark:text-zinc-700">
-                      <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
-                    </span>
+                    <p className="text-sm text-ink-muted">{d.hoursNotPublished}</p>
                   )}
-                  <span className="min-w-28 text-center text-sm font-medium text-ink">
-                    {monthLabel}
-                  </span>
-                  {canGoNextMonth ? (
-                    <Link
-                      href={keepVehicle(`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}&month=${nextMonthKeyValue}`)}
-                      aria-label={d.nextMonth}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-subtle"
-                    >
-                      <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
-                    </Link>
+                </div>
+
+                <div className={`${CLIENT_CARD} flex flex-col gap-3 p-5 sm:p-6`}>
+                  <h3 className={CARD_HEADING}>{d.contactTitle}</h3>
+                  {garage.phone || garage.email || garage.website ? (
+                    <ul className="flex flex-col gap-2.5 text-sm">
+                      {garage.phone && (
+                        <li>
+                          <a
+                            href={`tel:${garage.phone.replace(/[^\d+]/g, "")}`}
+                            className="flex items-center gap-2 font-medium text-ink underline-offset-4 hover:underline"
+                          >
+                            <Phone aria-hidden className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} />
+                            {garage.phone}
+                          </a>
+                        </li>
+                      )}
+                      {garage.email && (
+                        <li>
+                          <a
+                            href={`mailto:${garage.email}`}
+                            className="flex items-center gap-2 break-all font-medium text-ink underline-offset-4 hover:underline"
+                          >
+                            <Mail aria-hidden className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} />
+                            {garage.email}
+                          </a>
+                        </li>
+                      )}
+                      {garage.website && (
+                        <li>
+                          <a
+                            href={garage.website}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            className="flex items-center gap-2 break-all font-medium text-ink underline-offset-4 hover:underline"
+                          >
+                            <Globe aria-hidden className="h-4 w-4 shrink-0 text-ink-muted" strokeWidth={1.75} />
+                            {garage.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                          </a>
+                        </li>
+                      )}
+                    </ul>
                   ) : (
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-300 dark:text-zinc-700">
-                      <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
-                    </span>
+                    <p className="text-sm text-ink-muted">{d.noContactDetails}</p>
+                  )}
+                  {languageLabels.length > 0 && (
+                    <p className="border-t border-hairline pt-3 text-sm text-ink-muted">
+                      <span className="font-semibold text-ink">{fields.languagesSpokenLabel}:</span>{" "}
+                      {languageLabels.join(", ")}
+                    </p>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-ink-muted">
-                {d.weekdays.map((label: string, index: number) => (
-                  <span key={index}>{label}</span>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {calendarCells.map(({ date, inMonth }) => {
-                  const key = toDateKey(date);
-                  const selectable = inMonth && key >= todayKey;
-                  const isSelected = key === selectedDate;
+              {garage.latitude !== null && garage.longitude !== null && (
+                <GarageMapDisplay
+                  latitude={garage.latitude}
+                  longitude={garage.longitude}
+                  className={`${CLIENT_CARD} h-64 w-full overflow-hidden`}
+                />
+              )}
+            </section>
 
-                  if (!selectable) {
-                    return (
-                      <span
-                        key={key}
-                        className="flex h-9 items-center justify-center rounded-lg text-sm text-zinc-300 dark:text-zinc-700"
-                      >
-                        {date.getDate()}
-                      </span>
-                    );
-                  }
+            {REVIEWS_ENABLED && (
+              <section aria-labelledby="reviews-title" className="flex flex-col gap-4">
+                <h2 id="reviews-title" className="text-xl font-bold tracking-tight text-ink">
+                  {d.reviews}
+                </h2>
+                {reviewRows.length > 0 ? (
+                  reviewRows.map((review) => (
+                    <div key={review.id} className={`${CLIENT_CARD} flex flex-col gap-2 p-5`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-semibold text-ink">
+                          {review.profiles?.full_name ?? d.clientFallback}
+                        </span>
+                        <StarRating
+                          rating={review.rating}
+                          label={dictionary.common.ratingOutOf.replace("{rating}", String(review.rating))}
+                        />
+                      </div>
+                      {review.comment && <p className="text-sm text-ink-muted">{review.comment}</p>}
+                      <p className="text-xs tabular-nums text-ink-muted">
+                        {new Date(review.created_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-ink-muted">{d.noReviewsYet}</p>
+                )}
+              </section>
+            )}
+          </div>
 
-                  return (
-                    <Link
-                      key={key}
-                      href={keepVehicle(`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${key}&month=${displayedMonthKey}`)}
-                      className={
-                        isSelected
-                          ? "flex h-9 items-center justify-center rounded-lg bg-brand-600 text-sm font-medium text-white dark:bg-brand-500"
-                          : "flex h-9 items-center justify-center rounded-lg text-sm text-ink transition-colors hover:bg-subtle"
-                      }
-                    >
-                      {date.getDate()}
-                    </Link>
-                  );
-                })}
-              </div>
+          {/* Right: the booking card stays in view while the services
+              scroll, so date, time and confirmation are always at hand. */}
+          <aside
+            aria-labelledby="booking-title"
+            className={`${CLIENT_CARD} flex flex-col lg:sticky lg:top-6 lg:col-span-5 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto`}
+          >
+            <div className="flex flex-col gap-1 border-b border-hairline px-5 py-4 sm:px-6">
+              <h2 id="booking-title" className="text-lg font-bold tracking-tight text-ink">
+                {d.yourAppointment}
+              </h2>
+              {selectedService ? (
+                <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-muted">
+                  <span className="font-semibold text-ink">{selectedService.name}</span>
+                  <span className="inline-flex items-center gap-1 tabular-nums">
+                    <Clock aria-hidden className="h-3.5 w-3.5" strokeWidth={2} />
+                    {selectedService.duration_minutes} {d.min}
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm text-ink-muted">{d.pickServiceFirst}</p>
+              )}
             </div>
 
-            <div className="flex flex-col gap-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-                {d.availableTimes}
-              </h2>
-              {slots.length > 0 ? (
-                <div className="flex flex-col gap-4">
-                  {/* Step 1: pick a time. Links, not submit buttons: a click
-                      only selects (?time=), it never books. */}
-                  {!selectedTime && (
-                    <p className="text-sm text-ink-muted">
-                      {d.selectTimeHint}
-                    </p>
-                  )}
-                  {staleTime && (
-                    <p
-                      role="alert"
-                      className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400"
-                    >
-                      {d.timeNoLongerAvailable}
-                    </p>
-                  )}
-                  <div className="flex flex-wrap gap-2">
-                    {slots.map((slot) => {
-                      const isSelectedSlot = slot === selectedTime;
+            {(errorMessage || waitlisted === "1") && (
+              <div className="px-5 pt-4 sm:px-6">
+                {errorMessage && (
+                  <p
+                    role="alert"
+                    className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+                  >
+                    {errorMessage}
+                  </p>
+                )}
+                {waitlisted === "1" && (
+                  <p
+                    role="status"
+                    className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-300"
+                  >
+                    {d.waitlistedNotice}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {selectedService && (
+              <>
+                {/* Date */}
+                <div className="flex flex-col gap-3 px-5 py-5 sm:px-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className={CARD_HEADING}>{d.chooseDate}</h3>
+                    <div className="flex items-center gap-1">
+                      {canGoPrevMonth ? (
+                        <Link
+                          href={pageHref({ service: selectedService.id, date: selectedDate, month: prevMonthKey })}
+                          scroll={false}
+                          aria-label={d.previousMonth}
+                          className={MONTH_NAV}
+                        >
+                          <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+                        </Link>
+                      ) : (
+                        <span aria-hidden className={`${MONTH_NAV} opacity-30`}>
+                          <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+                        </span>
+                      )}
+                      <span className="min-w-32 text-center text-sm font-semibold capitalize text-ink">{monthLabel}</span>
+                      {canGoNextMonth ? (
+                        <Link
+                          href={pageHref({ service: selectedService.id, date: selectedDate, month: nextMonthKeyValue })}
+                          scroll={false}
+                          aria-label={d.nextMonth}
+                          className={MONTH_NAV}
+                        >
+                          <ChevronRight className="h-4 w-4" strokeWidth={2} />
+                        </Link>
+                      ) : (
+                        <span aria-hidden className={`${MONTH_NAV} opacity-30`}>
+                          <ChevronRight className="h-4 w-4" strokeWidth={2} />
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-ink-muted">
+                    {d.weekdays.map((label: string, index: number) => (
+                      <span key={index}>{label}</span>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                    {calendarCells.map(({ date, inMonth }) => {
+                      const key = toDateKey(date);
+                      const selectable = inMonth && isPickable(key);
+                      const closed = inMonth && key >= todayKey && closedDays.has(key);
+                      const isSelected = key === selectedDate;
+
+                      if (!selectable) {
+                        return (
+                          <span
+                            key={key}
+                            aria-disabled="true"
+                            title={closed ? fields.closed : undefined}
+                            className={`flex h-10 items-center justify-center rounded-lg text-sm tabular-nums ${
+                              closed ? "text-ink-muted/50 line-through decoration-ink-muted/40" : "text-ink-muted/30"
+                            }`}
+                          >
+                            {date.getDate()}
+                            {closed && <span className="sr-only">, {fields.closed}</span>}
+                          </span>
+                        );
+                      }
+
                       return (
                         <Link
-                          key={slot}
-                          // Default scroll: Next scrolls to the #confirm-booking
-                          // panel (scroll={false} would suppress that).
-                          href={`${slotBaseHref}&time=${slot}#confirm-booking`}
-                          aria-current={isSelectedSlot ? "true" : undefined}
+                          key={key}
+                          href={pageHref({ service: selectedService.id, date: key, month: displayedMonthKey })}
+                          scroll={false}
+                          aria-current={isSelected ? "date" : undefined}
                           className={
-                            isSelectedSlot
-                              ? "rounded-xl border border-brand-600 bg-brand-600 px-4 py-2.5 font-mono text-sm font-semibold text-white dark:border-brand-500 dark:bg-brand-500"
-                              : "rounded-xl border border-hairline bg-surface px-4 py-2.5 font-mono text-sm font-semibold text-ink transition-colors hover:border-ink/30 hover:bg-subtle"
+                            isSelected
+                              ? "flex h-10 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold tabular-nums text-white dark:bg-brand-500"
+                              : `flex h-10 items-center justify-center rounded-lg text-sm font-medium tabular-nums text-ink transition-colors hover:bg-subtle ${
+                                  key === todayKey ? "ring-1 ring-inset ring-hairline" : ""
+                                }`
                           }
                         >
-                          {slot}
+                          {date.getDate()}
                         </Link>
                       );
                     })}
                   </div>
+                </div>
 
-                  {/* Step 2: review and confirm. */}
-                  {selectedTime && (
-                    <form
-                      id="confirm-booking"
-                      action={bookAppointment}
-                      aria-labelledby="confirm-booking-title"
-                      className="flex scroll-mt-6 flex-col gap-4 rounded-xl border border-hairline bg-surface p-5"
+                {/* Time */}
+                <div className="flex flex-col gap-3 border-t border-hairline px-5 py-5 sm:px-6">
+                  <h3 className={CARD_HEADING}>
+                    {d.availableTimes}
+                    <span className="ml-2 font-medium capitalize text-ink-muted">{selectedDateLabel}</span>
+                  </h3>
+                  {staleTime && (
+                    <p
+                      role="alert"
+                      className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300"
                     >
+                      {d.timeNoLongerAvailable}
+                    </p>
+                  )}
+                  {slots.length > 0 ? (
+                    // Links, not submit buttons: a click only selects (?time=),
+                    // it never books.
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {slots.map((slot) => {
+                        const isSelectedSlot = slot === selectedTime;
+                        return (
+                          <Link
+                            key={slot}
+                            href={pageHref({
+                              service: selectedService.id,
+                              date: selectedDate,
+                              month,
+                              time: slot,
+                            })}
+                            scroll={false}
+                            aria-current={isSelectedSlot ? "true" : undefined}
+                            className={
+                              isSelectedSlot
+                                ? "rounded-lg border border-brand-600 bg-brand-600 py-2.5 text-center text-sm font-semibold tabular-nums text-white dark:border-brand-500 dark:bg-brand-500"
+                                : "rounded-lg border border-hairline bg-surface py-2.5 text-center text-sm font-semibold tabular-nums text-ink transition-colors hover:border-ink/30 hover:bg-subtle"
+                            }
+                          >
+                            {slot}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-start gap-3">
+                      <p className="text-sm text-ink-muted">{isClosedOverride ? d.closedOnDate : d.noOpenTimes}</p>
+                      {alreadyOnWaitlist ? (
+                        <p className="text-sm font-medium text-ink">{d.alreadyOnWaitlistForDate}</p>
+                      ) : (
+                        <form action={joinWaitlist}>
+                          <input type="hidden" name="garageId" value={garageId} />
+                          <input type="hidden" name="serviceId" value={selectedService.id} />
+                          <input type="hidden" name="date" value={selectedDate} />
+                          <input type="hidden" name="lang" value={lang} />
+                          <button type="submit" className={CLIENT_SECONDARY_BUTTON}>
+                            <BellPlus aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+                            {d.joinWaitlistForDate}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Vehicle and confirmation: the form exists once a slot is
+                    chosen; until then the button says what's missing. */}
+                <div className="flex flex-col gap-4 border-t border-hairline px-5 py-5 sm:px-6">
+                  {selectedTime ? (
+                    <form id="confirm-booking" action={bookAppointment} className="flex flex-col gap-4">
                       <input type="hidden" name="garageId" value={garageId} />
                       <input type="hidden" name="serviceId" value={selectedService.id} />
                       <input type="hidden" name="date" value={selectedDate} />
                       <input type="hidden" name="startTime" value={selectedTime} />
                       <input type="hidden" name="lang" value={lang} />
 
-                      <h3
-                        id="confirm-booking-title"
-                        className="font-semibold text-ink"
-                      >
-                        {d.reviewTitle}
-                      </h3>
-                      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-                        <dt className="text-ink-muted">{d.reviewGarage}</dt>
-                        <dd className="font-medium text-ink">{garage.name}</dd>
-                        <dt className="text-ink-muted">{d.reviewService}</dt>
-                        <dd className="font-medium text-ink">
-                          {selectedService.name}{" "}
-                          <span className="font-normal text-ink-muted">
-                            ({selectedService.duration_minutes} {d.min})
-                          </span>
-                        </dd>
-                        <dt className="text-ink-muted">{d.reviewWhen}</dt>
-                        <dd className="font-medium text-ink first-letter:uppercase">
-                          {selectedDateLabel}, <span className="font-mono">{selectedTime}</span>
-                        </dd>
-                        <dt className="text-ink-muted">{d.reviewPrice}</dt>
-                        <dd className="font-medium tabular-nums text-ink">
-                          {formatServicePrice(selectedService, dictionary.servicePrice)}
-                        </dd>
-                      </dl>
+                      <p className="rounded-xl bg-subtle px-4 py-3 text-sm text-ink">
+                        <span className="font-semibold capitalize">{selectedDateLabel}</span>
+                        <span className="tabular-nums">, {selectedTime}</span>
+                        <span className="block text-ink-muted">{garage.name}</span>
+                      </p>
 
                       {vehicleRows.length > 0 ? (
-                        <div className="flex flex-col gap-1">
-                          <label htmlFor="vehicleId" className="text-sm font-medium">
+                        <div className="flex flex-col gap-1.5">
+                          <label htmlFor="vehicleId" className={CARD_HEADING}>
                             {d.vehicleLabel}
                           </label>
                           <select
                             id="vehicleId"
                             name="vehicleId"
                             defaultValue={
-                              vehicleRows.find((vehicle) => vehicle.id === bookingVehicleId)?.id ??
-                              vehicleRows[0].id
+                              vehicleRows.find((vehicle) => vehicle.id === bookingVehicleId)?.id ?? vehicleRows[0].id
                             }
-                            className="w-full max-w-xs rounded-md border border-hairline px-3 py-2 dark:bg-black"
+                            className={FIELD}
                           >
                             <option value="">{d.noVehicleSpecified}</option>
                             {vehicleRows.map((vehicle) => (
@@ -766,118 +803,46 @@ export default async function GarageDetailPage({
                           </select>
                         </div>
                       ) : (
-                        <Link
-                          href={`/${lang}/vehicles`}
-                          className="self-start text-sm font-medium underline"
-                        >
-                          {d.addVehicleFaster}
-                        </Link>
+                        user && (
+                          <Link href={`/${lang}/vehicles`} className={`${CLIENT_TEXT_LINK} self-start`}>
+                            {d.addVehicleFaster}
+                          </Link>
+                        )
                       )}
 
-                      <p className="flex items-start gap-2 rounded-md border border-hairline bg-subtle px-3 py-2 text-sm text-ink">
+                      <p className="flex items-start gap-2 text-sm text-ink-muted">
                         <Banknote aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
                         {d.payOnSiteNotice}
                       </p>
-                      <label className="flex items-start gap-2 text-sm text-ink">
-                        <input
-                          type="checkbox"
-                          name="termsAccepted"
-                          required
-                          className="mt-1"
-                        />
+                      <label className="flex items-start gap-2.5 text-sm text-ink">
+                        <input type="checkbox" name="termsAccepted" required className="mt-0.5 h-4 w-4 accent-ink" />
                         <span>
                           {d.agreeToThe}{" "}
-                          <Link href={`/${lang}/privacy`} className="underline">
+                          <Link href={`/${lang}/privacy`} className="font-medium underline underline-offset-4">
                             {d.bookingTermsLink}
                           </Link>
                           .
                         </span>
                       </label>
-                      <div className="flex flex-wrap items-center gap-3">
-                        <SubmitButton
-                          pendingLabel={d.confirming}
-                          className={CLIENT_PRIMARY_BUTTON}
-                        >
-                          {d.confirmBooking}
-                        </SubmitButton>
-                        <Link
-                          href={slotBaseHref}
-                          scroll={false}
-                          className="text-sm font-medium text-ink-muted underline hover:text-ink"
-                        >
-                          {d.changeTime}
-                        </Link>
-                      </div>
+                      <SubmitButton pendingLabel={d.confirming} className={`${CLIENT_PRIMARY_BUTTON} w-full py-3`}>
+                        {d.confirmBooking}
+                      </SubmitButton>
                     </form>
-                  )}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  <p className="text-sm text-ink-muted">
-                    {isClosedOverride ? d.closedOnDate : d.noOpenTimes}
-                  </p>
-                  {alreadyOnWaitlist ? (
-                    <p className="text-sm text-ink-muted">
-                      {d.alreadyOnWaitlistForDate}
-                    </p>
                   ) : (
-                    <form action={joinWaitlist}>
-                      <input type="hidden" name="garageId" value={garageId} />
-                      <input
-                        type="hidden"
-                        name="serviceId"
-                        value={selectedService.id}
-                      />
-                      <input type="hidden" name="date" value={selectedDate} />
-                      <input type="hidden" name="lang" value={lang} />
+                    slots.length > 0 && (
                       <button
-                        type="submit"
-                        className="self-start rounded-full border border-hairline px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
+                        type="button"
+                        disabled
+                        className={`${CLIENT_PRIMARY_BUTTON} w-full cursor-not-allowed py-3 opacity-40`}
                       >
-                        {d.joinWaitlistForDate}
+                        {d.pickTimeFirst}
                       </button>
-                    </form>
+                    )
                   )}
                 </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="flex flex-col gap-3">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
-            {d.reviews}
-          </h2>
-          {reviewRows.length > 0 ? (
-            reviewRows.map((review) => (
-              <div
-                key={review.id}
-                className="rounded-xl border border-hairline bg-surface p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-ink">
-                    {review.profiles?.full_name ?? d.clientFallback}
-                  </span>
-                  <StarRating
-                    rating={review.rating}
-                    label={dictionary.common.ratingOutOf.replace("{rating}", String(review.rating))}
-                  />
-                </div>
-                {review.comment && (
-                  <p className="mt-1 text-sm text-ink-muted">
-                    {review.comment}
-                  </p>
-                )}
-                <p className="mt-1 text-xs text-ink-muted">
-                  {new Date(review.created_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
-                </p>
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-ink-muted">
-              {d.noReviewsYet}
-            </p>
-          )}
+              </>
+            )}
+          </aside>
         </div>
       </div>
     </div>

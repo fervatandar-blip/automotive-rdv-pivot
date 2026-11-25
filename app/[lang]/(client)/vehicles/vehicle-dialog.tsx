@@ -148,7 +148,7 @@ function VehicleForm({
             spellCheck={false}
             placeholder="WVWZZZ1KZAW123456"
             aria-describedby={`${id}-vin-hint`}
-            className={`${INPUT} font-mono uppercase`}
+            className={`${INPUT} tabular-nums uppercase`}
           />
           <p id={`${id}-vin-hint`} className="text-xs text-ink-muted">
             {f.vinHint}

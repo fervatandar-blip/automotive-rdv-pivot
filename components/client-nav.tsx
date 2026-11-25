@@ -116,7 +116,7 @@ export function LocaleSwitch({ lang, labels }: { lang: Locale; labels: Pick<Clie
             }}
             aria-current={active ? "true" : undefined}
             lang={locale}
-            className={`rounded-md px-2.5 py-1 font-mono text-[11px] font-semibold transition-colors ${
+            className={`rounded-md px-2.5 py-1 tabular-nums text-[11px] font-semibold transition-colors ${
               active ? "bg-surface text-ink shadow-sm ring-1 ring-hairline" : "text-ink-muted hover:text-ink"
             }`}
           >
@@ -172,7 +172,7 @@ export function ClientSidebar({
               <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? "text-ink" : ""}`} strokeWidth={active ? 2 : 1.75} />
               <span className="flex-1">{item.label}</span>
               {item.unread > 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-ink px-1.5 font-mono text-[11px] font-semibold text-surface">
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-ink px-1.5 tabular-nums text-[11px] font-semibold text-surface">
                   <span aria-hidden>{item.unread > 99 ? "99+" : item.unread}</span>
                   <span className="sr-only">{unreadLabel(labels, item.unread)}</span>
                 </span>

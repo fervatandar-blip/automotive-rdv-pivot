@@ -10,15 +10,15 @@ import {
 } from "@/app/actions/profile";
 import { SubmitButton } from "@/components/submit-button";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
+import { CLIENT_PRIMARY_BUTTON } from "@/lib/client-ui";
 
 type D = Dictionary["account"];
 
 const INPUT =
-  "w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:focus:border-brand-500";
+  "w-full rounded-xl border border-hairline bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:focus:border-brand-500";
 const LABEL = "text-sm font-medium text-ink";
 const HINT = "text-xs text-ink-muted";
-const SAVE_BUTTON =
-  "inline-flex h-9 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60";
+const SAVE_BUTTON = CLIENT_PRIMARY_BUTTON;
 
 function FieldError({ keys, d }: { keys?: string[]; d: D }) {
   if (!keys?.length) return null;

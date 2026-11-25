@@ -9,7 +9,7 @@ import type { Dictionary } from "@/lib/i18n/get-dictionary";
 type D = Dictionary["garageAvailability"];
 
 const DATE_INPUT =
-  "rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm dark:border-zinc-800 dark:bg-zinc-950";
+  "rounded-lg border border-hairline bg-surface px-3 py-1.5 text-sm";
 
 /**
  * Close the garage for a date or a range (holidays, a summer break). "To"
@@ -28,7 +28,7 @@ export function ClosedDatesForm({ lang, d, today }: { lang: Locale; d: D; today:
       <input type="hidden" name="lang" value={lang} />
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <label htmlFor={`${id}-from`} className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor={`${id}-from`} className="text-xs font-medium text-ink-muted">
             {d.closedFrom}
           </label>
           <input
@@ -42,7 +42,7 @@ export function ClosedDatesForm({ lang, d, today }: { lang: Locale; d: D; today:
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label htmlFor={`${id}-to`} className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <label htmlFor={`${id}-to`} className="text-xs font-medium text-ink-muted">
             {d.closedTo}
           </label>
           <input
@@ -58,12 +58,12 @@ export function ClosedDatesForm({ lang, d, today }: { lang: Locale; d: D; today:
         <button
           type="submit"
           disabled={pending}
-          className="rounded-full bg-brand-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-600"
+          className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85 disabled:opacity-60"
         >
           {pending ? d.saving : d.addClosure}
         </button>
       </div>
-      <p id={`${id}-to-hint`} className="text-xs text-zinc-500 dark:text-zinc-400">
+      <p id={`${id}-to-hint`} className="text-xs text-ink-muted">
         {d.closedToHint}
       </p>
       {(fieldError(errors.from) || fieldError(errors.to)) && (

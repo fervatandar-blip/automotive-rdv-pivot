@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireSuperAdmin } from "@/lib/dal";
@@ -87,7 +88,7 @@ export default async function AdminGarageDetailPage({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <div className="flex items-start justify-between">
           <div>
@@ -95,19 +96,19 @@ export default async function AdminGarageDetailPage({
               href={`/${lang}/admin/garages`}
               className="text-sm font-medium underline"
             >
-              &larr; {d.backToAllGarages}
+              <ArrowLeft aria-hidden className="mr-1 inline h-4 w-4 align-[-3px]" strokeWidth={2} />{d.backToAllGarages}
             </Link>
-            <h1 className="mt-2 text-2xl font-semibold text-black dark:text-zinc-50">
+            <h1 className="mt-2 text-2xl font-semibold text-ink">
               {garage.name}
             </h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              {garage.city ?? d.noCitySet} &middot; {garage.email ?? d.noEmail}
+            <p className="text-sm text-ink-muted">
+              {garage.city ?? d.noCitySet}<span aria-hidden className="mx-2 inline-block h-1 w-1 rounded-full bg-current align-middle opacity-40" />{garage.email ?? d.noEmail}
             </p>
           </div>
           <LanguageSwitcher lang={lang} />
         </div>
 
-        <div className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+        <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6">
           <div className="flex flex-wrap items-center gap-3">
             <span
               className={`rounded-full px-3 py-1 text-sm font-medium ${STATUS_BADGE_CLASSNAME[garage.status] ?? ""}`}
@@ -121,7 +122,7 @@ export default async function AdminGarageDetailPage({
               <input type="hidden" name="status" value="approved" />
               <button
                 type="submit"
-                className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                className="rounded-full border border-hairline px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
               >
                 {d.approveGarage}
               </button>
@@ -132,7 +133,7 @@ export default async function AdminGarageDetailPage({
               <input type="hidden" name="status" value="rejected" />
               <button
                 type="submit"
-                className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                className="rounded-full border border-hairline px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
               >
                 {d.rejectGarage}
               </button>
@@ -149,7 +150,7 @@ export default async function AdminGarageDetailPage({
               id="verificationLevel"
               name="verificationLevel"
               defaultValue={garage.verification_level}
-              className="rounded-md border border-black/[.08] px-3 py-1.5 text-sm dark:border-white/[.145] dark:bg-black"
+              className="rounded-md border border-hairline px-3 py-1.5 text-sm bg-surface"
             >
               {VERIFICATION_LEVELS.map((level) => (
                 <option key={level} value={level}>
@@ -159,7 +160,7 @@ export default async function AdminGarageDetailPage({
             </select>
             <button
               type="submit"
-              className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+              className="rounded-full border border-hairline px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
             >
               {d.save}
             </button>
@@ -168,7 +169,7 @@ export default async function AdminGarageDetailPage({
 
         {DOCUMENT_CATEGORIES.map((category) => (
           <div key={category.key} className="flex flex-col gap-3">
-            <h2 className="font-semibold text-black dark:text-zinc-50">
+            <h2 className="font-semibold text-ink">
               {category.label}
             </h2>
 
@@ -179,10 +180,10 @@ export default async function AdminGarageDetailPage({
                 return (
                   <div
                     key={type.key}
-                    className="flex flex-col gap-2 rounded-xl border border-black/[.08] bg-white p-4 dark:border-white/[.145] dark:bg-zinc-950 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-2 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-4 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-black dark:text-zinc-50">
+                      <p className="text-sm font-medium text-ink">
                         {type.label}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -198,14 +199,14 @@ export default async function AdminGarageDetailPage({
                                 href={signedUrls.get(type.key)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-xs font-medium underline text-zinc-600 dark:text-zinc-400"
+                                className="text-xs font-medium underline text-ink-muted"
                               >
                                 {doc.file_name}
                               </a>
                             )}
                           </>
                         ) : (
-                          <span className="text-xs text-zinc-400 dark:text-zinc-600">
+                          <span className="text-xs text-ink-muted">
                             {d.notUploaded}
                           </span>
                         )}
@@ -221,7 +222,7 @@ export default async function AdminGarageDetailPage({
                           <input type="hidden" name="decision" value="approved" />
                           <button
                             type="submit"
-                            className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                            className="rounded-full border border-hairline px-3 py-1.5 text-xs font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
                           >
                             {d.approve}
                           </button>
@@ -235,11 +236,11 @@ export default async function AdminGarageDetailPage({
                             type="text"
                             name="notes"
                             placeholder={d.reasonPlaceholder}
-                            className="w-32 rounded-md border border-black/[.08] px-2 py-1 text-xs dark:border-white/[.145] dark:bg-black"
+                            className="w-32 rounded-md border border-hairline px-2 py-1 text-xs bg-surface"
                           />
                           <button
                             type="submit"
-                            className="rounded-full border border-black/[.08] px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                            className="rounded-full border border-hairline px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
                           >
                             {d.reject}
                           </button>

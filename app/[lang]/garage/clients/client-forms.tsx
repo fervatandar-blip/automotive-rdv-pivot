@@ -11,9 +11,9 @@ import type { Dictionary } from "@/lib/i18n/get-dictionary";
 type D = Dictionary["garageClients"];
 
 const SECONDARY_BUTTON =
-  "inline-flex items-center justify-center gap-1.5 rounded-full border border-zinc-200 px-3.5 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+  "inline-flex items-center justify-center gap-1.5 rounded-full border border-hairline px-3.5 py-1.5 text-sm font-medium text-ink transition-colors hover:bg-subtle hover:text-ink disabled:opacity-50";
 const PRIMARY_BUTTON =
-  "inline-flex items-center justify-center rounded-full bg-brand-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:cursor-wait disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-600";
+  "inline-flex items-center justify-center rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85 disabled:cursor-wait disabled:opacity-60";
 
 export type ClientDetailsValues = {
   kind: "client" | "walk_in";
@@ -63,7 +63,7 @@ export function ClientDetailsCard({
     return (
       <section aria-labelledby={`${id}-contact`} className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-2">
-          <h3 id={`${id}-contact`} className="text-sm font-semibold text-black dark:text-zinc-50">
+          <h3 id={`${id}-contact`} className="text-sm font-semibold text-ink">
             {d.contactTitle}
           </h3>
           {!values.anonymized && (
@@ -86,12 +86,12 @@ export function ClientDetailsCard({
               {values.phone ? (
                 <a
                   href={`tel:${values.phone.replace(/[^\d+]/g, "")}`}
-                  className="font-medium text-black hover:text-brand-600 dark:text-zinc-50 dark:hover:text-brand-400"
+                  className="font-medium text-ink hover:text-brand-600 dark:hover:text-brand-400"
                 >
                   {values.phone}
                 </a>
               ) : (
-                <span className="text-zinc-500 dark:text-zinc-400">{d.noPhone}</span>
+                <span className="text-ink-muted">{d.noPhone}</span>
               )}
             </dd>
           </div>
@@ -102,12 +102,12 @@ export function ClientDetailsCard({
               {values.email ? (
                 <a
                   href={`mailto:${values.email}`}
-                  className="text-black hover:text-brand-600 dark:text-zinc-50 dark:hover:text-brand-400"
+                  className="text-ink hover:text-brand-600 dark:hover:text-brand-400"
                 >
                   {values.email}
                 </a>
               ) : (
-                <span className="text-zinc-500 dark:text-zinc-400">—</span>
+                <span className="text-ink-muted">—</span>
               )}
             </dd>
           </div>
@@ -115,7 +115,7 @@ export function ClientDetailsCard({
             <div className="flex items-center gap-2.5">
               <dt className="sr-only">{d.preferredTimeLabel}</dt>
               <Clock aria-hidden className="h-4 w-4 shrink-0 text-zinc-400" />
-              <dd className="text-black dark:text-zinc-50">{values.preferredContactTime}</dd>
+              <dd className="text-ink">{values.preferredContactTime}</dd>
             </div>
           )}
           {values.isVip && (
@@ -127,13 +127,13 @@ export function ClientDetailsCard({
           )}
         </dl>
         <div className="flex flex-col gap-1.5">
-          <h3 className="text-sm font-semibold text-black dark:text-zinc-50">{d.notesTitle}</h3>
+          <h3 className="text-sm font-semibold text-ink">{d.notesTitle}</h3>
           {values.notes ? (
-            <p className="whitespace-pre-wrap rounded-lg bg-zinc-50 px-3 py-2 text-sm text-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-200">
+            <p className="whitespace-pre-wrap rounded-lg bg-subtle px-3 py-2 text-sm text-ink">
               {values.notes}
             </p>
           ) : (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.noNotes}</p>
+            <p className="text-sm text-ink-muted">{d.noNotes}</p>
           )}
         </div>
       </section>
@@ -145,7 +145,7 @@ export function ClientDetailsCard({
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="kind" value={values.kind} />
       <input type="hidden" name="subjectId" value={values.subjectId} />
-      <h3 className="text-sm font-semibold text-black dark:text-zinc-50">{d.editTitle}</h3>
+      <h3 className="text-sm font-semibold text-ink">{d.editTitle}</h3>
 
       {isWalkIn && (
         <div className="flex flex-col gap-1">
@@ -196,7 +196,7 @@ export function ClientDetailsCard({
         )}
       </div>
       {!isWalkIn && (
-        <p id={`${id}-phone-hint`} className="-mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+        <p id={`${id}-phone-hint`} className="-mt-2 text-xs text-ink-muted">
           {d.clientPhoneHint}
         </p>
       )}
@@ -306,7 +306,7 @@ export function AddVehicleForm({
     <form
       key={formKey}
       action={action}
-      className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-3 dark:border-zinc-800"
+      className="flex flex-col gap-3 rounded-lg border border-hairline p-3"
     >
       <input type="hidden" name="lang" value={lang} />
       <input type="hidden" name="customerId" value={customerId} />
@@ -322,7 +322,7 @@ export function AddVehicleForm({
             autoCapitalize="characters"
             spellCheck={false}
             defaultValue={echoed.plate}
-            className={`${FIELD_INPUT_CLASS} font-mono uppercase`}
+            className={`${FIELD_INPUT_CLASS} tabular-nums uppercase`}
           />
           <FieldError messages={errors.plate} translate={translate} />
         </div>
@@ -371,7 +371,7 @@ export function AddVehicleForm({
             spellCheck={false}
             autoCapitalize="characters"
             defaultValue={echoed.vin}
-            className={`${FIELD_INPUT_CLASS} font-mono uppercase`}
+            className={`${FIELD_INPUT_CLASS} tabular-nums uppercase`}
           />
           <FieldError messages={errors.vin} translate={translate} />
         </div>

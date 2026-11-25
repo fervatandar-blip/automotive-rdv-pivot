@@ -260,7 +260,7 @@ export default async function ClientMessagesPage({
                           {preview}
                         </p>
                         {conversation.unread > 0 && (
-                          <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-ink px-1.5 font-mono text-[11px] font-semibold text-surface">
+                          <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-ink px-1.5 tabular-nums text-[11px] font-semibold text-surface">
                             <span aria-hidden>{conversation.unread}</span>
                             <span className="sr-only">{d.unread.replace("{count}", String(conversation.unread))}</span>
                           </span>

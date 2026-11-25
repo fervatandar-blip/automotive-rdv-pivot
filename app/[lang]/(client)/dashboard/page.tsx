@@ -39,6 +39,7 @@ import {
   CLIENT_TINTED_PILL,
 } from "@/lib/client-ui";
 import { APP_TIME_ZONE } from "@/lib/timezone";
+import { REVIEWS_ENABLED } from "@/lib/features";
 
 // Upcoming visits listed under the next one; the rest live on Appointments.
 const MAX_FOLLOWING = 2;
@@ -132,7 +133,7 @@ function NextAppointment({
                     href={`/${lang}/appointments`}
                     className={`flex items-center gap-4 px-5 py-3.5 text-sm sm:px-6 ${CLIENT_ROW_HOVER}`}
                   >
-                    <span className="w-32 shrink-0 font-mono text-xs font-medium text-ink-muted">
+                    <span className="w-32 shrink-0 tabular-nums text-xs font-medium text-ink-muted">
                       {shortDate(upcoming.start_time, lang)} {formatTime(upcoming.start_time, lang)}
                     </span>
                     <span className="min-w-0 flex-1 truncate font-medium text-ink">
@@ -343,7 +344,7 @@ export default async function DashboardPage({
                     <p className="truncate font-display text-lg font-bold tracking-[-0.02em] text-ink">
                       {activeVehicleName}
                     </p>
-                    {activeVehicle.year && <p className="font-mono text-xs text-ink-muted">{activeVehicle.year}</p>}
+                    {activeVehicle.year && <p className="tabular-nums text-xs text-ink-muted">{activeVehicle.year}</p>}
                   </div>
                   {activeVehicle.license_plate?.trim() && (
                     <LicensePlate plate={activeVehicle.license_plate.trim()} label={d.plateLabel} />
@@ -353,13 +354,13 @@ export default async function DashboardPage({
                   {activeVehicle.vin && (
                     <>
                       <dt className="text-ink-muted">{v.vinLabel}</dt>
-                      <dd className="truncate text-right font-mono text-ink">{activeVehicle.vin}</dd>
+                      <dd className="truncate text-right tabular-nums text-ink">{activeVehicle.vin}</dd>
                     </>
                   )}
                   <dt className="text-ink-muted">{d.lastVisit}</dt>
                   <dd className="truncate text-right">
                     {lastVisit ? (
-                      <span className="font-mono text-ink">{shortDate(lastVisit.start_time, lang, true)}</span>
+                      <span className="tabular-nums text-ink">{shortDate(lastVisit.start_time, lang, true)}</span>
                     ) : (
                       <span className="text-ink-muted">{d.noRecentService}</span>
                     )}
@@ -393,18 +394,20 @@ export default async function DashboardPage({
                 label={dictionary.clientNav.messages}
                 detail={unread > 0 ? d.unreadMessages.replace("{count}", String(unread)) : undefined}
               />
-              <QuickAction
-                href={`/${lang}/appointments?tab=past`}
-                icon={Star}
-                label={d.leaveAReview}
-                detail={
-                  toReview === 0
-                    ? undefined
-                    : toReview === 1
-                      ? d.reviewPendingOne
-                      : d.reviewPendingMany.replace("{count}", String(toReview))
-                }
-              />
+              {REVIEWS_ENABLED && (
+                <QuickAction
+                  href={`/${lang}/appointments?tab=past`}
+                  icon={Star}
+                  label={d.leaveAReview}
+                  detail={
+                    toReview === 0
+                      ? undefined
+                      : toReview === 1
+                        ? d.reviewPendingOne
+                        : d.reviewPendingMany.replace("{count}", String(toReview))
+                  }
+                />
+              )}
               <QuickAction
                 href={`/${lang}/appointments?tab=waitlist`}
                 icon={Hourglass}

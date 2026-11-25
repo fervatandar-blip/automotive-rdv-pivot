@@ -1,4 +1,5 @@
 import { requireGarageMember } from "@/lib/dal";
+import { CLIENT_CARD } from "@/lib/client-ui";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
@@ -20,7 +21,7 @@ export default async function GarageServicesPage({
 
   const { data: services } = await supabase
     .from("services")
-    .select("id, name, description, category, duration_minutes, pricing_type, price")
+    .select("id, name, description, category, duration_minutes")
     .eq("garage_id", garage.id)
     .order("created_at", { ascending: true });
 
@@ -29,35 +30,40 @@ export default async function GarageServicesPage({
   const categoryLabels = dictionary.serviceCategories;
 
   return (
-    <div className="flex flex-1 flex-col bg-zinc-50 px-4 py-8 dark:bg-zinc-950 sm:px-8 sm:py-10">
+    <div className="flex flex-1 flex-col bg-canvas px-4 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
         <header>
-          <h1 className="text-2xl font-semibold tracking-tight text-black dark:text-zinc-50">{d.title}</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{d.subtitle}</p>
+          <h1 className="text-2xl font-bold tracking-tight text-ink">{d.title}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{d.subtitle}</p>
         </header>
 
         <section aria-labelledby="service-list-title" className="flex flex-col">
-          <h2 id="service-list-title" className="text-base font-semibold text-black dark:text-zinc-50">
+          <h2 id="service-list-title" className="text-base font-semibold text-ink">
             {d.listTitle}
           </h2>
           {groups.length > 0 ? (
             <div className="mt-2 flex flex-col gap-6">
               {groups.map((group) => (
-                <section key={group.category} aria-labelledby={`category-${group.category}`}>
+                <section
+                  key={group.category}
+                  aria-labelledby={`category-${group.category}`}
+                  className={`${CLIENT_CARD} px-5 pt-4 sm:px-6`}
+                >
                   <h3
                     id={`category-${group.category}`}
-                    className="border-b border-zinc-200/80 pb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:border-zinc-800/50 dark:text-zinc-400"
+                    className="flex items-center gap-2 border-b border-hairline pb-3 text-base font-bold tracking-tight text-ink"
                   >
                     {categoryLabels[group.category]}
-                    <span className="ml-1.5 font-normal tabular-nums">· {group.services.length}</span>
+                    <span className="rounded-full bg-subtle px-2 py-0.5 text-xs font-semibold tabular-nums text-ink-muted">
+                      {group.services.length}
+                    </span>
                   </h3>
-                  <ul className="divide-y divide-zinc-200/80 dark:divide-zinc-800/50">
+                  <ul className="divide-y divide-hairline">
                     {group.services.map((service) => (
                       <ServiceRow
                         key={service.id}
                         service={service}
                         d={d}
-                        priceLabels={dictionary.servicePrice}
                         categoryLabels={categoryLabels}
                       />
                     ))}
@@ -66,7 +72,7 @@ export default async function GarageServicesPage({
               ))}
             </div>
           ) : (
-            <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{d.noServicesYet}</p>
+            <p className="mt-2 text-sm text-ink-muted">{d.noServicesYet}</p>
           )}
         </section>
 

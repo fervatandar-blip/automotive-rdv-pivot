@@ -51,7 +51,7 @@ function OnboardingStepIndicator({
                   ? "flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-white dark:bg-brand-500"
                   : step.status === "current"
                     ? "flex h-7 w-7 items-center justify-center rounded-full border-2 border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-400"
-                    : "flex h-7 w-7 items-center justify-center rounded-full border-2 border-zinc-300 text-zinc-400 dark:border-zinc-700 dark:text-zinc-500"
+                    : "flex h-7 w-7 items-center justify-center rounded-full border-2 border-hairline text-ink-muted"
               }
             >
               {step.status === "complete" ? (
@@ -63,8 +63,8 @@ function OnboardingStepIndicator({
             <span
               className={
                 step.status === "upcoming"
-                  ? "hidden text-xs font-medium text-zinc-400 dark:text-zinc-500 sm:block"
-                  : "hidden text-xs font-medium text-black dark:text-zinc-50 sm:block"
+                  ? "hidden text-xs font-medium text-ink-muted sm:block"
+                  : "hidden text-xs font-medium text-ink sm:block"
               }
             >
               {step.label}
@@ -233,7 +233,7 @@ export function OnboardingForm({
   }));
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <form
         ref={formRef}
         action={action}
@@ -245,10 +245,10 @@ export function OnboardingForm({
             /garage/profile). app/[lang]/garage/layout.tsx renders the
             "Back to dashboard" link in its minimal pre-onboarding header. */}
         <div>
-          <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
+          <h1 className="text-2xl font-bold tracking-tight text-ink">
             {d.setupTitle}
           </h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="mt-1 text-sm text-ink-muted">
             {d.setupDescription}
           </p>
         </div>
@@ -261,8 +261,8 @@ export function OnboardingForm({
         <OnboardingStepIndicator steps={stepItems} />
 
         <div hidden={step !== 0} className="flex flex-col gap-8">
-          <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-            <h2 className="font-semibold text-black dark:text-zinc-50">
+          <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6">
+            <h2 className="font-semibold text-ink">
               {d.garageDetails}
             </h2>
 
@@ -274,7 +274,7 @@ export function OnboardingForm({
                 id="name"
                 name="name"
                 defaultValue={garage.name}
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                className="rounded-md border border-hairline px-3 py-2 bg-surface"
               />
               {state?.errors?.name && (
                 <p className="text-sm text-red-600">{state.errors.name[0]}</p>
@@ -290,7 +290,7 @@ export function OnboardingForm({
                 name="description"
                 rows={3}
                 defaultValue={garage.description ?? ""}
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                className="rounded-md border border-hairline px-3 py-2 bg-surface"
               />
               {state?.errors?.description && (
                 <p className="text-sm text-red-600">
@@ -308,7 +308,7 @@ export function OnboardingForm({
                   id="address"
                   name="address"
                   defaultValue={garage.address ?? ""}
-                  className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                  className="rounded-md border border-hairline px-3 py-2 bg-surface"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -319,7 +319,7 @@ export function OnboardingForm({
                   id="city"
                   name="city"
                   defaultValue={garage.city ?? ""}
-                  className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                  className="rounded-md border border-hairline px-3 py-2 bg-surface"
                 />
               </div>
             </div>
@@ -333,7 +333,7 @@ export function OnboardingForm({
                   id="phone"
                   name="phone"
                   defaultValue={garage.phone ?? ""}
-                  className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                  className="rounded-md border border-hairline px-3 py-2 bg-surface"
                 />
               </div>
               <div className="flex flex-col gap-1">
@@ -345,7 +345,7 @@ export function OnboardingForm({
                   name="email"
                   type="email"
                   defaultValue={garage.email ?? ""}
-                  className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                  className="rounded-md border border-hairline px-3 py-2 bg-surface"
                 />
                 {state?.errors?.email && (
                   <p className="text-sm text-red-600">{state.errors.email[0]}</p>
@@ -363,9 +363,9 @@ export function OnboardingForm({
                 type="url"
                 placeholder="https://yourworkshop.lu"
                 defaultValue={garage.website ?? ""}
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                className="rounded-md border border-hairline px-3 py-2 bg-surface"
               />
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-ink-muted">
                 {d.websiteHint}
               </p>
               {state?.errors?.website && (
@@ -403,9 +403,9 @@ export function OnboardingForm({
                   name="registrationNumber"
                   defaultValue={garage.registration_number ?? ""}
                   placeholder={registrationConfig.placeholder}
-                  className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                  className="rounded-md border border-hairline px-3 py-2 bg-surface"
                 />
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                <p className="text-xs text-ink-muted">
                   {registrationConfig.hint}
                 </p>
                 {state?.errors?.registrationNumber && (
@@ -425,9 +425,9 @@ export function OnboardingForm({
                 name="vatNumber"
                 defaultValue={garage.vat_number ?? ""}
                 placeholder="LU12345678"
-                className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                className="rounded-md border border-hairline px-3 py-2 bg-surface"
               />
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-ink-muted">
                 {d.vatNumberHint}
               </p>
             </div>
@@ -435,8 +435,8 @@ export function OnboardingForm({
         </div>
 
         <div hidden={step !== 1}>
-          <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-            <h2 className="font-semibold text-black dark:text-zinc-50">
+          <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6">
+            <h2 className="font-semibold text-ink">
               {d.locationTitle}
             </h2>
             <GarageMapPicker
@@ -447,12 +447,12 @@ export function OnboardingForm({
         </div>
 
         <div hidden={step !== 2}>
-          <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
+          <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6">
             <div>
-              <h2 className="font-semibold text-black dark:text-zinc-50">
+              <h2 className="font-semibold text-ink">
                 {d.openingHoursTitle}
               </h2>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="mt-1 text-sm text-ink-muted">
                 {d.openingHoursHint}
               </p>
             </div>
@@ -473,7 +473,7 @@ export function OnboardingForm({
                       name={`hours_${index}_open`}
                       aria-label={`${day} ${d.opensAt}`}
                       defaultValue="09:00"
-                      className="rounded-md border border-black/[.08] px-2 py-1 dark:border-white/[.145] dark:bg-black"
+                      className="rounded-md border border-hairline px-2 py-1 bg-surface"
                     />
                     <span>&ndash;</span>
                     <input
@@ -481,7 +481,7 @@ export function OnboardingForm({
                       name={`hours_${index}_close`}
                       aria-label={`${day} ${d.closesAt}`}
                       defaultValue="18:00"
-                      className="rounded-md border border-black/[.08] px-2 py-1 dark:border-white/[.145] dark:bg-black"
+                      className="rounded-md border border-hairline px-2 py-1 bg-surface"
                     />
                   </div>
                 );
@@ -491,8 +491,8 @@ export function OnboardingForm({
         </div>
 
         <div hidden={step !== 3}>
-          <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-            <h2 className="font-semibold text-black dark:text-zinc-50">
+          <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6">
+            <h2 className="font-semibold text-ink">
               {d.servicesCapabilitiesTitle}
             </h2>
 
@@ -540,7 +540,7 @@ export function OnboardingForm({
                   type="number"
                   min="0"
                   defaultValue={garage.technician_count ?? ""}
-                  className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                  className="rounded-md border border-hairline px-3 py-2 bg-surface"
                 />
                 {state?.errors?.technicianCount && (
                   <p className="text-sm text-red-600">
@@ -569,56 +569,56 @@ export function OnboardingForm({
 
         <div hidden={step !== LAST_STEP} className="flex flex-col gap-8">
           {summary && (
-            <div className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-              <h2 className="font-semibold text-black dark:text-zinc-50">
+            <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6">
+              <h2 className="font-semibold text-ink">
                 {d.reviewTitle}
               </h2>
               <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewName}</dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.reviewName}</dt>
+                  <dd className="font-medium text-ink">
                     {summary.name || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewAddress}</dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.reviewAddress}</dt>
+                  <dd className="font-medium text-ink">
                     {[summary.address, summary.city].filter(Boolean).join(", ") || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewPhone}</dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.reviewPhone}</dt>
+                  <dd className="font-medium text-ink">
                     {summary.phone || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewBusinessEmail}</dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.reviewBusinessEmail}</dt>
+                  <dd className="font-medium text-ink">
                     {summary.email || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewWebsite}</dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.reviewWebsite}</dt>
+                  <dd className="font-medium text-ink">
                     {summary.website || "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewMapPin}</dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.reviewMapPin}</dt>
+                  <dd className="font-medium text-ink">
                     {summary.hasLocation ? d.mapPinSet : d.mapPinNotSet}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewOpeningHours}</dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.reviewOpeningHours}</dt>
+                  <dd className="font-medium text-ink">
                     {summary.openDaysCount} {d.daysOpenSuffix}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewCapabilities}</dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.reviewCapabilities}</dt>
+                  <dd className="font-medium text-ink">
                     {[
                       summary.evCapable && d.evCapableShort,
                       summary.mobileService && d.mobileServiceShort,
@@ -629,10 +629,10 @@ export function OnboardingForm({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">
+                  <dt className="text-ink-muted">
                     {d.reviewPricingTechnicians}
                   </dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
+                  <dd className="font-medium text-ink">
                     {[
                       summary.pricingCategory || d.pricingNotSet,
                       summary.technicianCount
@@ -644,8 +644,8 @@ export function OnboardingForm({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewLanguages}</dt>
-                  <dd className="font-medium text-black dark:text-zinc-50">
+                  <dt className="text-ink-muted">{d.reviewLanguages}</dt>
+                  <dd className="font-medium text-ink">
                     {summary.languages.length > 0
                       ? summary.languages
                           .map(
@@ -662,11 +662,11 @@ export function OnboardingForm({
             </div>
           )}
 
-          <section className="flex flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950">
-            <h2 className="font-semibold text-black dark:text-zinc-50">
+          <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-6">
+            <h2 className="font-semibold text-ink">
               {d.platformTermsTitle}
             </h2>
-            <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <label className="flex items-start gap-2 text-sm text-ink">
               <input
                 type="checkbox"
                 name="platformTermsAccepted"
@@ -688,7 +688,7 @@ export function OnboardingForm({
             <button
               type="button"
               onClick={goBack}
-              className="rounded-full border border-black/[.08] px-6 py-2.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+              className="rounded-full border border-hairline px-6 py-2.5 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
             >
               {d.back}
             </button>
@@ -703,7 +703,7 @@ export function OnboardingForm({
             type="button"
             onClick={goNext}
             hidden={step === LAST_STEP}
-            className="rounded-full bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+            className="rounded-xl bg-ink px-6 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85"
           >
             {d.next}
           </button>
@@ -711,7 +711,7 @@ export function OnboardingForm({
             hidden={step !== LAST_STEP}
             disabled={pending}
             type="submit"
-            className="rounded-full bg-brand-600 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600"
+            className="rounded-xl bg-ink px-6 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85 disabled:opacity-50"
           >
             {pending ? d.savingPending : d.completeSetup}
           </button>

@@ -16,7 +16,7 @@ export function DirectoryStats({
       label: d.kpiTotal,
       value: stats.total,
       icon: Users,
-      accent: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300",
+      accent: "bg-subtle text-zinc-600 dark:text-zinc-300",
     },
     {
       label: d.kpiActiveThisMonth,
@@ -39,7 +39,7 @@ export function DirectoryStats({
         return (
           <div
             key={card.label}
-            className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white p-3 sm:p-4 dark:border-zinc-800 dark:bg-zinc-900/50"
+            className="flex items-center gap-3 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none p-3 sm:p-4"
           >
             <span
               aria-hidden
@@ -48,8 +48,8 @@ export function DirectoryStats({
               <Icon className="h-4 w-4" strokeWidth={2} />
             </span>
             <div className="min-w-0">
-              <dt className="truncate text-xs font-medium text-zinc-500 dark:text-zinc-400">{card.label}</dt>
-              <dd className="text-xl font-semibold tabular-nums text-black sm:text-2xl dark:text-zinc-50">
+              <dt className="truncate text-xs font-medium text-ink-muted">{card.label}</dt>
+              <dd className="text-xl font-semibold tabular-nums text-ink sm:text-2xl">
                 {card.value}
               </dd>
             </div>

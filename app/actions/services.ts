@@ -24,15 +24,13 @@ export async function createService(
     description: formData.get("description") || undefined,
     durationMinutes: formData.get("durationMinutes"),
     category: formData.get("category"),
-    pricingType: formData.get("pricingType") ?? "fixed",
-    price: formData.get("price") ?? undefined,
   });
 
   if (!validatedFields.success) {
     return { errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { name, description, durationMinutes, category, pricingType, price } =
+  const { name, description, durationMinutes, category } =
     validatedFields.data;
   const supabase = await createClient();
 
@@ -42,8 +40,6 @@ export async function createService(
     description,
     duration_minutes: durationMinutes,
     category,
-    pricing_type: pricingType,
-    price,
   });
 
   if (error) {
@@ -71,15 +67,13 @@ export async function updateService(
     description: formData.get("description") || undefined,
     durationMinutes: formData.get("durationMinutes"),
     category: formData.get("category"),
-    pricingType: formData.get("pricingType") ?? "fixed",
-    price: formData.get("price") ?? undefined,
   });
 
   if (!validatedFields.success) {
     return { errors: validatedFields.error.flatten().fieldErrors };
   }
 
-  const { name, description, durationMinutes, category, pricingType, price } =
+  const { name, description, durationMinutes, category } =
     validatedFields.data;
   const supabase = await createClient();
 
@@ -90,8 +84,6 @@ export async function updateService(
       description,
       duration_minutes: durationMinutes,
       category,
-      pricing_type: pricingType,
-      price,
     })
     .eq("id", id)
     .eq("garage_id", garage.id);

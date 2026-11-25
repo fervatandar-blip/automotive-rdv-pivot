@@ -22,7 +22,7 @@ type D = Dictionary["garageClients"];
 
 // Plates as physical-plate-ish pills; light and dark variants of the same look.
 const PLATE_PILL =
-  "inline-flex shrink-0 items-center rounded border border-zinc-300 bg-zinc-100 px-2 py-0.5 font-mono text-xs uppercase tracking-wide text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200";
+  "inline-flex shrink-0 items-center rounded border border-hairline bg-subtle px-2 py-0.5 tabular-nums text-xs uppercase tracking-wide text-ink";
 
 // Five columns from md up; below that each row stacks.
 const ROW_GRID =
@@ -139,9 +139,9 @@ export function ClientDirectory({
       : d.clientCount.replace("{count}", String(clients.length));
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/30">
+    <div className="overflow-hidden rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none">
       {/* Toolbar */}
-      <div className="flex flex-col gap-3 border-b border-zinc-200 p-3 lg:flex-row lg:items-center dark:border-zinc-800">
+      <div className="flex flex-col gap-3 border-b border-hairline p-3 lg:flex-row lg:items-center">
         <div className="relative min-w-0 flex-1">
           <Search
             aria-hidden
@@ -159,7 +159,7 @@ export function ClientDirectory({
             aria-label={d.searchLabel}
             autoComplete="off"
             spellCheck={false}
-            className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2 pl-9 pr-9 text-sm focus:border-brand-600 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-800 dark:bg-zinc-950/60 dark:focus:bg-zinc-950"
+            className="w-full rounded-lg border border-hairline bg-zinc-50 py-2 pl-9 pr-9 text-sm focus:border-brand-600 focus:bg-surface focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:bg-zinc-950/60"
           />
           {query && (
             <button
@@ -179,7 +179,7 @@ export function ClientDirectory({
           <div
             role="group"
             aria-label={d.filtersLabel}
-            className="inline-flex rounded-lg border border-zinc-200 bg-zinc-100/80 p-0.5 dark:border-zinc-800 dark:bg-zinc-950/60"
+            className="inline-flex rounded-lg border border-hairline bg-zinc-100/80 p-0.5 dark:bg-zinc-950/60"
           >
             {DIRECTORY_FILTERS.map((option) => (
               <button
@@ -192,15 +192,15 @@ export function ClientDirectory({
                 }}
                 className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   filter === option
-                    ? "bg-white text-black shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
-                    : "text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                    ? "bg-white text-ink shadow-sm dark:bg-zinc-800"
+                    : "text-ink-muted hover:text-ink"
                 }`}
               >
                 {filterLabels[option]}
               </button>
             ))}
           </div>
-          <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <label className="flex items-center gap-2 text-sm text-ink-muted">
             <span className="sr-only sm:not-sr-only">{d.sortLabel}</span>
             <select
               value={sort}
@@ -210,7 +210,7 @@ export function ClientDirectory({
                 syncUrl({ sort: next });
               }}
               aria-label={d.sortLabel}
-              className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-sm text-black dark:border-zinc-800 dark:bg-zinc-950/60 dark:text-zinc-50"
+              className="rounded-lg border border-hairline bg-surface px-2.5 py-1.5 text-sm text-ink"
             >
               {DIRECTORY_SORTS.map((option) => (
                 <option key={option} value={option}>
@@ -223,7 +223,7 @@ export function ClientDirectory({
       </div>
 
       {results.length === 0 ? (
-        <p className="px-6 py-14 text-center text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
+        <p className="px-6 py-14 text-center text-sm text-ink-muted" aria-live="polite">
           {clients.length === 0 ? d.noClientsYet : d.noMatches}
         </p>
       ) : (
@@ -231,7 +231,7 @@ export function ClientDirectory({
           <div role="rowgroup" className="hidden md:block">
             <div
               role="row"
-              className={`${ROW_GRID} border-b border-zinc-200 bg-zinc-50/80 px-4 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400`}
+              className={`${ROW_GRID} border-b border-hairline bg-subtle px-4 py-2 text-xs font-medium uppercase tracking-wide text-ink-muted`}
             >
               <span role="columnheader">{d.colClient}</span>
               <span role="columnheader">{d.colTags}</span>
@@ -243,7 +243,7 @@ export function ClientDirectory({
             </div>
           </div>
 
-          <div role="rowgroup" className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
+          <div role="rowgroup" className="divide-y divide-hairline">
             {results.map((client) => {
               const shownVehicles = client.vehicles.slice(0, MAX_VEHICLES_SHOWN);
               const hiddenVehicles = client.vehicles.length - shownVehicles.length;
@@ -255,14 +255,14 @@ export function ClientDirectory({
                   className={`group relative flex flex-col gap-3 px-4 py-3.5 transition md:py-3 ${ROW_GRID} ${
                     selected
                       ? "bg-brand-50/70 dark:bg-brand-500/[.07]"
-                      : "hover:bg-zinc-50 dark:hover:bg-zinc-900/40"
+                      : "hover:bg-subtle"
                   }`}
                 >
                   {/* 1. Client & contact */}
                   <div role="cell" className="flex min-w-0 items-center gap-3">
                     <span
                       aria-hidden
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-subtle text-xs font-semibold text-ink"
                     >
                       {initials(client.name)}
                     </span>
@@ -271,21 +271,21 @@ export function ClientDirectory({
                       <Link
                         href={hrefFor(client)}
                         scroll={false}
-                        className="block truncate text-sm font-semibold text-black after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-brand-600/50 dark:text-zinc-50"
+                        className="block truncate text-sm font-semibold text-ink after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-brand-600/50"
                       >
                         {client.name}
                       </Link>
                       {client.phone && (
                         <a
                           href={`tel:${client.phone.replace(/[^\d+]/g, "")}`}
-                          className="relative z-10 mt-0.5 inline-flex items-center gap-1.5 text-sm font-medium text-zinc-800 hover:text-brand-600 dark:text-zinc-200 dark:hover:text-brand-400"
+                          className="relative z-10 mt-0.5 inline-flex items-center gap-1.5 text-sm font-medium text-ink hover:text-brand-600 dark:hover:text-brand-400"
                         >
                           <Phone aria-hidden className="h-3.5 w-3.5 text-zinc-400" />
                           {client.phone}
                         </a>
                       )}
                       {client.email && (
-                        <p className="flex min-w-0 items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                        <p className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted">
                           <Mail aria-hidden className="h-3 w-3 shrink-0" />
                           <span className="truncate">{client.email}</span>
                         </p>
@@ -305,13 +305,13 @@ export function ClientDirectory({
                       </span>
                     )}
                     {client.hasNotes && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-subtle px-2 py-0.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-300">
                         <NotebookPen aria-hidden className="h-3 w-3" />
                         {d.notesBadge}
                       </span>
                     )}
                     {client.kind === "walk_in" && (
-                      <span className="rounded-full border border-zinc-200 px-2 py-0.5 text-[11px] font-medium text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                      <span className="rounded-full border border-hairline px-2 py-0.5 text-[11px] font-medium text-ink-muted">
                         {d.walkInBadge}
                       </span>
                     )}
@@ -320,7 +320,7 @@ export function ClientDirectory({
                   {/* 3. Vehicles */}
                   <div role="cell" className="flex min-w-0 flex-col gap-1 pl-12 md:pl-0">
                     {shownVehicles.length === 0 ? (
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500">{d.noVehiclesShort}</span>
+                      <span className="text-xs text-ink-muted">{d.noVehiclesShort}</span>
                     ) : (
                       shownVehicles.map((vehicle) => (
                         <div key={vehicle.id} className="flex min-w-0 items-center gap-2">
@@ -333,12 +333,12 @@ export function ClientDirectory({
                               {vehicle.licensePlate}
                             </span>
                           )}
-                          <span className="truncate text-xs text-zinc-600 dark:text-zinc-400">{vehicle.label}</span>
+                          <span className="truncate text-xs text-ink-muted">{vehicle.label}</span>
                         </div>
                       ))
                     )}
                     {hiddenVehicles > 0 && (
-                      <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                      <span className="text-[11px] text-ink-muted">
                         {d.moreVehicles.replace("{count}", String(hiddenVehicles))}
                       </span>
                     )}
@@ -347,9 +347,9 @@ export function ClientDirectory({
                   {/* 4. Activity */}
                   <div
                     role="cell"
-                    className="flex flex-wrap gap-x-3 gap-y-0.5 pl-12 text-xs text-zinc-500 md:flex-col md:pl-0 dark:text-zinc-400"
+                    className="flex flex-wrap gap-x-3 gap-y-0.5 pl-12 text-xs text-ink-muted md:flex-col md:pl-0"
                   >
-                    <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                    <span className="font-medium text-ink">
                       {d.visitsCount.replace("{count}", String(client.visitCount))}
                     </span>
                     <span>
@@ -373,7 +373,7 @@ export function ClientDirectory({
                       <button
                         type="button"
                         onClick={() => book(client)}
-                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-brand-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-xl bg-ink px-3 py-2.5 text-xs font-semibold text-surface transition-colors hover:bg-ink/85"
                       >
                         <CalendarPlus aria-hidden className="h-3.5 w-3.5" />
                         {d.book}
@@ -383,7 +383,7 @@ export function ClientDirectory({
                     <Link
                       href={hrefFor(client)}
                       scroll={false}
-                      className="inline-flex items-center whitespace-nowrap rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50"
+                      className="inline-flex items-center whitespace-nowrap rounded-full border border-hairline px-3 py-1.5 text-xs font-medium text-ink transition-colors hover:bg-subtle hover:text-ink"
                     >
                       {d.viewProfile}
                       <span className="sr-only"> {client.name}</span>
@@ -397,7 +397,7 @@ export function ClientDirectory({
       )}
 
       <p
-        className="border-t border-zinc-200 px-4 py-2.5 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400"
+        className="border-t border-hairline px-4 py-2.5 text-xs text-ink-muted"
         aria-live="polite"
       >
         {countText}

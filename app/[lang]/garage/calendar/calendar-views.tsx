@@ -45,7 +45,7 @@ export const EVENT_STYLES: Record<string, string> = {
   pending_payment:
     "border-l-amber-500 bg-amber-50 text-amber-950 hover:bg-amber-100 dark:border-l-amber-400 dark:bg-amber-500/10 dark:text-amber-50 dark:hover:bg-amber-500/20",
   completed:
-    "border-l-zinc-400 bg-zinc-100 text-zinc-700 hover:bg-zinc-200/70 dark:border-l-zinc-500 dark:bg-zinc-800/70 dark:text-zinc-300 dark:hover:bg-zinc-800",
+    "border-l-zinc-400 bg-subtle text-ink hover:bg-zinc-200/70 dark:border-l-zinc-500 dark:hover:bg-zinc-800",
   cancelled:
     "border-l-red-600 bg-red-50 text-red-900 opacity-80 hover:opacity-100 dark:border-l-red-500 dark:bg-red-500/10 dark:text-red-200",
 };
@@ -77,7 +77,7 @@ function minutesLabel(minutes: number) {
 
 function PlateChip({ plate }: { plate: string }) {
   return (
-    <span className="inline-block rounded-[3px] border border-current/30 px-1 font-mono text-[10px] font-semibold uppercase leading-4 tracking-wide">
+    <span className="inline-block rounded-[3px] border border-current/30 px-1 tabular-nums text-[10px] font-semibold uppercase leading-4 tracking-wide">
       {plate}
     </span>
   );
@@ -166,11 +166,11 @@ export function TimeGrid({
       data-grid-scroll
       data-range-start={rangeStartMin}
       data-hour-px={HOUR_PX}
-      className="max-h-[calc(100dvh-14rem)] min-h-[24rem] overflow-auto rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+      className="max-h-[calc(100dvh-14rem)] min-h-[24rem] overflow-auto rounded-xl border border-hairline bg-surface"
     >
       <div className="grid" style={{ gridTemplateColumns: gridColumns }}>
         {/* Header row */}
-        <div className="sticky left-0 top-0 z-30 border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900" />
+        <div className="sticky left-0 top-0 z-30 border-b border-hairline bg-surface" />
         {columns.map((column) => {
           const { header } = column;
           const isToday = column.date === todayKey;
@@ -178,12 +178,12 @@ export function TimeGrid({
           if (header.kind === "date") {
             content = (
               <>
-                <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">
                   {weekday.format(dateKeyToDisplayDate(column.date))}
                 </span>
                 <span
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-base font-semibold tabular-nums ${
-                    isToday ? "bg-brand-600 text-white dark:bg-brand-500" : "text-black dark:text-zinc-50"
+                    isToday ? "bg-brand-600 text-white dark:bg-brand-500" : "text-ink"
                   }`}
                 >
                   {Number(column.date.slice(8))}
@@ -198,19 +198,19 @@ export function TimeGrid({
                   aria-hidden
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
                     header.kind === "mechanic"
-                      ? "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
-                      : "border border-dashed border-zinc-300 text-zinc-400 dark:border-zinc-700 dark:text-zinc-500"
+                      ? "bg-subtle text-ink"
+                      : "border border-dashed border-hairline text-ink-muted"
                   }`}
                 >
                   {header.kind === "mechanic" ? initials(header.name) : "?"}
                 </span>
-                <span className="w-full truncate px-1 text-center text-xs font-medium text-black dark:text-zinc-50">
+                <span className="w-full truncate px-1 text-center text-xs font-medium text-ink">
                   {name}
                   {header.kind === "mechanic" && header.isYou && (
-                    <span className="font-normal text-zinc-500 dark:text-zinc-400"> ({d.you})</span>
+                    <span className="font-normal text-ink-muted"> ({d.you})</span>
                   )}
                 </span>
-                <span className="text-[11px] tabular-nums text-zinc-500 dark:text-zinc-400">
+                <span className="text-[11px] tabular-nums text-ink-muted">
                   {d.jobCount.replace("{count}", String(header.count))}
                 </span>
               </>
@@ -219,13 +219,13 @@ export function TimeGrid({
           return (
             <div
               key={column.key}
-              className="sticky top-0 z-20 border-b border-l border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+              className="sticky top-0 z-20 border-b border-l border-hairline bg-surface"
             >
               {header.kind === "date" && header.href ? (
                 <Link
                   href={header.href}
                   aria-current={isToday ? "date" : undefined}
-                  className="flex flex-col items-center gap-0.5 py-2 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/60"
+                  className="flex flex-col items-center gap-0.5 py-2 transition-colors hover:bg-subtle"
                 >
                   {content}
                 </Link>
@@ -237,11 +237,11 @@ export function TimeGrid({
         })}
 
         {/* Hour axis */}
-        <div className="sticky left-0 z-20 bg-white dark:bg-zinc-900" style={{ height }}>
+        <div className="sticky left-0 z-20 bg-surface" style={{ height }}>
           {hours.map((hour) => (
             <span
               key={hour}
-              className="absolute right-2 -translate-y-1/2 text-[11px] tabular-nums text-zinc-500 first:translate-y-0.5 dark:text-zinc-500"
+              className="absolute right-2 -translate-y-1/2 text-[11px] tabular-nums text-ink-muted first:translate-y-0.5"
               style={{ top: yFor(hour * 60) }}
             >
               {minutesLabel(hour * 60)}
@@ -279,18 +279,18 @@ export function TimeGrid({
               data-col-date={date}
               data-col-mechanic={column.mechanicId}
               data-col-mechanic-name={mechanicName ?? undefined}
-              className="relative border-l border-zinc-200 dark:border-zinc-800"
+              className="relative border-l border-hairline"
               style={{ height }}
             >
               {/* Hour and half-hour lines */}
               {hours.map((hour) => (
                 <div key={hour} aria-hidden>
                   <div
-                    className="absolute inset-x-0 border-t border-zinc-200 dark:border-zinc-800/50"
+                    className="absolute inset-x-0 border-t border-hairline"
                     style={{ top: yFor(hour * 60) }}
                   />
                   <div
-                    className="absolute inset-x-0 border-t border-dashed border-zinc-100 dark:border-zinc-800/30"
+                    className="absolute inset-x-0 border-t border-dashed border-hairline"
                     style={{ top: yFor(hour * 60 + 30) }}
                   />
                 </div>
@@ -473,12 +473,12 @@ export function MonthGrid({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-      <div className="grid grid-cols-7 border-b border-zinc-200 dark:border-zinc-800">
+    <div className="overflow-hidden rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none">
+      <div className="grid grid-cols-7 border-b border-hairline">
         {dates.slice(0, 7).map((date) => (
           <div
             key={date}
-            className="px-2 py-2 text-center text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
+            className="px-2 py-2 text-center text-xs font-medium uppercase tracking-wide text-ink-muted"
           >
             {weekday.format(dateKeyToDisplayDate(date))}
           </div>
@@ -494,7 +494,7 @@ export function MonthGrid({
           return (
             <div
               key={date}
-              className={`flex min-h-28 min-w-0 flex-col gap-1 border-zinc-200 p-1.5 dark:border-zinc-800 ${
+              className={`flex min-h-28 min-w-0 flex-col gap-1 border-hairline p-1.5 ${
                 index % 7 === 0 ? "" : "border-l"
               } ${index >= 7 ? "border-t" : ""} ${inMonth ? "" : "bg-zinc-50/80 dark:bg-zinc-950/40"}`}
             >
@@ -505,8 +505,8 @@ export function MonthGrid({
                   isToday
                     ? "bg-brand-600 text-white dark:bg-brand-500"
                     : inMonth
-                      ? "text-black hover:bg-zinc-100 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                      : "text-zinc-400 hover:bg-zinc-100 dark:text-zinc-600 dark:hover:bg-zinc-800"
+                      ? "text-ink hover:bg-subtle"
+                      : "text-ink-muted hover:bg-subtle"
                 }`}
               >
                 {Number(date.slice(8))}
@@ -516,8 +516,8 @@ export function MonthGrid({
                   key={appointment.id}
                   href={hrefForAppointment(appointment.id)}
                   scroll={false}
-                  className={`flex min-w-0 items-center gap-1 rounded px-1 py-0.5 text-[11px] leading-tight transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                    appointment.status === "cancelled" ? "text-zinc-400 line-through" : "text-zinc-700 dark:text-zinc-300"
+                  className={`flex min-w-0 items-center gap-1 rounded px-1 py-0.5 text-[11px] leading-tight transition-colors hover:bg-subtle ${
+                    appointment.status === "cancelled" ? "text-zinc-400 line-through" : "text-ink"
                   }`}
                 >
                   <span aria-hidden className={`h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[appointment.status] ?? STATUS_DOT.pending}`} />
@@ -530,7 +530,7 @@ export function MonthGrid({
               {overflow > 0 && (
                 <Link
                   href={hrefForDay(date)}
-                  className="px-1 text-[11px] font-medium text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                  className="px-1 text-[11px] font-medium text-ink-muted hover:text-ink"
                 >
                   {d.moreCount.replace("{count}", String(overflow))}
                 </Link>
@@ -583,9 +583,9 @@ export function AppointmentList({
 
   if (groups.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-zinc-200 bg-white px-6 py-14 text-center dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none px-6 py-14 text-center">
         <CalendarX2 aria-hidden className="h-10 w-10 text-zinc-300 dark:text-zinc-700" strokeWidth={1.5} />
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.listEmpty}</p>
+        <p className="text-sm text-ink-muted">{d.listEmpty}</p>
       </div>
     );
   }
@@ -596,7 +596,7 @@ export function AppointmentList({
         <section key={group.date} aria-labelledby={`day-${group.date}`} className="flex flex-col gap-2">
           <h2
             id={`day-${group.date}`}
-            className="flex items-center gap-2 text-sm font-semibold text-black first-letter:uppercase dark:text-zinc-50"
+            className="flex items-center gap-2 text-sm font-semibold text-ink first-letter:uppercase"
           >
             {dayLabel.format(dateKeyToDisplayDate(group.date))}
             {group.date === todayKey && (
@@ -605,7 +605,7 @@ export function AppointmentList({
               </span>
             )}
           </h2>
-          <ul className="divide-y divide-zinc-200 overflow-hidden rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+          <ul className="divide-y divide-hairline overflow-hidden rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none">
             {group.items.map((appointment) => {
               const plate = appointment.vehicle?.license_plate?.trim();
               const mechanic = appointment.assigned_mechanic_id
@@ -616,26 +616,26 @@ export function AppointmentList({
                   <Link
                     href={hrefForAppointment(appointment.id)}
                     scroll={false}
-                    className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-subtle"
                   >
                     <span className={`h-10 w-1 shrink-0 rounded-full ${STATUS_DOT[appointment.status] ?? STATUS_DOT.pending}`} aria-hidden />
-                    <span className="w-24 shrink-0 text-sm font-semibold tabular-nums text-black dark:text-zinc-50">
+                    <span className="w-24 shrink-0 text-sm font-semibold tabular-nums text-ink">
                       {formatTime.format(new Date(appointment.start_time))}
-                      <span className="block text-xs font-normal text-zinc-500 dark:text-zinc-400">
+                      <span className="block text-xs font-normal text-ink-muted">
                         {formatTime.format(new Date(appointment.end_time))}
                       </span>
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className={`block truncate text-sm font-medium text-black dark:text-zinc-50 ${appointment.status === "cancelled" ? "line-through opacity-70" : ""}`}>
+                      <span className={`block truncate text-sm font-medium text-ink ${appointment.status === "cancelled" ? "line-through opacity-70" : ""}`}>
                         {appointment.services?.name ?? d.serviceFallback}
                       </span>
-                      <span className="flex min-w-0 items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      <span className="flex min-w-0 items-center gap-2 text-xs text-ink-muted">
                         <span className="truncate">{customerName(appointment, d)}</span>
                         {plate && <PlateChip plate={plate} />}
                         {mechanic && <span className="hidden truncate sm:inline">· {mechanic}</span>}
                       </span>
                     </span>
-                    <span className="hidden shrink-0 text-xs font-medium text-zinc-600 sm:block dark:text-zinc-400">
+                    <span className="hidden shrink-0 text-xs font-medium text-ink-muted sm:block">
                       {statusLabels[appointment.status as keyof StatusLabels] ?? appointment.status}
                     </span>
                   </Link>

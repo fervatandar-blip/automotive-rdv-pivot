@@ -22,8 +22,8 @@ export function LanguageSwitcher({ lang }: { lang: Locale }) {
             }}
             className={
               locale === lang
-                ? "font-semibold text-black dark:text-zinc-50"
-                : "text-zinc-400 transition-colors hover:text-black dark:text-zinc-600 dark:hover:text-zinc-50"
+                ? "font-semibold text-ink"
+                : "text-ink-muted transition-colors hover:text-ink"
             }
           >
             {LABELS[locale]}

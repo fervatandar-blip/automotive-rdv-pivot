@@ -59,9 +59,9 @@ const APPOINTMENT_SELECT =
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const CONTROL =
-  "inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-black dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+  "inline-flex h-9 items-center justify-center rounded-lg border border-hairline bg-surface text-sm font-medium text-ink transition-colors hover:bg-subtle hover:text-ink";
 const DRAWER_BUTTON =
-  "inline-flex items-center justify-center rounded-full border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+  "inline-flex items-center justify-center rounded-full border border-hairline px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-subtle hover:text-ink";
 
 type CalendarState = {
   view: CalendarView;
@@ -266,7 +266,7 @@ export default async function GarageCalendarPage({
     | null;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 bg-zinc-50 px-4 py-6 dark:bg-zinc-950 sm:px-6 lg:px-8">
+    <div className="flex flex-1 flex-col gap-4 bg-canvas px-4 py-6 sm:px-6 lg:px-8">
       {/* Header bar: date navigation + title on the left, view switcher on the right. */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
@@ -281,7 +281,7 @@ export default async function GarageCalendarPage({
               <ChevronRight className="h-4 w-4" strokeWidth={2} />
             </Link>
           </nav>
-          <h1 className="text-xl font-semibold tracking-tight text-black first-letter:uppercase dark:text-zinc-50">
+          <h1 className="text-xl font-bold tracking-tight text-ink first-letter:uppercase">
             {title}
           </h1>
         </div>
@@ -290,7 +290,7 @@ export default async function GarageCalendarPage({
           {view === "day" && mechanics.length > 0 && (
             <nav
               aria-label={d.dayLayout}
-              className="inline-flex rounded-lg border border-zinc-200 bg-zinc-100/80 p-0.5 dark:border-zinc-800 dark:bg-zinc-900"
+              className="inline-flex rounded-lg border border-hairline bg-subtle p-0.5"
             >
               {(["together", "mechanic"] as const).map((option) => (
                 <Link
@@ -299,8 +299,8 @@ export default async function GarageCalendarPage({
                   aria-current={state.by === option ? "page" : undefined}
                   className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                     state.by === option
-                      ? "bg-white text-black shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
-                      : "text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                      ? "bg-white text-ink shadow-sm dark:bg-zinc-800"
+                      : "text-ink-muted hover:text-ink"
                   }`}
                 >
                   {option === "mechanic" ? d.byMechanic : d.together}
@@ -324,7 +324,7 @@ export default async function GarageCalendarPage({
           )}
           <nav
             aria-label={d.viewSwitcher}
-            className="inline-flex rounded-lg border border-zinc-200 bg-zinc-100/80 p-0.5 dark:border-zinc-800 dark:bg-zinc-900"
+            className="inline-flex rounded-lg border border-hairline bg-subtle p-0.5"
           >
             {CALENDAR_VIEWS.map((option) => (
               <Link
@@ -333,8 +333,8 @@ export default async function GarageCalendarPage({
                 aria-current={option === view ? "page" : undefined}
                 className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   option === view
-                    ? "bg-white text-black shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
-                    : "text-zinc-600 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                    ? "bg-white text-ink shadow-sm dark:bg-zinc-800"
+                    : "text-ink-muted hover:text-ink"
                 }`}
               >
                 {viewLabels[option]}
@@ -430,7 +430,7 @@ function StatusLegend({
 }) {
   const entries = ["confirmed", "pending", "completed", "cancelled"] as const;
   return (
-    <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-600 dark:text-zinc-400">
+    <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-muted">
       {entries.map((status) => (
         <li key={status} className="flex items-center gap-1.5">
           <span aria-hidden className={`h-2.5 w-1 rounded-full ${STATUS_DOT[status]}`} />
@@ -444,7 +444,7 @@ function StatusLegend({
             {d.blocked}
           </li>
           <li className="flex items-center gap-1.5">
-            <span aria-hidden className="h-2.5 w-3 rounded-sm border border-zinc-300 bg-[repeating-linear-gradient(135deg,transparent_0_2px,rgb(0_0_0/0.12)_2px_4px)] dark:border-zinc-700 dark:bg-[repeating-linear-gradient(135deg,transparent_0_2px,rgb(255_255_255/0.12)_2px_4px)]" />
+            <span aria-hidden className="h-2.5 w-3 rounded-sm border border-hairline bg-[repeating-linear-gradient(135deg,transparent_0_2px,rgb(0_0_0/0.12)_2px_4px)] dark:bg-[repeating-linear-gradient(135deg,transparent_0_2px,rgb(255_255_255/0.12)_2px_4px)]" />
             {d.closed}
           </li>
         </>
@@ -489,11 +489,11 @@ function AppointmentDrawer({
     <DrawerShell closeHref={closeHref} closeLabel={d.close} title={service}>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-1">
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-muted">
             <span aria-hidden className={`h-2 w-2 rounded-full ${STATUS_DOT[appointment.status] ?? STATUS_DOT.pending}`} />
             {statusLabel}
           </span>
-          <p className="text-lg font-semibold text-black first-letter:uppercase dark:text-zinc-50">
+          <p className="text-lg font-semibold text-ink first-letter:uppercase">
             {start.toLocaleDateString(dateLocale, {
               timeZone: APP_TIME_ZONE,
               weekday: "long",
@@ -501,14 +501,14 @@ function AppointmentDrawer({
               month: "long",
             })}
           </p>
-          <p className="text-sm tabular-nums text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm tabular-nums text-ink-muted">
             {formatTime.format(start)}–{formatTime.format(new Date(appointment.end_time))}
           </p>
         </div>
 
         <dl className="grid grid-cols-[6.5rem_1fr] gap-x-4 gap-y-3 text-sm">
-          <dt className="text-zinc-500 dark:text-zinc-400">{d.clientLabel}</dt>
-          <dd className="font-medium text-black dark:text-zinc-50">
+          <dt className="text-ink-muted">{d.clientLabel}</dt>
+          <dd className="font-medium text-ink">
             {customerName(appointment, d)}
             {appointment.walk_in?.phone && (
               <a
@@ -519,13 +519,13 @@ function AppointmentDrawer({
               </a>
             )}
           </dd>
-          <dt className="text-zinc-500 dark:text-zinc-400">{d.vehicleLabel}</dt>
-          <dd className="flex flex-wrap items-center gap-2 text-black dark:text-zinc-50">
+          <dt className="text-ink-muted">{d.vehicleLabel}</dt>
+          <dd className="flex flex-wrap items-center gap-2 text-ink">
             {plate && <LicensePlate plate={plate} label={d.plateLabel} />}
             {vehicleDescription || (!plate && <span className="text-zinc-500">—</span>)}
           </dd>
-          <dt className="text-zinc-500 dark:text-zinc-400">{d.mechanicLabel}</dt>
-          <dd className="text-black dark:text-zinc-50">{appointment.mechanic?.full_name ?? d.unassigned}</dd>
+          <dt className="text-ink-muted">{d.mechanicLabel}</dt>
+          <dd className="text-ink">{appointment.mechanic?.full_name ?? d.unassigned}</dd>
         </dl>
 
         {isOwner && isOpen && mechanics.length > 0 && (
@@ -590,14 +590,14 @@ function AppointmentDrawer({
           </form>
         )}
 
-        <div className="flex flex-col gap-2 border-t border-zinc-200 pt-5 dark:border-zinc-800">
+        <div className="flex flex-col gap-2 border-t border-hairline pt-5">
           {appointment.status === "pending" && (
             <form action={confirmAppointment}>
               <input type="hidden" name="id" value={appointment.id} />
               <input type="hidden" name="lang" value={lang} />
               <button
                 type="submit"
-                className="w-full rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+                className="w-full rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-surface transition-colors hover:bg-ink/85"
               >
                 {d.confirm}
               </button>
