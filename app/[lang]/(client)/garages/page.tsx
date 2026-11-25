@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Search, Star } from "lucide-react";
+import { ArrowRight, MapPin, Search } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
@@ -9,23 +9,43 @@ import { GarageDiscoveryMap } from "@/components/garage-discovery-map";
 import { StyledSelect } from "@/components/styled-select";
 import { TogglePill } from "@/components/toggle-pill";
 import { NearMeButton } from "@/components/near-me-button";
-import { averageRating, formatRating } from "@/lib/ratings";
+import { averageRating } from "@/lib/ratings";
+import { RatingPill } from "@/components/star-rating";
 import { haversineDistanceKm, formatDistanceKm } from "@/lib/geo";
 import { VerificationBadge } from "@/components/verification-badge";
 import { parseBookingVehicle, withBookingVehicle } from "@/lib/booking-vehicle";
 import { InstantFilterForm } from "@/components/instant-filter-form";
 import { SERVICE_CATEGORIES, normalizeServiceCategory, type ServiceCategory } from "@/lib/service-categories";
-import { CLIENT_CARD, CLIENT_PAGE, CLIENT_PAGE_TITLE } from "@/lib/client-ui";
+import {
+  CLIENT_CARD,
+  CLIENT_FIT_PAGE,
+  CLIENT_PAGE_SUBTITLE,
+  CLIENT_PAGE_TITLE,
+  CLIENT_PRIMARY_BUTTON,
+  CLIENT_TAG,
+} from "@/lib/client-ui";
 
 // Toolbar controls: borderless, tinted on hover, one 36px height.
 const TOOLBAR_SELECT =
-  "h-9 cursor-pointer rounded-lg bg-transparent pl-3 pr-8 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 focus:bg-zinc-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 dark:bg-transparent dark:text-zinc-200 dark:hover:bg-zinc-800/60 dark:focus:bg-zinc-800/60 [&>option]:bg-white [&>option]:text-zinc-900 dark:[&>option]:bg-zinc-900 dark:[&>option]:text-zinc-100";
+  "h-10 cursor-pointer rounded-xl bg-transparent pl-3.5 pr-9 text-sm font-semibold text-ink transition-colors hover:bg-subtle focus:bg-subtle focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 [&>option]:bg-surface [&>option]:text-ink";
 const TOOLBAR_SELECT_WRAPPER = "flex-1 sm:flex-none";
 const TOOLBAR_BUTTON =
-  "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 disabled:opacity-60 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50 [&>svg]:h-4 [&>svg]:w-4";
-const TOOLBAR_DIVIDER = "hidden h-5 w-px shrink-0 bg-zinc-200 sm:block dark:bg-zinc-800";
+  "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-sm font-semibold text-ink-muted transition-colors hover:bg-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 disabled:opacity-60 [&>svg]:h-4 [&>svg]:w-4";
+const TOOLBAR_DIVIDER = "mx-1 hidden h-6 w-px shrink-0 bg-hairline sm:block";
 
 const MAX_CATEGORY_TAGS = 3;
+
+/** Up to two initials for the card's monogram: "Garage Muller" -> "GM". */
+function monogram(name: string) {
+  const words = name
+    .replace(/\(.*?\)/g, " ")
+    .split(/[\s&+-]+/)
+    .filter((word) => /\p{L}/u.test(word));
+  const letters = (words.length > 1 ? [words[0], words[1]] : [words[0] ?? name]).map((word) =>
+    (word.match(/\p{L}/u)?.[0] ?? "").toUpperCase()
+  );
+  return letters.join("") || "?";
+}
 
 /** A workshop's service categories in display order, "other" left out. */
 function categoriesOf(services: { category: string | null }[]): ServiceCategory[] {
@@ -122,7 +142,7 @@ export default async function GaragesPage({
         bookingVehicle.license_plate,
       ]
         .filter(Boolean)
-        .join(" · ")
+        .join(", ")
     : null;
   const cities = Array.from(
     new Set(rows.map((garage) => garage.city).filter((city): city is string => !!city))
@@ -191,13 +211,32 @@ export default async function GaragesPage({
     return a.name.localeCompare(b.name);
   });
 
+  const mapGarages = sorted
+    .filter(
+      (garage): garage is GarageWithDistance & { latitude: number; longitude: number } =>
+        garage.latitude !== null && garage.longitude !== null
+    )
+    .map((garage) => ({
+      id: garage.id,
+      name: garage.name,
+      latitude: garage.latitude,
+      longitude: garage.longitude,
+    }));
+  // Same conditions under which GarageDiscoveryMap renders anything.
+  const showMap = Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) && mapGarages.length > 0;
+
   return (
-    <div className={CLIENT_PAGE}>
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <h1 className={CLIENT_PAGE_TITLE}>{d.title}</h1>
+    <div className={CLIENT_FIT_PAGE}>
+      <div className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col gap-4">
+        <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+          <h1 className={CLIENT_PAGE_TITLE}>{d.title}</h1>
+          <p className={`${CLIENT_PAGE_SUBTITLE} font-mono`}>
+            {d.resultCount.replace("{count}", String(sorted.length))}
+          </p>
+        </header>
 
         {bookingVehicleLabel && (
-          <p className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-100">
+          <p className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-medium text-brand-900 dark:border-brand-500/20 dark:bg-brand-500/10 dark:text-brand-100">
             <span>{d.bookingFor.replace("{vehicle}", bookingVehicleLabel)}</span>
             <Link href={`/${lang}/garages`} className="font-medium underline underline-offset-2">
               {d.clearBookingVehicle}
@@ -209,11 +248,11 @@ export default async function GaragesPage({
             toggles. Wraps onto extra rows on phones. */}
         <InstantFilterForm
           ariaLabel={d.filters}
-          className={`${CLIENT_CARD} flex flex-wrap items-center gap-1 p-2`}
+          className="flex shrink-0 flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-200/80 bg-surface p-3 shadow-sm dark:border-hairline dark:shadow-none"
           resetLabel={d.clear}
           showReset={filtersActive}
           keepOnReset={["vehicle"]}
-          resetClassName="h-9 shrink-0 rounded-lg px-3 text-sm font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 sm:ml-auto dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50"
+          resetClassName="h-10 shrink-0 rounded-xl px-3.5 text-sm font-semibold text-ink-muted transition-colors hover:bg-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30 sm:ml-auto"
         >
           {hasOrigin && (
             <>
@@ -223,8 +262,8 @@ export default async function GaragesPage({
           )}
           {vehicleId && <input type="hidden" name="vehicle" value={vehicleId} />}
 
-          <div className="flex h-9 min-w-0 basis-full items-center gap-2 rounded-lg bg-zinc-100/70 px-3 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-600/30 sm:min-w-[12rem] sm:flex-1 sm:basis-auto dark:bg-zinc-800/40 dark:focus-within:bg-zinc-900">
-            <Search aria-hidden className="h-4 w-4 shrink-0 text-zinc-400" strokeWidth={1.75} />
+          <div className="flex h-11 min-w-0 basis-full items-center gap-2.5 rounded-xl bg-subtle px-4 transition-colors focus-within:bg-surface focus-within:ring-2 focus-within:ring-ink/15 sm:min-w-[14rem] sm:flex-1 sm:basis-auto">
+            <Search aria-hidden className="h-[18px] w-[18px] shrink-0 text-ink-muted" strokeWidth={2} />
             <label htmlFor="q" className="sr-only">
               {d.searchByName}
             </label>
@@ -236,7 +275,7 @@ export default async function GaragesPage({
               placeholder={d.searchPlaceholder}
               autoComplete="off"
               enterKeyHint="search"
-              className="w-full min-w-0 bg-transparent text-sm text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-50 [&::-webkit-search-cancel-button]:hidden"
+              className="w-full min-w-0 bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-muted [&::-webkit-search-cancel-button]:hidden"
             />
           </div>
 
@@ -335,93 +374,112 @@ export default async function GaragesPage({
           />
         </InstantFilterForm>
 
-        <GarageDiscoveryMap
-          garages={sorted
-            .filter(
-              (garage): garage is GarageWithDistance & { latitude: number; longitude: number } =>
-                garage.latitude !== null && garage.longitude !== null
-            )
-            .map((garage) => ({
-              id: garage.id,
-              name: garage.name,
-              latitude: garage.latitude,
-              longitude: garage.longitude,
-            }))}
-          lang={lang}
-          vehicleId={vehicleId}
-        />
+        {/* Split view from lg: the list scrolls in its panel, the map stays
+            beside it. Phones get the map above the list. */}
+        <div
+          className={`grid min-h-0 flex-1 grid-cols-1 gap-4 ${showMap ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]" : ""}`}
+        >
+          {/* Cards scroll in this column; the side padding keeps their
+              shadow from being clipped by the scroll box. */}
+          <section aria-label={d.title} className="-mx-2 flex min-h-0 flex-col overflow-y-auto px-2 pb-2 lg:order-1">
+            {sorted.length > 0 ? (
+              <ul className="flex flex-col gap-3">
+                {sorted.map((garage) => {
+                  const href = withBookingVehicle(`/${lang}/garages/${garage.id}`, vehicleId);
+                  const ratings = garage.reviews.map((review) => review.rating);
+                  const average = averageRating(ratings);
+                  const categories = categoriesOf(garage.services);
+                  const extraCategories = categories.length - MAX_CATEGORY_TAGS;
+                  // "Basic" is every workshop's starting tier: only earned tiers
+                  // get a badge on the card.
+                  const showBadge = garage.verification_level && garage.verification_level !== "basic";
+                  return (
+                    <li
+                      key={garage.id}
+                      className={`${CLIENT_CARD} relative flex flex-col gap-4 p-5 transition-shadow focus-within:ring-2 focus-within:ring-ink/20 hover:shadow-[0_4px_16px_rgba(0,0,0,0.07)] sm:flex-row sm:items-center sm:p-6`}
+                    >
+                      <div className="flex min-w-0 flex-1 items-start gap-4">
+                        <span
+                          aria-hidden
+                          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-ink font-display text-lg font-bold tracking-[-0.02em] text-surface"
+                        >
+                          {monogram(garage.name)}
+                        </span>
+                        <div className="flex min-w-0 flex-1 flex-col gap-2">
+                          <h2 className="text-lg font-bold tracking-tight text-ink">
+                            {/* Stretched link: the whole card opens the profile;
+                                the booking button stays its own target above it. */}
+                            <Link href={href} className="after:absolute after:inset-0 after:rounded-2xl focus:outline-none">
+                              {garage.name}
+                            </Link>
+                          </h2>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-ink-muted">
+                            {garage.city && (
+                              <span className="inline-flex items-center gap-1">
+                                <MapPin aria-hidden className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                                {garage.city}
+                                {garage.distanceKm !== null && (
+                                  <span className="font-mono text-xs">({formatDistanceKm(garage.distanceKm)})</span>
+                                )}
+                              </span>
+                            )}
+                            {average !== null ? (
+                              <RatingPill
+                                average={average}
+                                count={ratings.length}
+                                label={dictionary.common.ratingSummary
+                                  .replace("{rating}", average.toFixed(1))
+                                  .replace("{count}", String(ratings.length))}
+                              />
+                            ) : (
+                              <span>{d.noReviewsYet}</span>
+                            )}
+                            {showBadge && (
+                              <VerificationBadge level={garage.verification_level} labels={dictionary.verificationLevels} />
+                            )}
+                          </div>
+                          {categories.length > 0 && (
+                            <ul className="flex flex-wrap gap-1.5 pt-1">
+                              {categories.slice(0, MAX_CATEGORY_TAGS).map((category) => (
+                                <li key={category} className={CLIENT_TAG}>
+                                  {dictionary.serviceCategories[category]}
+                                </li>
+                              ))}
+                              {extraCategories > 0 && (
+                                <li className="inline-flex items-center px-1 text-xs font-medium text-ink-muted">
+                                  {d.moreCategories.replace("{count}", String(extraCategories))}
+                                </li>
+                              )}
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                      <Link
+                        href={withBookingVehicle(`/${lang}/garages/${garage.id}#book`, vehicleId)}
+                        aria-label={d.bookAt.replace("{name}", garage.name)}
+                        className={`${CLIENT_PRIMARY_BUTTON} relative z-10 w-full sm:w-auto`}
+                      >
+                        {d.bookAppointmentCta}
+                        <ArrowRight aria-hidden className="h-4 w-4" strokeWidth={2} />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p className={`${CLIENT_CARD} px-6 py-12 text-center text-sm text-ink-muted`}>{d.noGaragesMatch}</p>
+            )}
+          </section>
 
-        {sorted.length > 0 ? (
-          <ul className="flex flex-col gap-3">
-            {sorted.map((garage) => {
-              const href = withBookingVehicle(`/${lang}/garages/${garage.id}`, vehicleId);
-              const ratings = garage.reviews.map((review) => review.rating);
-              const categories = categoriesOf(garage.services);
-              const extraCategories = categories.length - MAX_CATEGORY_TAGS;
-              // "Basic" is every workshop's starting tier: only earned tiers
-              // get a badge on the card.
-              const showBadge = garage.verification_level && garage.verification_level !== "basic";
-              return (
-                <li
-                  key={garage.id}
-                  className={`${CLIENT_CARD} relative flex items-center gap-4 p-4 transition-colors focus-within:border-brand-600 hover:border-zinc-300 sm:p-5 dark:hover:border-zinc-700`}
-                >
-                  <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                      <h2 className="font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-                        {/* Stretched link: the whole card opens the profile;
-                            Book stays its own target above it. */}
-                        <Link href={href} className="after:absolute after:inset-0 after:rounded-xl focus:outline-none">
-                          {garage.name}
-                        </Link>
-                      </h2>
-                      {showBadge && (
-                        <VerificationBadge level={garage.verification_level} labels={dictionary.verificationLevels} />
-                      )}
-                    </div>
-                    <p className="flex flex-wrap items-center gap-x-1.5 text-sm text-zinc-500 dark:text-zinc-400">
-                      {garage.city && <span>{garage.city}</span>}
-                      {garage.distanceKm !== null && <span>· {formatDistanceKm(garage.distanceKm)}</span>}
-                      {(garage.city || garage.distanceKm !== null) && <span aria-hidden>·</span>}
-                      <span className="inline-flex items-center gap-1">
-                        {ratings.length > 0 && (
-                          <Star aria-hidden className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                        )}
-                        {formatRating(ratings, d.noReviewsYet)}
-                      </span>
-                    </p>
-                    {categories.length > 0 && (
-                      <ul className="mt-1 flex flex-wrap gap-1.5">
-                        {categories.slice(0, MAX_CATEGORY_TAGS).map((category) => (
-                          <li
-                            key={category}
-                            className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-300"
-                          >
-                            {dictionary.serviceCategories[category]}
-                          </li>
-                        ))}
-                        {extraCategories > 0 && (
-                          <li className="px-1 py-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                            {d.moreCategories.replace("{count}", String(extraCategories))}
-                          </li>
-                        )}
-                      </ul>
-                    )}
-                  </div>
-                  <Link
-                    href={withBookingVehicle(`/${lang}/garages/${garage.id}#book`, vehicleId)}
-                    aria-label={d.bookAt.replace("{name}", garage.name)}
-                    className="relative z-10 inline-flex h-9 shrink-0 items-center rounded-full bg-brand-600 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:ring-offset-2 dark:bg-brand-500 dark:hover:bg-brand-600 dark:focus-visible:ring-offset-black"
-                  >
-                    {d.book}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{d.noGaragesMatch}</p>
-        )}
+          {showMap && (
+            <GarageDiscoveryMap
+              className="order-first h-56 overflow-hidden rounded-xl border border-hairline lg:order-2 lg:h-auto lg:min-h-0"
+              garages={mapGarages}
+              lang={lang}
+              vehicleId={vehicleId}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

@@ -361,7 +361,7 @@ export function OnboardingForm({
                 id="website"
                 name="website"
                 type="url"
-                placeholder="https://yourgarage.lu"
+                placeholder="https://yourworkshop.lu"
                 defaultValue={garage.website ?? ""}
                 className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
               />

@@ -161,7 +161,7 @@ export function ChatThread({
       className={
         isPane
           ? "flex min-h-0 flex-1 flex-col"
-          : "flex flex-1 flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-6 dark:border-white/[.145] dark:bg-zinc-950"
+          : "flex flex-1 flex-col gap-4 rounded-xl border border-hairline bg-surface p-6"
       }
     >
       <div
@@ -183,29 +183,31 @@ export function ChatThread({
             return (
               <div key={message.id} className="flex flex-col gap-3">
                 {divider && (
-                  <div className="flex items-center gap-3 py-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    <span aria-hidden className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+                  <div className="flex items-center gap-3 py-1 text-xs text-ink-muted">
+                    <span aria-hidden className="h-px flex-1 bg-hairline" />
                     <span className="max-w-[70%] truncate">{divider}</span>
-                    <span aria-hidden className="h-px flex-1 bg-zinc-200 dark:bg-zinc-800" />
+                    <span aria-hidden className="h-px flex-1 bg-hairline" />
                   </div>
                 )}
                 <div className={`flex flex-col ${isSelf ? "items-end" : "items-start"}`}>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-500">
-                    {labelFor(message.sender_id)} &middot;{" "}
-                    {new Date(message.created_at).toLocaleString(timeLocale, {
-                      timeZone: APP_TIME_ZONE,
-                      ...(isPane ? { day: "numeric", month: "short" } : {}),
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
+                  <span className="flex items-center gap-2 text-xs text-ink-muted">
+                    <span className="font-semibold">{labelFor(message.sender_id)}</span>
+                    <span className="font-mono">
+                      {new Date(message.created_at).toLocaleString(timeLocale, {
+                        timeZone: APP_TIME_ZONE,
+                        ...(isPane ? { day: "numeric", month: "short" } : {}),
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </span>
                   <p
                     className={`mt-1 max-w-[80%] whitespace-pre-wrap break-words rounded-2xl px-4 py-2 text-sm ${
                       isSelf
                         ? isPane
-                          ? "bg-brand-600 text-white dark:bg-brand-500"
+                          ? "bg-ink text-surface"
                           : "bg-foreground text-background"
-                        : "bg-black/[.04] text-black dark:bg-white/[.08] dark:text-zinc-50"
+                        : "bg-subtle text-ink"
                     }`}
                   >
                     {message.body}
@@ -215,7 +217,7 @@ export function ChatThread({
             );
           })
         ) : (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm text-ink-muted">
             {dictionary.noMessagesYet}
           </p>
         )}
@@ -231,7 +233,7 @@ export function ChatThread({
         onSubmit={handleSubmit}
         className={
           isPane
-            ? "flex shrink-0 items-center gap-2 border-t border-zinc-200/80 bg-zinc-50/80 p-3 sm:px-4 dark:border-zinc-800/60 dark:bg-zinc-900/40"
+            ? "flex shrink-0 items-center gap-2 border-t border-hairline bg-subtle p-3 sm:px-4"
             : "flex gap-2"
         }
       >
@@ -246,8 +248,8 @@ export function ChatThread({
           maxLength={2000}
           className={
             isPane
-              ? "h-10 min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-3.5 text-sm text-zinc-900 shadow-[0_1px_2px_rgba(0,0,0,0.03)] placeholder:text-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-700/80 dark:bg-zinc-950 dark:text-zinc-50 dark:shadow-none"
-              : "flex-1 rounded-md border border-black/[.08] px-3 py-2 text-sm dark:border-white/[.145] dark:bg-black"
+              ? "h-10 min-w-0 flex-1 rounded-lg border border-hairline bg-surface px-3.5 text-sm text-ink placeholder:text-ink-muted focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
+              : "flex-1 rounded-md border border-hairline bg-surface px-3 py-2 text-sm"
           }
         />
         <button
@@ -255,7 +257,7 @@ export function ChatThread({
           disabled={sending || draft.trim().length === 0}
           className={
             isPane
-              ? "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600 dark:focus-visible:ring-offset-zinc-950"
+              ? "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-brand-600 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-brand-500 dark:hover:bg-brand-600 focus-visible:ring-offset-surface"
               : "rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
           }
         >

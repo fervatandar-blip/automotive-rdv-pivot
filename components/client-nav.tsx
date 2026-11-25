@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, LayoutDashboard, User, Car, LogOut, MessageSquare } from "lucide-react";
+import { Search, LayoutDashboard, User, Car, LogOut, MessageSquare, CalendarDays } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { logout } from "@/app/actions/auth";
 import { locales, type Locale } from "@/lib/i18n/config";
 import { rememberLocale } from "@/lib/i18n/remember-locale";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
-import { AnimatedLogo } from "@/components/animated-logo";
+import { BrandLogo } from "@/components/brand-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 const LOCALE_LABELS: Record<Locale, string> = { fr: "FR", en: "EN" };
@@ -17,19 +17,23 @@ const LOCALE_LABELS: Record<Locale, string> = { fr: "FR", en: "EN" };
 export type ClientNavLabels = Dictionary["clientNav"];
 
 /**
- * The client area's five destinations. `label` is the sidebar wording;
- * `short` fits the phone tab bar (five tabs at ~75px each). Only Messages
- * carries a count.
+ * The client area's six destinations. `label` is the sidebar wording;
+ * `short` fits the phone tab bar, which holds the first five (~75px each):
+ * on phones Account is the avatar in the top bar. Only Messages carries a
+ * count.
  */
 function navItems(lang: Locale, t: ClientNavLabels, unread: number) {
   return [
     { href: `/${lang}/dashboard`, label: t.dashboard, short: t.dashboardShort, icon: LayoutDashboard, unread: 0 },
+    { href: `/${lang}/appointments`, label: t.appointments, short: t.appointmentsShort, icon: CalendarDays, unread: 0 },
     { href: `/${lang}/garages`, label: t.findGarage, short: t.findGarageShort, icon: Search, unread: 0 },
     { href: `/${lang}/messages`, label: t.messages, short: t.messages, icon: MessageSquare, unread },
     { href: `/${lang}/vehicles`, label: t.vehicles, short: t.vehiclesShort, icon: Car, unread: 0 },
     { href: `/${lang}/account`, label: t.account, short: t.account, icon: User, unread: 0 },
   ];
 }
+
+const TAB_BAR_ITEMS = 5;
 
 function unreadLabel(labels: ClientNavLabels, count: number) {
   return labels.unreadMessages.replace("{count}", String(count));
@@ -99,7 +103,7 @@ export function LocaleSwitch({ lang, labels }: { lang: Locale; labels: Pick<Clie
     <div
       role="group"
       aria-label={labels.language}
-      className="flex rounded-full bg-zinc-100 p-0.5 ring-1 ring-zinc-200/80 dark:bg-zinc-900 dark:ring-zinc-800"
+      className="flex rounded-lg bg-subtle p-0.5 ring-1 ring-hairline"
     >
       {locales.map((locale) => {
         const active = locale === lang;
@@ -112,10 +116,8 @@ export function LocaleSwitch({ lang, labels }: { lang: Locale; labels: Pick<Clie
             }}
             aria-current={active ? "true" : undefined}
             lang={locale}
-            className={`rounded-full px-2.5 py-1 text-xs font-semibold tracking-wide transition-colors ${
-              active
-                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white"
-                : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+            className={`rounded-md px-2.5 py-1 font-mono text-[11px] font-semibold transition-colors ${
+              active ? "bg-surface text-ink shadow-sm ring-1 ring-hairline" : "text-ink-muted hover:text-ink"
             }`}
           >
             {LOCALE_LABELS[locale]}
@@ -127,33 +129,33 @@ export function LocaleSwitch({ lang, labels }: { lang: Locale; labels: Pick<Clie
 }
 
 const NAV_ITEM_BASE =
-  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 dark:focus-visible:ring-zinc-600";
-const NAV_ITEM_ACTIVE =
-  "bg-zinc-100 font-medium text-zinc-900 dark:bg-zinc-800/60 dark:text-white";
-const NAV_ITEM_IDLE =
-  "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/40 dark:hover:text-zinc-100";
+  "flex h-10 items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30";
+const NAV_ITEM_ACTIVE = "bg-subtle font-semibold text-ink";
+const NAV_ITEM_IDLE = "text-ink-muted hover:bg-subtle/70 hover:text-ink";
 
 /**
- * Desktop (md and up). Follows the theme: a white panel beside the zinc-50
- * canvas in light mode, the garage portal's near-black panel in dark mode.
+ * Desktop (md and up): a fixed 240px rail, full viewport height. Pages fit
+ * the viewport next to it, so there is no top bar: the signed-in user,
+ * theme, language and logout sit in its footer.
  */
 export function ClientSidebar({
   lang,
   labels,
   unread,
+  user,
 }: {
   lang: Locale;
   labels: ClientNavLabels;
   unread: number;
+  user: { name: string; email: string; initials: string };
 }) {
   const pathname = usePathname();
   const items = navItems(lang, labels, unread);
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-zinc-200/80 bg-white px-4 py-6 text-zinc-700 md:flex dark:border-zinc-800/60 dark:bg-zinc-950 dark:text-zinc-400">
-      <Link href={`/${lang}/dashboard`} className="mb-8 flex items-center gap-2 px-2">
-        <AnimatedLogo size={32} />
-        <span className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-50">RDV</span>
+    <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-hairline bg-surface px-3 py-5 md:flex">
+      <Link href={`/${lang}/dashboard`} aria-label="RDV" className="mb-8 flex items-center px-3 pt-1">
+        <BrandLogo size={34} />
       </Link>
 
       <nav aria-label={labels.mainNav} className="flex flex-1 flex-col gap-0.5">
@@ -167,10 +169,10 @@ export function ClientSidebar({
               aria-current={active ? "page" : undefined}
               className={`${NAV_ITEM_BASE} ${active ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE}`}
             >
-              <Icon className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
+              <Icon className={`h-[18px] w-[18px] shrink-0 ${active ? "text-ink" : ""}`} strokeWidth={active ? 2 : 1.75} />
               <span className="flex-1">{item.label}</span>
               {item.unread > 0 && (
-                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-[11px] font-semibold text-white dark:bg-brand-500">
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-ink px-1.5 font-mono text-[11px] font-semibold text-surface">
                   <span aria-hidden>{item.unread > 99 ? "99+" : item.unread}</span>
                   <span className="sr-only">{unreadLabel(labels, item.unread)}</span>
                 </span>
@@ -185,12 +187,32 @@ export function ClientSidebar({
         <LocaleSwitch lang={lang} labels={labels} />
       </div>
 
-      <div className="border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60">
+      <div className="flex items-center gap-2 border-t border-hairline px-1 pt-3">
+        <Link
+          href={`/${lang}/account`}
+          title={labels.accountSettings}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg p-1.5 transition-colors hover:bg-subtle/60"
+        >
+          <span
+            aria-hidden
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[11px] font-semibold text-surface"
+          >
+            {user.initials}
+          </span>
+          <span className="flex min-w-0 flex-col">
+            <span className="truncate text-sm font-medium text-ink">{user.name}</span>
+            <span className="truncate text-xs text-ink-muted">{user.email}</span>
+          </span>
+        </Link>
         <form action={logout}>
           <input type="hidden" name="lang" value={lang} />
-          <button type="submit" className={`${NAV_ITEM_BASE} ${NAV_ITEM_IDLE} w-full`}>
-            <LogOut className="h-[18px] w-[18px] shrink-0" strokeWidth={1.75} />
-            {labels.logOut}
+          <button
+            type="submit"
+            aria-label={labels.logOut}
+            title={labels.logOut}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
+          >
+            <LogOut aria-hidden className="h-4 w-4" strokeWidth={1.75} />
           </button>
         </form>
       </div>
@@ -226,12 +248,12 @@ export function ClientTabBar({
   unread: number;
 }) {
   const pathname = usePathname();
-  const items = navItems(lang, labels, unread);
+  const items = navItems(lang, labels, unread).slice(0, TAB_BAR_ITEMS);
 
   return (
     <nav
       aria-label={labels.mainNav}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden dark:border-zinc-800/60 dark:bg-zinc-950/95"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-hairline bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
       <ul className="grid grid-cols-5">
         {items.map((item) => {
@@ -243,9 +265,7 @@ export function ClientTabBar({
                 href={item.href}
                 aria-current={active ? "page" : undefined}
                 className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors ${
-                  active
-                    ? "text-brand-600 dark:text-brand-400"
-                    : "text-zinc-500 hover:text-black dark:text-zinc-400 dark:hover:text-zinc-100"
+                  active ? "text-ink" : "text-ink-muted hover:text-ink"
                 }`}
               >
                 <span className="relative">
@@ -253,7 +273,7 @@ export function ClientTabBar({
                   {item.unread > 0 && (
                     <span
                       aria-hidden
-                      className="absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full bg-brand-600 ring-2 ring-white dark:bg-brand-500 dark:ring-zinc-950"
+                      className="absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full bg-brand-600 ring-2 ring-surface"
                     />
                   )}
                 </span>

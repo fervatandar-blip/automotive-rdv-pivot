@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getClientUnreadCounts, totalUnread } from "@/lib/unread-messages";
 import { ClientPageTitle } from "@/components/client-page-title";
 import { GarageSidebar, GarageTopBar } from "@/components/garage-nav";
-import { AnimatedLogo } from "@/components/animated-logo";
+import { BrandMark } from "@/components/brand-mark";
 
 function initialsFor(name: string) {
   return name
@@ -119,16 +119,21 @@ export default async function ClientLayout({
   const unread = totalUnread(unreadCounts);
 
   return (
-    <div className="flex flex-1">
-      <ClientSidebar lang={lang} labels={clientNav} unread={unread} />
+    <div className="flex flex-1 bg-canvas">
+      <ClientSidebar
+        lang={lang}
+        labels={clientNav}
+        unread={unread}
+        user={{ name: profile.full_name || profile.email, email: profile.email, initials }}
+      />
       <UnreadMessagesWatcher userId={profile.id} />
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Push opt-in lives on the Account page; the tab bar replaces the
-            old header icon row on phones. */}
-        <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-zinc-200/80 bg-white px-4 dark:border-zinc-800/60 dark:bg-zinc-950 md:px-8">
+        {/* Phones only: from md the sidebar carries the logo, the user and
+            the controls, and pages use the full viewport height. */}
+        <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-hairline bg-surface px-4 md:hidden">
           <div className="flex min-w-0 items-center gap-2.5">
-            <Link href={`/${lang}/dashboard`} className="shrink-0 md:hidden">
-              <AnimatedLogo size={28} />
+            <Link href={`/${lang}/dashboard`} aria-label="RDV" className="shrink-0">
+              <BrandMark size={30} />
             </Link>
             <ClientPageTitle labels={clientNav} />
           </div>
@@ -138,7 +143,7 @@ export default async function ClientLayout({
               href={`/${lang}/account`}
               aria-label={clientNav.account}
               title={clientNav.account}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-xs font-semibold text-white transition-opacity hover:opacity-90 dark:bg-zinc-100 dark:text-zinc-900"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold text-surface transition-opacity hover:opacity-90"
             >
               {initials}
             </Link>

@@ -9,7 +9,7 @@ import { DialogShell } from "@/components/dialog-shell";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 
 const ICON_BUTTON =
-  "inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:text-zinc-400 dark:hover:bg-red-500/10 dark:hover:text-red-400";
+  "inline-flex h-10 w-10 items-center justify-center rounded-xl text-ink-muted transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 dark:hover:bg-red-500/10 dark:hover:text-red-400";
 
 function ConfirmButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -57,13 +57,13 @@ export function DeleteVehicleButton({
       </button>
       <DialogShell dialogRef={dialogRef} title={title} closeLabel={d.form.close}>
         <div className="flex flex-col gap-5">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.deleteConfirm}</p>
+          <p className="text-sm text-ink-muted">{d.deleteConfirm}</p>
           <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
               autoFocus
               onClick={() => dialogRef.current?.close()}
-              className="inline-flex h-9 items-center rounded-full px-4 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="inline-flex h-9 items-center rounded-full px-4 text-sm font-medium text-ink hover:bg-subtle"
             >
               {d.keep}
             </button>

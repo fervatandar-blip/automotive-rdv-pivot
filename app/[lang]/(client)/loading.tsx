@@ -8,9 +8,9 @@ import { Loader2 } from "lucide-react";
 // Suspense boundary they contain), only the page content within.
 export default function ClientLoading() {
   return (
-    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 py-16 dark:bg-black">
+    <div className="flex flex-1 items-center justify-center bg-canvas px-4 py-16">
       <Loader2
-        className="h-6 w-6 animate-spin text-zinc-400 dark:text-zinc-600"
+        className="h-6 w-6 animate-spin text-ink-muted"
         strokeWidth={1.5}
       />
     </div>

@@ -2,6 +2,7 @@ import { requireGarageMember } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
+import { StarRating } from "@/components/star-rating";
 import { averageRating, formatRating } from "@/lib/ratings";
 import { APP_TIME_ZONE } from "@/lib/timezone";
 
@@ -61,10 +62,11 @@ export default async function GarageReviewsPage({
             {d.overallRating}
           </p>
           <div className="mt-2 flex items-center gap-3">
-            <span className="text-2xl font-semibold text-black dark:text-zinc-50">
-              {"★".repeat(roundedAverage)}
-              {"☆".repeat(5 - roundedAverage)}
-            </span>
+            <StarRating
+              rating={roundedAverage}
+              label={dictionary.common.ratingOutOf.replace("{rating}", String(roundedAverage))}
+              size="md"
+            />
             <span className="text-sm text-zinc-600 dark:text-zinc-400">
               {formatRating(ratings, d.noReviewsYet)}
             </span>
@@ -82,10 +84,10 @@ export default async function GarageReviewsPage({
                   <span className="text-sm font-medium text-black dark:text-zinc-50">
                     {review.profiles?.full_name ?? d.clientFallback}
                   </span>
-                  <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {"★".repeat(review.rating)}
-                    {"☆".repeat(5 - review.rating)}
-                  </span>
+                  <StarRating
+                    rating={review.rating}
+                    label={dictionary.common.ratingOutOf.replace("{rating}", String(review.rating))}
+                  />
                 </div>
                 <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                   {review.comment ?? d.noCommentLeft}

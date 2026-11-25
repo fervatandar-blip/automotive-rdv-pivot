@@ -119,7 +119,7 @@ export function DemoLeadForm({
             name="businessEmail"
             type="email"
             autoComplete="email"
-            placeholder="you@yourgarage.lu"
+            placeholder="you@yourworkshop.lu"
             className="rounded-md border border-black/[.08] px-3 py-2 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-white/[.145] dark:bg-black"
           />
           {state?.errors?.businessEmail && (

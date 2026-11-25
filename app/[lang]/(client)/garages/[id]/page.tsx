@@ -5,6 +5,7 @@ import {
   BatteryCharging,
   Check,
   ChevronLeft,
+  Clock,
   ChevronRight,
   Globe,
   Mail,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { getOptionalAuthedUser } from "@/lib/dal";
 import { SubmitButton } from "@/components/submit-button";
+import { CLIENT_PRIMARY_BUTTON } from "@/lib/client-ui";
 import { createClient } from "@/lib/supabase/server";
 import { getAvailableSlotsForDate } from "@/lib/availability";
 import { resolveLocale } from "@/lib/i18n/config";
@@ -27,7 +29,8 @@ import { parseBookingVehicle, withBookingVehicle } from "@/lib/booking-vehicle";
 import { GarageMapDisplay } from "@/components/garage-map-display";
 import { bookAppointment } from "@/app/actions/appointments";
 import { joinWaitlist } from "@/app/actions/waitlist";
-import { formatRating } from "@/lib/ratings";
+import { averageRating } from "@/lib/ratings";
+import { RatingPill, StarRating } from "@/components/star-rating";
 import { hasAnyOpeningHours, summarizeWeeklyHours } from "@/lib/opening-hours";
 import { APP_TIME_ZONE, dateKeyToDisplayDate, todayKeyInAppZone } from "@/lib/timezone";
 
@@ -45,7 +48,7 @@ function BookingStepIndicator({ steps }: { steps: { label: string; status: StepS
                   ? "flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-white dark:bg-brand-500"
                   : step.status === "current"
                     ? "flex h-7 w-7 items-center justify-center rounded-full border-2 border-brand-600 text-brand-600 dark:border-brand-500 dark:text-brand-400"
-                    : "flex h-7 w-7 items-center justify-center rounded-full border-2 border-zinc-300 text-zinc-400 dark:border-zinc-700 dark:text-zinc-500"
+                    : "flex h-7 w-7 items-center justify-center rounded-full border-2 border-hairline text-ink-muted"
               }
             >
               {step.status === "complete" ? (
@@ -57,8 +60,8 @@ function BookingStepIndicator({ steps }: { steps: { label: string; status: StepS
             <span
               className={
                 step.status === "upcoming"
-                  ? "text-xs font-medium text-zinc-400 dark:text-zinc-500"
-                  : "text-xs font-medium text-zinc-900 dark:text-zinc-50"
+                  ? "text-xs font-medium text-ink-muted"
+                  : "text-xs font-medium text-ink"
               }
             >
               {step.label}
@@ -244,6 +247,7 @@ export default async function GarageDetailPage({
     created_at: string;
     profiles: { full_name: string } | null;
   }[];
+  const ratingAverage = averageRating(reviewRows.map((review) => review.rating));
 
   const selectedService =
     services?.find((service) => service.id === serviceParam) ??
@@ -351,7 +355,7 @@ export default async function GarageDetailPage({
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-8 bg-zinc-50 px-6 py-12 dark:bg-black sm:px-12">
+    <div className="flex flex-1 flex-col gap-8 bg-canvas px-6 py-12 sm:px-12">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <div>
           <Link
@@ -360,39 +364,46 @@ export default async function GarageDetailPage({
           >
             &larr; {d.backToGarages}
           </Link>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl">
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink sm:text-3xl">
             {garage.name}
           </h1>
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
             <VerificationBadge level={verificationLevel} labels={dictionary.verificationLevels} />
-            <span aria-hidden className="text-xs text-zinc-600 dark:text-zinc-400">
+            <span aria-hidden className="text-xs text-ink-muted">
               {dictionary.verificationLevels[verificationLevel].description}
             </span>
           </div>
           {(garage.address || garage.city) && (
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="mt-1 text-sm text-ink-muted">
               {[garage.address, garage.city].filter(Boolean).join(", ")}
             </p>
           )}
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            {formatRating(
-              reviewRows.map((review) => review.rating),
+          <div className="mt-2 text-sm text-ink-muted">
+            {ratingAverage !== null ? (
+              <RatingPill
+                average={ratingAverage}
+                count={reviewRows.length}
+                label={dictionary.common.ratingSummary
+                  .replace("{rating}", ratingAverage.toFixed(1))
+                  .replace("{count}", String(reviewRows.length))}
+              />
+            ) : (
               d.noReviewsYet
             )}
-          </p>
+          </div>
           {(capabilities.length > 0 || pricingLabel) && (
             <ul className="mt-3 flex flex-wrap gap-2" aria-label={fields.servicesCapabilitiesTitle}>
               {capabilities.map(({ icon: Icon, label }) => (
                 <li
                   key={label}
-                  className="flex items-center gap-1.5 rounded-full border border-black/[.08] bg-white px-3 py-1 text-xs font-medium text-zinc-900 dark:border-white/[.145] dark:bg-zinc-950 dark:text-zinc-50"
+                  className="flex items-center gap-1.5 rounded-full border border-hairline bg-surface px-3 py-1 text-xs font-medium text-ink"
                 >
                   <Icon className="h-3.5 w-3.5 text-brand-600 dark:text-brand-400" strokeWidth={1.75} />
                   {label}
                 </li>
               ))}
               {pricingLabel && (
-                <li className="rounded-full border border-black/[.08] bg-white px-3 py-1 text-xs font-medium text-zinc-600 dark:border-white/[.145] dark:bg-zinc-950 dark:text-zinc-400">
+                <li className="rounded-full border border-hairline bg-surface px-3 py-1 text-xs font-medium text-ink-muted">
                   {fields.pricingCategoryLabel}: {pricingLabel}
                 </li>
               )}
@@ -402,10 +413,10 @@ export default async function GarageDetailPage({
 
         {garage.description && (
           <section aria-labelledby="about-title" className="flex flex-col gap-2">
-            <h2 id="about-title" className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h2 id="about-title" className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
               {d.aboutTitle}
             </h2>
-            <p className="whitespace-pre-line text-sm leading-relaxed text-zinc-900 dark:text-zinc-50">
+            <p className="whitespace-pre-line text-sm leading-relaxed text-ink">
               {garage.description}
             </p>
           </section>
@@ -414,32 +425,32 @@ export default async function GarageDetailPage({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <section
             aria-labelledby="hours-title"
-            className="flex flex-col gap-3 rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] p-4 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none"
+            className="flex flex-col gap-3 rounded-xl border border-hairline bg-surface p-4"
           >
-            <h2 id="hours-title" className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h2 id="hours-title" className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
               {fields.openingHoursTitle}
             </h2>
             {hasAnyOpeningHours(weeklyHours) ? (
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
                 {weeklyHours.map((day) => (
                   <div key={day.dayOfWeek} className="contents">
-                    <dt className="text-zinc-600 dark:text-zinc-400">{fields.days[day.dayOfWeek]}</dt>
-                    <dd className="text-right font-medium text-zinc-900 dark:text-zinc-50">
+                    <dt className="text-ink-muted">{fields.days[day.dayOfWeek]}</dt>
+                    <dd className="text-right font-medium text-ink">
                       {day.ranges.length > 0 ? day.ranges.join(", ") : fields.closed}
                     </dd>
                   </div>
                 ))}
               </dl>
             ) : (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.hoursNotPublished}</p>
+              <p className="text-sm text-ink-muted">{d.hoursNotPublished}</p>
             )}
           </section>
 
           <section
             aria-labelledby="contact-title"
-            className="flex flex-col gap-3 rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] p-4 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none"
+            className="flex flex-col gap-3 rounded-xl border border-hairline bg-surface p-4"
           >
-            <h2 id="contact-title" className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            <h2 id="contact-title" className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
               {d.contactTitle}
             </h2>
             {garage.phone || garage.email || garage.website ? (
@@ -475,15 +486,15 @@ export default async function GarageDetailPage({
                 )}
               </ul>
             ) : (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">{d.noContactDetails}</p>
+              <p className="text-sm text-ink-muted">{d.noContactDetails}</p>
             )}
           </section>
         </div>
 
         {languageLabels.length > 0 && (
-          <section className="flex flex-col gap-2 rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] p-4 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none">
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{fields.languagesSpokenLabel}</h2>
-            <p className="text-sm text-zinc-900 dark:text-zinc-50">{languageLabels.join(", ")}</p>
+          <section className="flex flex-col gap-2 rounded-xl border border-hairline bg-surface p-4">
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{fields.languagesSpokenLabel}</h2>
+            <p className="text-sm text-ink">{languageLabels.join(", ")}</p>
           </section>
         )}
 
@@ -510,7 +521,7 @@ export default async function GarageDetailPage({
 
         {/* "Book" on a search result card lands here. */}
         <div id="book" className="flex scroll-mt-20 flex-col gap-3">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
             {d.chooseService}
           </h2>
           <div className="flex flex-col gap-5">
@@ -523,7 +534,7 @@ export default async function GarageDetailPage({
                 >
                   <h3
                     id={`service-category-${group.category}`}
-                    className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400"
+                    className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted"
                   >
                     {dictionary.serviceCategories[group.category]}
                   </h3>
@@ -533,21 +544,28 @@ export default async function GarageDetailPage({
                       href={keepVehicle(`/${lang}/garages/${garageId}?service=${service.id}&date=${selectedDate}`)}
                       className={`rounded-xl border p-4 transition-colors ${
                         selectedService?.id === service.id
-                          ? "border-brand-600 bg-white ring-1 ring-brand-600 dark:border-brand-500 dark:bg-zinc-950/40 dark:ring-brand-500"
-                          : "border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] hover:border-zinc-300 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none dark:hover:border-zinc-700"
+                          ? "border-brand-600 bg-surface ring-1 ring-brand-600 dark:border-brand-500 dark:ring-brand-500"
+                          : "border-hairline bg-surface hover:border-hairline"
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                        <span className="font-medium text-ink">
                           {service.name}
                         </span>
-                        <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                          {service.duration_minutes} {d.min} &middot;{" "}
-                          {formatServicePrice(service, dictionary.servicePrice)}
+                        <span className="flex shrink-0 items-center gap-3 text-sm text-ink-muted">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+                            <span className="font-mono">
+                              {service.duration_minutes} {d.min}
+                            </span>
+                          </span>
+                          <span className="font-mono font-semibold text-ink">
+                            {formatServicePrice(service, dictionary.servicePrice)}
+                          </span>
                         </span>
                       </div>
                       {service.description && (
-                        <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                        <p className="mt-1 text-sm text-ink-muted">
                           {service.description}
                         </p>
                       )}
@@ -556,7 +574,7 @@ export default async function GarageDetailPage({
                 </section>
               ))
             ) : (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm text-ink-muted">
                 {d.noServicesYet}
               </p>
             )}
@@ -567,7 +585,7 @@ export default async function GarageDetailPage({
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
                   {d.chooseDate}
                 </h2>
                 <div className="flex items-center gap-1">
@@ -575,7 +593,7 @@ export default async function GarageDetailPage({
                     <Link
                       href={keepVehicle(`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}&month=${prevMonthKey}`)}
                       aria-label={d.previousMonth}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-black/[.04] dark:text-zinc-400 dark:hover:bg-white/[.06]"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-subtle"
                     >
                       <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
                     </Link>
@@ -584,14 +602,14 @@ export default async function GarageDetailPage({
                       <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
                     </span>
                   )}
-                  <span className="min-w-28 text-center text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                  <span className="min-w-28 text-center text-sm font-medium text-ink">
                     {monthLabel}
                   </span>
                   {canGoNextMonth ? (
                     <Link
                       href={keepVehicle(`/${lang}/garages/${garageId}?service=${selectedService.id}&date=${selectedDate}&month=${nextMonthKeyValue}`)}
                       aria-label={d.nextMonth}
-                      className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-600 transition-colors hover:bg-black/[.04] dark:text-zinc-400 dark:hover:bg-white/[.06]"
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-subtle"
                     >
                       <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
                     </Link>
@@ -603,7 +621,7 @@ export default async function GarageDetailPage({
                 </div>
               </div>
 
-              <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-ink-muted">
                 {d.weekdays.map((label: string, index: number) => (
                   <span key={index}>{label}</span>
                 ))}
@@ -632,7 +650,7 @@ export default async function GarageDetailPage({
                       className={
                         isSelected
                           ? "flex h-9 items-center justify-center rounded-lg bg-brand-600 text-sm font-medium text-white dark:bg-brand-500"
-                          : "flex h-9 items-center justify-center rounded-lg text-sm text-zinc-900 transition-colors hover:bg-black/[.04] dark:text-zinc-50 dark:hover:bg-white/[.06]"
+                          : "flex h-9 items-center justify-center rounded-lg text-sm text-ink transition-colors hover:bg-subtle"
                       }
                     >
                       {date.getDate()}
@@ -643,7 +661,7 @@ export default async function GarageDetailPage({
             </div>
 
             <div className="flex flex-col gap-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
                 {d.availableTimes}
               </h2>
               {slots.length > 0 ? (
@@ -651,7 +669,7 @@ export default async function GarageDetailPage({
                   {/* Step 1: pick a time. Links, not submit buttons: a click
                       only selects (?time=), it never books. */}
                   {!selectedTime && (
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-ink-muted">
                       {d.selectTimeHint}
                     </p>
                   )}
@@ -675,8 +693,8 @@ export default async function GarageDetailPage({
                           aria-current={isSelectedSlot ? "true" : undefined}
                           className={
                             isSelectedSlot
-                              ? "rounded-full border border-brand-600 bg-brand-600 px-4 py-2 text-sm font-medium text-white dark:border-brand-500 dark:bg-brand-500"
-                              : "rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                              ? "rounded-xl border border-brand-600 bg-brand-600 px-4 py-2.5 font-mono text-sm font-semibold text-white dark:border-brand-500 dark:bg-brand-500"
+                              : "rounded-xl border border-hairline bg-surface px-4 py-2.5 font-mono text-sm font-semibold text-ink transition-colors hover:border-ink/30 hover:bg-subtle"
                           }
                         >
                           {slot}
@@ -691,7 +709,7 @@ export default async function GarageDetailPage({
                       id="confirm-booking"
                       action={bookAppointment}
                       aria-labelledby="confirm-booking-title"
-                      className="flex scroll-mt-6 flex-col gap-4 rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] p-5 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none"
+                      className="flex scroll-mt-6 flex-col gap-4 rounded-xl border border-hairline bg-surface p-5"
                     >
                       <input type="hidden" name="garageId" value={garageId} />
                       <input type="hidden" name="serviceId" value={selectedService.id} />
@@ -701,26 +719,26 @@ export default async function GarageDetailPage({
 
                       <h3
                         id="confirm-booking-title"
-                        className="font-semibold text-zinc-900 dark:text-zinc-50"
+                        className="font-semibold text-ink"
                       >
                         {d.reviewTitle}
                       </h3>
                       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-                        <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewGarage}</dt>
-                        <dd className="font-medium text-zinc-900 dark:text-zinc-50">{garage.name}</dd>
-                        <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewService}</dt>
-                        <dd className="font-medium text-zinc-900 dark:text-zinc-50">
+                        <dt className="text-ink-muted">{d.reviewGarage}</dt>
+                        <dd className="font-medium text-ink">{garage.name}</dd>
+                        <dt className="text-ink-muted">{d.reviewService}</dt>
+                        <dd className="font-medium text-ink">
                           {selectedService.name}{" "}
-                          <span className="font-normal text-zinc-500 dark:text-zinc-400">
+                          <span className="font-normal text-ink-muted">
                             ({selectedService.duration_minutes} {d.min})
                           </span>
                         </dd>
-                        <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewWhen}</dt>
-                        <dd className="font-medium text-zinc-900 first-letter:uppercase dark:text-zinc-50">
-                          {selectedDateLabel} · {selectedTime}
+                        <dt className="text-ink-muted">{d.reviewWhen}</dt>
+                        <dd className="font-medium text-ink first-letter:uppercase">
+                          {selectedDateLabel}, <span className="font-mono">{selectedTime}</span>
                         </dd>
-                        <dt className="text-zinc-500 dark:text-zinc-400">{d.reviewPrice}</dt>
-                        <dd className="font-medium tabular-nums text-zinc-900 dark:text-zinc-50">
+                        <dt className="text-ink-muted">{d.reviewPrice}</dt>
+                        <dd className="font-medium tabular-nums text-ink">
                           {formatServicePrice(selectedService, dictionary.servicePrice)}
                         </dd>
                       </dl>
@@ -737,7 +755,7 @@ export default async function GarageDetailPage({
                               vehicleRows.find((vehicle) => vehicle.id === bookingVehicleId)?.id ??
                               vehicleRows[0].id
                             }
-                            className="w-full max-w-xs rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
+                            className="w-full max-w-xs rounded-md border border-hairline px-3 py-2 dark:bg-black"
                           >
                             <option value="">{d.noVehicleSpecified}</option>
                             {vehicleRows.map((vehicle) => (
@@ -756,11 +774,11 @@ export default async function GarageDetailPage({
                         </Link>
                       )}
 
-                      <p className="flex items-start gap-2 rounded-md border border-black/[.08] bg-zinc-50 px-3 py-2 text-sm text-zinc-700 dark:border-white/[.145] dark:bg-zinc-900/50 dark:text-zinc-300">
+                      <p className="flex items-start gap-2 rounded-md border border-hairline bg-subtle px-3 py-2 text-sm text-ink">
                         <Banknote aria-hidden className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} />
                         {d.payOnSiteNotice}
                       </p>
-                      <label className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                      <label className="flex items-start gap-2 text-sm text-ink">
                         <input
                           type="checkbox"
                           name="termsAccepted"
@@ -778,14 +796,14 @@ export default async function GarageDetailPage({
                       <div className="flex flex-wrap items-center gap-3">
                         <SubmitButton
                           pendingLabel={d.confirming}
-                          className="rounded-full bg-brand-600 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 dark:bg-brand-500 dark:hover:bg-brand-600"
+                          className={CLIENT_PRIMARY_BUTTON}
                         >
                           {d.confirmBooking}
                         </SubmitButton>
                         <Link
                           href={slotBaseHref}
                           scroll={false}
-                          className="text-sm font-medium text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                          className="text-sm font-medium text-ink-muted underline hover:text-ink"
                         >
                           {d.changeTime}
                         </Link>
@@ -795,11 +813,11 @@ export default async function GarageDetailPage({
                 </div>
               ) : (
                 <div className="flex flex-col gap-3">
-                  <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                  <p className="text-sm text-ink-muted">
                     {isClosedOverride ? d.closedOnDate : d.noOpenTimes}
                   </p>
                   {alreadyOnWaitlist ? (
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-ink-muted">
                       {d.alreadyOnWaitlistForDate}
                     </p>
                   ) : (
@@ -814,7 +832,7 @@ export default async function GarageDetailPage({
                       <input type="hidden" name="lang" value={lang} />
                       <button
                         type="submit"
-                        className="self-start rounded-full border border-black/[.08] px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+                        className="self-start rounded-full border border-hairline px-4 py-2 text-sm font-medium transition-colors hover:bg-black/[.04] dark:hover:bg-[#1a1a1a]"
                       >
                         {d.joinWaitlistForDate}
                       </button>
@@ -827,36 +845,36 @@ export default async function GarageDetailPage({
         )}
 
         <div className="flex flex-col gap-3">
-          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <h2 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
             {d.reviews}
           </h2>
           {reviewRows.length > 0 ? (
             reviewRows.map((review) => (
               <div
                 key={review.id}
-                className="rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] p-4 dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none"
+                className="rounded-xl border border-hairline bg-surface p-4"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                  <span className="text-sm font-medium text-ink">
                     {review.profiles?.full_name ?? d.clientFallback}
                   </span>
-                  <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                    {"★".repeat(review.rating)}
-                    {"☆".repeat(5 - review.rating)}
-                  </span>
+                  <StarRating
+                    rating={review.rating}
+                    label={dictionary.common.ratingOutOf.replace("{rating}", String(review.rating))}
+                  />
                 </div>
                 {review.comment && (
-                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                  <p className="mt-1 text-sm text-ink-muted">
                     {review.comment}
                   </p>
                 )}
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+                <p className="mt-1 text-xs text-ink-muted">
                   {new Date(review.created_at).toLocaleDateString(dateLocale, { timeZone: APP_TIME_ZONE })}
                 </p>
               </div>
             ))
           ) : (
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-ink-muted">
               {d.noReviewsYet}
             </p>
           )}

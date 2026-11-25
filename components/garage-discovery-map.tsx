@@ -45,11 +45,14 @@ export function GarageDiscoveryMap({
   garages,
   lang,
   vehicleId = null,
+  className = "h-80 w-full overflow-hidden rounded-xl border border-hairline",
 }: {
   garages: DiscoveryGarage[];
   lang: Locale;
   // Carried into the garage link (see lib/booking-vehicle.ts).
   vehicleId?: string | null;
+  /** Sizes and frames the map; the parent decides its height. */
+  className?: string;
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -59,7 +62,7 @@ export function GarageDiscoveryMap({
   const selected = garages.find((garage) => garage.id === selectedId);
 
   return (
-    <div className="h-80 w-full overflow-hidden rounded-xl border border-black/[.08] dark:border-white/[.145]">
+    <div className={className}>
       <APIProvider apiKey={apiKey}>
         <Map
           defaultCenter={{ lat: garages[0].latitude, lng: garages[0].longitude }}

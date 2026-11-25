@@ -1,39 +1,83 @@
-// Shared surface and type tokens for the client portal. Light mode layers
-// white cards on a zinc-50 canvas with a hairline border and a barely-there
-// shadow; dark mode keeps the near-black canvas with translucent panels.
+// Shared surface and type tokens for the client portal, built on the
+// semantic colours in app/[lang]/globals.css (canvas < surface < subtle,
+// one hairline, ink / ink-muted). Every token works in both themes as is:
+// light mode is white cards with a soft shadow on a warm-gray canvas; dark
+// mode keeps flat charcoal panels with a hairline and no shadow.
 
-/** Page canvas, below the white top bar and next to the white sidebar. */
-export const CLIENT_CANVAS = "bg-zinc-50 dark:bg-black";
+/** Page canvas. */
+export const CLIENT_CANVAS = "bg-canvas";
 
-/** Standard page wrapper: canvas plus the portal's page padding. */
-export const CLIENT_PAGE = `flex flex-1 flex-col ${CLIENT_CANVAS} px-4 py-8 sm:px-8 sm:py-10`;
+/** Standard scrolling page: canvas plus the portal's page padding. */
+export const CLIENT_PAGE = "flex flex-1 flex-col bg-canvas px-4 py-6 sm:px-8 sm:py-8";
 
-/** A content card. Add padding and layout per use. */
+/**
+ * A page that fits the viewport from md up and scrolls inside its panels
+ * instead. Below md the phone header (h-14) and tab bar (h-16 + home
+ * indicator) are outside it, and the page scrolls normally.
+ */
+export const CLIENT_FIT_PAGE =
+  "flex flex-col bg-canvas px-4 py-6 sm:px-8 md:h-dvh md:min-h-[36rem] md:py-8";
+
+/** An elevated white card. Add padding (CLIENT_CARD_PAD) and layout per use. */
 export const CLIENT_CARD =
-  "rounded-xl border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)] dark:border-zinc-800/60 dark:bg-zinc-950/40 dark:shadow-none";
+  "rounded-2xl border border-zinc-200/70 bg-surface shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none";
 
-export const CLIENT_PAGE_TITLE =
-  "text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50 sm:text-3xl";
+/** Kept for existing imports: every region is a card. */
+export const CLIENT_SURFACE = CLIENT_CARD;
 
-export const CLIENT_PAGE_SUBTITLE = "text-sm text-zinc-500 dark:text-zinc-400";
+export const CLIENT_CARD_PAD = "p-5 sm:p-6";
 
-// zinc-500, not zinc-400: 11px text on the zinc-50 canvas needs the darker
-// shade to stay above the WCAG AA 4.5:1 contrast ratio.
-export const CLIENT_SECTION_LABEL =
-  "text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400";
+export const CLIENT_CARD_TITLE = "text-lg font-bold tracking-tight text-ink";
 
-export const CLIENT_DIVIDE = "divide-y divide-zinc-200/80 dark:divide-zinc-800/60";
+/** Secondary metadata under a card title. */
+export const CLIENT_META = "text-sm text-ink-muted";
 
-/** Tinted, borderless pill for everyday card actions (Message, Reschedule...). */
-export const CLIENT_TINTED_PILL =
-  "inline-flex h-8 items-center gap-1.5 rounded-lg bg-zinc-100 px-3 text-xs font-medium text-zinc-700 transition-colors hover:bg-zinc-200/70 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 dark:bg-zinc-800/60 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+export const CLIENT_PAGE_TITLE = "text-2xl font-bold tracking-tight text-ink sm:text-3xl";
 
-export const CLIENT_PILL_ICON = "h-3.5 w-3.5 shrink-0 text-zinc-500 dark:text-zinc-400";
+export const CLIENT_PAGE_SUBTITLE = "text-sm text-ink-muted sm:text-[15px]";
 
-/** Ghost red pill, same box as CLIENT_TINTED_PILL, for destructive actions. */
-export const CLIENT_DANGER_PILL =
-  "inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-500/10";
+/** Heading of a card or a section. */
+export const CLIENT_SECTION_LABEL = "text-base font-bold tracking-tight text-ink";
+
+/** Header row of a card: title on the left, an action on the right. */
+export const CLIENT_SURFACE_HEADER =
+  "flex min-h-14 items-center justify-between gap-3 border-b border-hairline px-5 py-3 sm:px-6";
+
+export const CLIENT_DIVIDE = "divide-y divide-hairline";
+
+const BUTTON_BASE =
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60";
+
+/** Primary call to action: near-black in light mode, near-white in dark. */
+export const CLIENT_PRIMARY_BUTTON = `${BUTTON_BASE} bg-ink px-5 text-surface hover:bg-ink/85 focus-visible:ring-ink/40`;
+
+/** White button with a hairline, for secondary actions in headers. */
+export const CLIENT_SECONDARY_BUTTON = `${BUTTON_BASE} border border-hairline bg-surface text-ink hover:bg-subtle focus-visible:ring-ink/30`;
+
+/** Tinted button for everyday card actions (Message, Reschedule...). */
+export const CLIENT_TINTED_PILL = `${BUTTON_BASE} bg-subtle text-ink hover:bg-hairline focus-visible:ring-ink/30`;
+
+export const CLIENT_PILL_ICON = "h-4 w-4 shrink-0 text-ink-muted";
+
+/** Ghost red button, same box as the others, for destructive actions. */
+export const CLIENT_DANGER_PILL = `${BUTTON_BASE} text-red-600 hover:bg-red-50 focus-visible:ring-red-500/40 dark:text-red-400 dark:hover:bg-red-500/10`;
 
 /** Square icon button (edit, delete) inside cards. */
 export const CLIENT_ICON_BUTTON =
-  "inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 dark:text-zinc-400 dark:hover:bg-zinc-800/60 dark:hover:text-zinc-50";
+  "inline-flex h-10 w-10 items-center justify-center rounded-xl text-ink-muted transition-colors hover:bg-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/30";
+
+/** Quiet text link with an optional trailing arrow. */
+export const CLIENT_TEXT_LINK =
+  "inline-flex items-center gap-1 text-sm font-semibold text-ink-muted transition-colors hover:text-ink";
+
+/** A row inside a card that is itself a link or hover target. */
+export const CLIENT_ROW_HOVER = "transition-colors hover:bg-subtle/70";
+
+/** Category / tag pill. */
+export const CLIENT_TAG = "inline-flex items-center rounded-full bg-subtle px-3 py-1 text-xs font-medium text-ink";
+
+/** Segmented control (tabs) container and its items. */
+export const CLIENT_SEGMENTED = "inline-flex rounded-xl border border-zinc-200/70 bg-surface p-1 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-hairline dark:shadow-none";
+export const CLIENT_SEGMENT = "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors";
+export const CLIENT_SEGMENT_ACTIVE = "bg-ink text-surface";
+export const CLIENT_SEGMENT_IDLE = "text-ink-muted hover:bg-subtle hover:text-ink";

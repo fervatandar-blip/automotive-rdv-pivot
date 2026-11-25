@@ -204,7 +204,7 @@ function DetailsFields({
           id="website"
           name="website"
           type="url"
-          placeholder="https://yourgarage.lu"
+          placeholder="https://yourworkshop.lu"
           defaultValue={garage.website ?? ""}
           className={inputClass}
         />

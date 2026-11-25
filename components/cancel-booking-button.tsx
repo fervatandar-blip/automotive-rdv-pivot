@@ -51,13 +51,13 @@ export function CancelBookingButton({
   return (
     <div className="flex w-full flex-col gap-1.5 sm:ml-auto sm:w-auto">
       <div role="group" aria-label={labels.confirm} className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-medium text-zinc-900 dark:text-zinc-50">{labels.confirm}</span>
+        <span className="text-sm font-semibold text-ink">{labels.confirm}</span>
         <button
           type="button"
           autoFocus
           disabled={pending}
           onClick={() => setConfirming(false)}
-          className={`${CLIENT_TINTED_PILL} disabled:opacity-50`}
+          className={CLIENT_TINTED_PILL}
         >
           {labels.keep}
         </button>
@@ -68,14 +68,14 @@ export function CancelBookingButton({
             type="submit"
             disabled={pending}
             aria-busy={pending}
-            className="inline-flex h-8 items-center rounded-lg bg-red-600 px-3 text-xs font-medium text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 disabled:opacity-60 dark:bg-red-500/90 dark:hover:bg-red-500"
+            className="inline-flex items-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 disabled:opacity-60 dark:bg-red-500/90 dark:hover:bg-red-500"
           >
             {pending ? labels.cancelling : labels.yes}
           </button>
         </form>
       </div>
       {!pending && state?.error && (
-        <p role="alert" className="text-xs text-red-600 dark:text-red-400">
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error === "failed" ? labels.failed : labels.notAllowed}
         </p>
       )}

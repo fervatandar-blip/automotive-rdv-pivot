@@ -9,5 +9,6 @@ export function formatRating(
 ): string {
   const average = averageRating(ratings);
   if (average === null) return noReviewsLabel;
-  return `★ ${average.toFixed(1)} (${ratings.length})`;
+  // Plain text: callers draw the star icon (components/star-rating.tsx).
+  return `${average.toFixed(1)} (${ratings.length})`;
 }

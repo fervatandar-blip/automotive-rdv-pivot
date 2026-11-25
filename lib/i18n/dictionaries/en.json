@@ -18,13 +18,15 @@
       "in_repair": "In repair",
       "quality_check": "Quality check",
       "ready_for_pickup": "Ready for pickup"
-    }
+    },
+    "ratingOutOf": "{rating} out of 5",
+    "ratingSummary": "Rated {rating} out of 5 from {count} reviews"
   },
   "home": {
     "heroTitle": "Find a trusted workshop in Luxembourg.",
     "heroSubtitle": "RDV connects car owners with verified service centers — search, compare, and book online in a few taps.",
     "findGarageCta": "Find a Workshop",
-    "listGarageCta": "List your garage",
+    "listGarageCta": "List your workshop",
     "features": {
       "search": {
         "title": "Search & compare",
@@ -75,7 +77,7 @@
     "welcomePrefix": "Welcome,",
     "rolePrefix": "Role:",
     "overview": "Overview",
-    "garagesNav": "Garages",
+    "garagesNav": "Workshops",
     "leadsNav": "Leads",
     "account": "Account",
     "bookAppointment": "Book an Appointment",
@@ -137,7 +139,23 @@
     "pastServiceHistory": "Past service history",
     "messageWorkshop": "Message {name}",
     "moreVehicles": "+{count} more",
-    "noVehiclesHint": "Add your car once and book faster every time."
+    "noVehiclesHint": "Add your car once and book faster every time.",
+    "nextAppointment": "Next appointment",
+    "moreUpcoming": "+{count} more upcoming",
+    "allAppointments": "All appointments",
+    "yourVehicle": "Your vehicle",
+    "quickActions": "Quick actions",
+    "unreadMessages": "{count} unread",
+    "reviewPendingOne": "1 completed service to review",
+    "reviewPendingMany": "{count} completed services to review",
+    "waitlistActive": "{count} on the waitlist",
+    "appointmentRescheduled": "Your appointment has been moved.",
+    "noVehicleTitle": "No vehicle yet",
+    "findServiceCenter": "Find a service center",
+    "lastVisit": "Last visit",
+    "noRecentService": "No completed service yet",
+    "upcomingCount": "Upcoming",
+    "waitlistSlotOpenedShort": "Slot available"
   },
   "garageDiscovery": {
     "title": "Service Centers",
@@ -175,7 +193,9 @@
     "sortByName": "Sort: Name",
     "sortByRating": "Sort: Rating",
     "sortByDistance": "Sort: Distance",
-    "filters": "Search and filters"
+    "filters": "Search and filters",
+    "resultCount": "{count} results",
+    "bookAppointmentCta": "Book Appointment"
   },
   "garageDetail": {
     "backToGarages": "Back to workshops",
@@ -330,12 +350,7 @@
       "nameTooShort": "Enter at least 2 characters.",
       "nameTooLong": "Use 120 characters or fewer.",
       "phoneInvalid": "Enter a valid phone number (digits, spaces and + only)."
-    },
-    "preferences": "Preferences",
-    "preferencesDescription": "Appearance on this device.",
-    "theme": "Theme",
-    "themeLight": "Light",
-    "themeDark": "Dark"
+    }
   },
   "appointmentMessages": {
     "backToDashboard": "Back to dashboard",
@@ -665,7 +680,7 @@
     "manageHours": "Manage availability",
     "noHours": "No opening hours set. Online booking is unavailable until weekly hours are configured.",
     "locationDescription": "Place the pin at the entrance to guide clients.",
-    "capabilitiesDescription": "Helps clients filter garages and find the right one.",
+    "capabilitiesDescription": "Helps clients filter service centers and find the right one.",
     "save": "Save",
     "saving": "Saving...",
     "saved": "Saved",
@@ -1051,11 +1066,11 @@
   },
   "demo": {
     "forDrivers": "For drivers",
-    "forGarages": "For garages",
+    "forGarages": "For workshops",
     "contact": "Contact",
     "logIn": "Log in",
     "bookADemo": "Book a demo",
-    "heroTitle": "Grow your garage business with RDV Pro.",
+    "heroTitle": "Grow your workshop with RDV Pro.",
     "heroSubtitle": "Start with a free, personalized demo. No commitment, no credit card, just a walkthrough tailored to your specialty.",
     "steps": [
       {
@@ -1071,7 +1086,7 @@
         "description": "We'll configure your profile so you can start welcoming clients on your schedule."
       }
     ],
-    "badge": "Now onboarding garages across Luxembourg",
+    "badge": "Now onboarding workshops across Luxembourg",
     "benefits": [
       {
         "title": "Expand your local reach",
@@ -1100,25 +1115,25 @@
       "businessEmail": "Business email",
       "phone": "Phone number",
       "countryCode": "Country code",
-      "garageName": "Garage name",
+      "garageName": "Workshop name",
       "country": "Country",
-      "garageSizeType": "Garage size/type",
+      "garageSizeType": "Workshop size/type",
       "selectAnOption": "Select an option",
       "additionalDetails": "Additional details (optional)",
       "additionalDetailsPlaceholder": "How many bays, what services you offer, anything you'd like us to know before the call...",
-      "submit": "Book my garage's free demo.",
+      "submit": "Book my workshop's free demo.",
       "submitPending": "Submitting..."
     }
   },
   "adminNav": {
     "overview": "Overview",
-    "garages": "Garages",
+    "garages": "Workshops",
     "leads": "Leads"
   },
   "adminGarages": {
-    "title": "Garages",
+    "title": "Workshops",
     "noCitySet": "No city set",
-    "noGaragesYet": "No garages yet.",
+    "noGaragesYet": "No workshops yet.",
     "statusLabels": {
       "pending": "Pending",
       "approved": "Approved",
@@ -1126,7 +1141,7 @@
     }
   },
   "adminGarageDetail": {
-    "backToAllGarages": "All garages",
+    "backToAllGarages": "All workshops",
     "noCitySet": "No city set",
     "noEmail": "no email",
     "statusLabels": {
@@ -1134,8 +1149,8 @@
       "approved": "Approved",
       "rejected": "Rejected"
     },
-    "approveGarage": "Approve garage",
-    "rejectGarage": "Reject garage",
+    "approveGarage": "Approve workshop",
+    "rejectGarage": "Reject workshop",
     "verificationLevel": "Verification level",
     "save": "Save",
     "notUploaded": "Not uploaded",
@@ -1145,14 +1160,14 @@
   },
   "adminLeads": {
     "title": "Leads",
-    "leadConvertedNotice": "Lead converted to a garage account.",
+    "leadConvertedNotice": "Lead converted to a workshop account.",
     "errors": {
       "invalid": "That request wasn't valid. Please try again.",
       "not-found": "That lead couldn't be found.",
       "exists": "That email already belongs to a platform account.",
       "invite-failed": "Could not send the invite. Please try again.",
-      "garage-missing": "The account was created but its garage record couldn't be found.",
-      "lead-update-failed": "The garage was created, but the lead couldn't be marked converted."
+      "garage-missing": "The account was created but its workshop record couldn't be found.",
+      "lead-update-failed": "The workshop was created, but the lead couldn't be marked converted."
     },
     "statusLabels": {
       "new": "New",
@@ -1161,7 +1176,7 @@
       "archived": "Archived"
     },
     "submittedPrefix": "Submitted",
-    "viewGarage": "View garage",
+    "viewGarage": "View workshop",
     "markContacted": "Mark contacted",
     "convertToAccount": "Convert to account",
     "archive": "Archive",
@@ -1169,15 +1184,15 @@
   },
   "adminStats": {
     "title": "Overview",
-    "garagesListLink": "Garages list",
+    "garagesListLink": "Workshop list",
     "runRetentionSweep": "Run retention sweep now",
-    "garagesSection": "Garages",
+    "garagesSection": "Workshops",
     "pending": "Pending",
     "approved": "Approved",
     "rejected": "Rejected",
     "peopleSection": "People",
     "clients": "Clients",
-    "garageAdmins": "Garage admins",
+    "garageAdmins": "Workshop admins",
     "mecaniciens": "Mécaniciens",
     "appointmentsSection": "Appointments",
     "confirmed": "Confirmed",
@@ -1194,23 +1209,23 @@
     "processNow": "Process now"
   },
   "garageAuth": {
-    "tagline": "Grow your garage with RDV.",
+    "tagline": "Grow your workshop with RDV.",
     "login": {
-      "title": "Garage owner login",
-      "confirmEmailNotice": "Check your email to confirm your garage account before logging in.",
+      "title": "Workshop login",
+      "confirmEmailNotice": "Check your email to confirm your workshop account before logging in.",
       "submit": "Log In",
       "submitPending": "Logging in...",
       "noAccount": "New to RDV?",
-      "signUpLink": "List your garage",
-      "notGarageOwner": "Not a garage owner?",
+      "signUpLink": "List your workshop",
+      "notGarageOwner": "Not a workshop owner?",
       "clientLoginLink": "Client login"
     },
     "signup": {
-      "title": "List your garage on RDV",
-      "description": "Create your garage owner account. You'll set up your garage profile and verification documents right after.",
-      "submit": "Create garage account",
+      "title": "List your workshop on RDV",
+      "description": "Create your workshop owner account. You'll set up your workshop profile and verification documents right after.",
+      "submit": "Create workshop account",
       "submitPending": "Creating account...",
-      "hasAccount": "Already have a garage account?",
+      "hasAccount": "Already have a workshop account?",
       "logInLink": "Log in",
       "notGarageOwner": "Looking to book a service instead?",
       "clientSignUpLink": "Sign up as a client"
@@ -1315,9 +1330,9 @@
   },
   "clientNav": {
     "mainNav": "Main navigation",
-    "dashboard": "My dashboard",
-    "dashboardShort": "Home",
-    "findGarage": "Find a Workshop",
+    "dashboard": "Overview",
+    "dashboardShort": "Overview",
+    "findGarage": "Service Centers",
     "findGarageShort": "Search",
     "vehicles": "My Vehicles",
     "account": "Account",
@@ -1330,7 +1345,10 @@
     "language": "Language",
     "messages": "Messages",
     "unreadMessages": "{count} unread",
-    "vehiclesShort": "Vehicles"
+    "vehiclesShort": "Vehicles",
+    "appointments": "Appointments",
+    "appointmentsShort": "Bookings",
+    "accountSettings": "Account settings"
   },
   "servicePrice": {
     "priceFrom": "From {price}",
@@ -1380,13 +1398,26 @@
     "callNamed": "Call {name}",
     "directions": "Directions",
     "directionsTo": "Directions to {name}",
-    "regarding": "About: {service} · {date}",
+    "regarding": "About: {service}, {date}",
     "workshopFallback": "Workshop",
     "serviceFallback": "Service",
     "noMessagesYet": "No messages yet. Ask the workshop anything about your booking."
   },
   "meta": {
-    "siteTitle": "RDV — Find a trusted garage in Luxembourg",
-    "siteDescription": "RDV connects car owners with verified garages in Luxembourg — search, compare, and book automotive services online in a few taps."
+    "siteTitle": "RDV — Book a trusted service center in Luxembourg",
+    "siteDescription": "RDV connects car owners with verified service centers in Luxembourg — search, compare, and book automotive services online in a few taps."
+  },
+  "clientAppointments": {
+    "title": "Appointments",
+    "subtitle": "Upcoming visits, your service history and waitlist requests.",
+    "views": "Appointment views",
+    "tabUpcoming": "Upcoming",
+    "tabPast": "Past history",
+    "tabWaitlist": "Waitlist",
+    "emptyUpcoming": "No upcoming appointments.",
+    "emptyPast": "No past appointments yet.",
+    "emptyWaitlist": "You are not on any waitlist.",
+    "emptyWaitlistHint": "When a day is fully booked, join its waitlist from the service center page. We will notify you if a slot opens.",
+    "review": "Review"
   }
 }

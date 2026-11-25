@@ -24,7 +24,7 @@ export async function submitReview(formData: FormData) {
   });
 
   if (!validatedFields.success) {
-    redirect(`/${lang}/dashboard?reviewError=1`);
+    redirect(`/${lang}/appointments?tab=past&reviewError=1`);
   }
 
   const { appointmentId, rating, comment } = validatedFields.data;
@@ -37,7 +37,7 @@ export async function submitReview(formData: FormData) {
     .single();
 
   if (!appointment) {
-    redirect(`/${lang}/dashboard?reviewError=1`);
+    redirect(`/${lang}/appointments?tab=past&reviewError=1`);
   }
 
   // Previously discarded: a duplicate review attempt (reviews.appointment_id
@@ -54,10 +54,11 @@ export async function submitReview(formData: FormData) {
 
   if (error) {
     redirect(
-      `/${lang}/dashboard?reviewError=${error.code === "23505" ? "duplicate" : "1"}`
+      `/${lang}/appointments?tab=past&reviewError=${error.code === "23505" ? "duplicate" : "1"}`
     );
   }
 
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
   revalidateLocalizedPath(`/garages/${appointment.garage_id}`);
 }

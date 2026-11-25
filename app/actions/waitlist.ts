@@ -40,6 +40,7 @@ export async function joinWaitlist(formData: FormData) {
   });
 
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
   redirect(
     `/${lang}/garages/${garageId}?service=${serviceId}&date=${date}&waitlisted=1`
   );
@@ -62,6 +63,7 @@ export async function leaveWaitlist(formData: FormData) {
     .eq("client_id", user.id);
 
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
 }
 
 export async function removeWaitlistEntry(formData: FormData) {

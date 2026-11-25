@@ -84,7 +84,7 @@ export function GarageSignupForm({
               id="email"
               name="email"
               type="email"
-              placeholder="jane@yourgarage.lu"
+              placeholder="jane@yourworkshop.lu"
               className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
             />
             {state?.errors?.email && (

@@ -13,5 +13,5 @@ export function ClientPageTitle({ labels }: { labels: Labels }) {
   // top bar is clutter. Only a workshop's detail page gets a top-bar title.
   if (section !== "garages" || !detail) return null;
 
-  return <p className="truncate text-base font-semibold text-black dark:text-zinc-50">{labels.garageDetails}</p>;
+  return <p className="truncate text-base font-semibold text-ink">{labels.garageDetails}</p>;
 }

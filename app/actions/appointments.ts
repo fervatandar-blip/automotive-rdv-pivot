@@ -255,6 +255,7 @@ export async function bookAppointment(formData: FormData) {
   }
 
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
   revalidateLocalizedPath("/garage/dashboard");
   revalidateLocalizedPath("/garage/calendar");
   redirect(`/${lang}/dashboard?booked=1`);
@@ -380,6 +381,7 @@ export async function cancelAppointment(
   if (!cancelled) {
     // The status may have moved on since the page was rendered; refresh it.
     revalidateLocalizedPath("/dashboard");
+    revalidateLocalizedPath("/appointments");
     return { error: "notCancellable" };
   }
 
@@ -394,6 +396,7 @@ export async function cancelAppointment(
   }
 
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
   revalidateLocalizedPath("/garage/calendar");
   revalidateLocalizedPath("/garage/dashboard");
   return undefined;
@@ -423,6 +426,7 @@ export async function confirmAppointment(formData: FormData) {
 
   revalidateLocalizedPath("/garage/calendar");
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
 }
 
 export async function updateRepairStage(formData: FormData) {
@@ -465,6 +469,7 @@ export async function updateRepairStage(formData: FormData) {
 
   revalidateLocalizedPath("/garage/calendar");
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
 }
 
 async function generateInvoice(
@@ -676,6 +681,7 @@ export async function completeAppointment(formData: FormData) {
 
   revalidateLocalizedPath("/garage/calendar");
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
 }
 
 export async function providerCancelAppointment(formData: FormData) {
@@ -707,6 +713,7 @@ export async function providerCancelAppointment(formData: FormData) {
 
   revalidateLocalizedPath("/garage/calendar");
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
 }
 
 export async function rescheduleAppointment(formData: FormData) {
@@ -828,6 +835,7 @@ export async function rescheduleAppointment(formData: FormData) {
   }
 
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
   revalidateLocalizedPath("/garage/calendar");
   redirect(`/${lang}/dashboard?rescheduled=1`);
 }
@@ -1024,6 +1032,7 @@ export async function moveAppointment(
   revalidateLocalizedPath("/garage/calendar");
   revalidateLocalizedPath("/garage/dashboard");
   revalidateLocalizedPath("/dashboard");
+  revalidateLocalizedPath("/appointments");
 
   return {
     ok: true,

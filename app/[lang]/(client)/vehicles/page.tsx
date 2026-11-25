@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarPlus, Car, Pencil, Plus } from "lucide-react";
+import { CalendarPlus, Car, Clock, Pencil, Plus } from "lucide-react";
 import { getAuthedUser } from "@/lib/dal";
 import { createClient } from "@/lib/supabase/server";
 import { resolveLocale, type Locale } from "@/lib/i18n/config";
@@ -13,6 +13,9 @@ import { DeleteVehicleButton } from "./delete-vehicle-button";
 import {
   CLIENT_CARD,
   CLIENT_ICON_BUTTON,
+  CLIENT_PILL_ICON,
+  CLIENT_PRIMARY_BUTTON,
+  CLIENT_TINTED_PILL,
   CLIENT_PAGE,
   CLIENT_PAGE_SUBTITLE,
   CLIENT_PAGE_TITLE,
@@ -32,11 +35,7 @@ type ServiceStats = { visits: number; lastServiceAt: string | null };
 
 // h-full + justify-between: cards in a grid row share one height, so the
 // action footer lines up whether or not a card shows a VIN.
-const CARD = `${CLIENT_CARD} flex h-full flex-col justify-between gap-4 p-5`;
-const PRIMARY_BUTTON =
-  "inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full bg-brand-600 px-5 text-sm font-medium text-white transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 focus-visible:ring-offset-2 dark:bg-brand-500 dark:hover:bg-brand-600 dark:focus-visible:ring-offset-black";
-const BOOK_BUTTON =
-  "inline-flex h-8 items-center gap-1.5 rounded-lg bg-brand-50 px-3 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 dark:bg-brand-500/10 dark:text-brand-300 dark:hover:bg-brand-500/20";
+const CARD = `${CLIENT_CARD} flex h-full flex-col justify-between gap-5 p-5 sm:p-6`;
 
 function formatServiceDate(iso: string, lang: Locale) {
   return new Date(iso).toLocaleDateString(lang === "fr" ? "fr-FR" : "en-GB", {
@@ -103,7 +102,7 @@ export default async function VehiclesPage({
             <h1 className={CLIENT_PAGE_TITLE}>{d.title}</h1>
             <p className={CLIENT_PAGE_SUBTITLE}>{d.subtitle}</p>
           </div>
-          <VehicleDialogButton brands={brandList} d={d} className={PRIMARY_BUTTON}>
+          <VehicleDialogButton brands={brandList} d={d} className={CLIENT_PRIMARY_BUTTON}>
             <Plus aria-hidden className="h-4 w-4" strokeWidth={2} />
             {d.addVehicleButton}
           </VehicleDialogButton>
@@ -122,12 +121,12 @@ export default async function VehiclesPage({
                   <div className="flex flex-col gap-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-500/10 dark:text-brand-400">
-                          <Car aria-hidden className="h-5 w-5" strokeWidth={1.5} />
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-ink text-surface">
+                          <Car aria-hidden className="h-6 w-6" strokeWidth={1.75} />
                         </div>
                         <div className="min-w-0">
-                          <h2 className="truncate font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">{name}</h2>
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                          <h2 className="truncate text-lg font-bold tracking-tight text-ink">{name}</h2>
+                          <p className={`text-sm text-ink-muted ${vehicle.year ? "font-mono" : ""}`}>
                             {vehicle.year ?? d.noDetailsAdded}
                           </p>
                         </div>
@@ -137,26 +136,26 @@ export default async function VehiclesPage({
 
                     {vehicle.vin && (
                       <dl className="min-w-0 text-sm">
-                        <dt className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                        <dt className="text-xs font-semibold text-ink-muted">
                           {d.vinLabel}
                         </dt>
-                        <dd className="truncate font-mono text-zinc-800 dark:text-zinc-200">{vehicle.vin}</dd>
+                        <dd className="truncate font-mono text-ink">{vehicle.vin}</dd>
                       </dl>
                     )}
 
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    <p className="text-sm text-ink-muted">
                       {vehicleStats ? (
                         <>
-                          <span className="font-medium text-zinc-900 dark:text-zinc-50">
+                          <span className="font-medium text-ink">
                             {vehicleStats.visits === 1
                               ? d.serviceVisitsOne
                               : d.serviceVisitsMany.replace("{count}", String(vehicleStats.visits))}
                           </span>
                           {vehicleStats.lastServiceAt && (
-                            <>
-                              {" · "}
+                            <span className="mt-1 flex items-center gap-1.5">
+                              <Clock aria-hidden className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                               {d.lastService.replace("{date}", formatServiceDate(vehicleStats.lastServiceAt, lang))}
-                            </>
+                            </span>
                           )}
                         </>
                       ) : (
@@ -165,13 +164,13 @@ export default async function VehiclesPage({
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800/60">
+                  <div className="flex flex-wrap items-center gap-2 border-t border-hairline pt-5">
                     <Link
                       href={`/${lang}/garages?vehicle=${vehicle.id}`}
                       aria-label={d.bookServiceFor.replace("{vehicle}", name)}
-                      className={BOOK_BUTTON}
+                      className={CLIENT_TINTED_PILL}
                     >
-                      <CalendarPlus aria-hidden className="h-4 w-4" strokeWidth={1.75} />
+                      <CalendarPlus aria-hidden className={CLIENT_PILL_ICON} strokeWidth={1.75} />
                       {d.bookService}
                     </Link>
                     <div className="ml-auto flex items-center gap-1">

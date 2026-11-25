@@ -83,7 +83,7 @@ export function PushNotificationOptIn({
       type="button"
       onClick={handleEnable}
       disabled={saving}
-      className="rounded-full border border-black/[.08] px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] disabled:opacity-50 dark:border-white/[.145] dark:hover:bg-[#1a1a1a]"
+      className="rounded-full border border-hairline px-4 py-1.5 text-sm font-medium transition-colors hover:bg-black/[.04] disabled:opacity-50 dark:hover:bg-[#1a1a1a]"
     >
       {saving ? enablingLabel : enableLabel}
     </button>

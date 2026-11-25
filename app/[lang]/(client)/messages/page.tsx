@@ -53,12 +53,12 @@ type AppointmentRow = {
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// The page fills the viewport below the top bar (h-14), less the phone tab
-// bar (h-16 + home indicator) below md, which <main> already pads for. The
-// inbox panel then takes whatever height the page title leaves, so the
-// composer stays anchored on screen however tall the title wraps.
-const PAGE_HEIGHT =
-  "h-[calc(100dvh-3.5rem-4rem-env(safe-area-inset-bottom))] md:h-[calc(100dvh-3.5rem)]";
+// The page fills the viewport: all of it from md (no top bar there), and
+// below md what the phone top bar (h-14) and tab bar (h-16 + home
+// indicator, which <main> pads for) leave. The inbox panel then takes
+// whatever height the page title leaves, so the composer stays anchored on
+// screen however tall the title wraps.
+const PAGE_HEIGHT = "h-[calc(100dvh-3.5rem-4rem-env(safe-area-inset-bottom))] md:h-dvh";
 
 function dateLocaleFor(lang: Locale) {
   return lang === "fr" ? "fr-FR" : "en-GB";
@@ -204,9 +204,9 @@ export default async function ClientMessagesPage({
           {/* Conversation list */}
           <nav
             aria-label={d.conversations}
-            className={`${showThreadOnPhone ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col border-zinc-200/80 md:w-80 md:border-r dark:border-zinc-800/60`}
+            className={`${showThreadOnPhone ? "hidden md:flex" : "flex"} w-full shrink-0 flex-col border-hairline md:w-80 md:border-r`}
           >
-            <h2 className={`border-b border-zinc-200/80 px-4 py-3 dark:border-zinc-800/60 ${CLIENT_SECTION_LABEL}`}>
+            <h2 className={`border-b border-hairline px-4 py-3 ${CLIENT_SECTION_LABEL}`}>
               {d.conversations}
             </h2>
             <ul className="min-h-0 flex-1 overflow-y-auto">
@@ -225,23 +225,23 @@ export default async function ClientMessagesPage({
                     <Link
                       href={`/${lang}/messages?a=${replyAppointment(conversation, null).id}`}
                       aria-current={selected ? "true" : undefined}
-                      className={`flex flex-col gap-1.5 border-b border-zinc-100 px-4 py-3 transition-colors dark:border-zinc-900 ${
+                      className={`flex flex-col gap-1.5 border-b border-hairline px-4 py-3 transition-colors ${
                         selected
-                          ? "md:bg-brand-50/60 md:dark:bg-brand-500/10"
-                          : "hover:bg-zinc-50 dark:hover:bg-zinc-900/60"
+                          ? "md:bg-subtle"
+                          : "hover:bg-subtle/60"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span
-                          className={`truncate text-sm text-zinc-900 dark:text-zinc-50 ${conversation.unread > 0 ? "font-semibold" : "font-medium"}`}
+                          className={`truncate text-[15px] text-ink ${conversation.unread > 0 ? "font-bold" : "font-semibold"}`}
                         >
                           {name}
                         </span>
-                        <span className="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">
+                        <span className="shrink-0 text-xs text-ink-muted">
                           {formatListTime(conversation.lastActivityAt, lang)}
                         </span>
                       </div>
-                      <div className="flex min-w-0 items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                      <div className="flex min-w-0 items-center gap-2 text-xs text-ink-muted">
                         {plate ? (
                           <LicensePlate plate={plate} label={dictionary.clientDashboard.plateLabel} />
                         ) : (
@@ -253,14 +253,14 @@ export default async function ClientMessagesPage({
                         <p
                           className={`truncate text-sm ${
                             conversation.unread > 0
-                              ? "font-medium text-zinc-900 dark:text-zinc-50"
-                              : "text-zinc-500 dark:text-zinc-400"
+                              ? "font-medium text-ink"
+                              : "text-ink-muted"
                           }`}
                         >
                           {preview}
                         </p>
                         {conversation.unread > 0 && (
-                          <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-brand-600 px-1.5 text-[11px] font-semibold text-white dark:bg-brand-500">
+                          <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-md bg-ink px-1.5 font-mono text-[11px] font-semibold text-surface">
                             <span aria-hidden>{conversation.unread}</span>
                             <span className="sr-only">{d.unread.replace("{count}", String(conversation.unread))}</span>
                           </span>
@@ -278,20 +278,20 @@ export default async function ClientMessagesPage({
             aria-labelledby="thread-title"
             className={`${showThreadOnPhone ? "flex" : "hidden md:flex"} min-h-0 min-w-0 flex-1 flex-col`}
           >
-            <div className="flex shrink-0 flex-col gap-2 border-b border-zinc-200/80 px-4 py-3 sm:px-6 dark:border-zinc-800/60">
+            <div className="flex shrink-0 flex-col gap-2 border-b border-hairline px-4 py-3 sm:px-6">
               <Link
                 href={`/${lang}/messages`}
-                className="inline-flex items-center gap-1 self-start text-sm font-medium text-zinc-600 hover:text-black md:hidden dark:text-zinc-400 dark:hover:text-zinc-100"
+                className="inline-flex items-center gap-1 self-start text-sm font-medium text-ink-muted hover:text-ink md:hidden"
               >
                 <ArrowLeft aria-hidden className="h-4 w-4" />
                 {d.back}
               </Link>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <h2 id="thread-title" className="truncate text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+                  <h2 id="thread-title" className="truncate text-lg font-bold tracking-tight text-ink">
                     {garageName}
                   </h2>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink-muted">
                     {activePlate && <LicensePlate plate={activePlate} label={dictionary.clientDashboard.plateLabel} />}
                     {activeVehicleName && <span>{activeVehicleName}</span>}
                     {garage?.address && (
@@ -333,7 +333,7 @@ export default async function ClientMessagesPage({
                   </div>
                 )}
               </div>
-              <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{bookingLabel(reply)}</p>
+              <p className="truncate text-sm text-ink-muted">{bookingLabel(reply)}</p>
             </div>
 
             <ChatThread

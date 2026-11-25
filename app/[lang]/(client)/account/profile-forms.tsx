@@ -14,11 +14,11 @@ import type { Dictionary } from "@/lib/i18n/get-dictionary";
 type D = Dictionary["account"];
 
 const INPUT =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-black placeholder:text-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-brand-500";
-const LABEL = "text-sm font-medium text-black dark:text-zinc-50";
-const HINT = "text-xs text-zinc-500 dark:text-zinc-400";
+  "w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:focus:border-brand-500";
+const LABEL = "text-sm font-medium text-ink";
+const HINT = "text-xs text-ink-muted";
 const SAVE_BUTTON =
-  "rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-600";
+  "inline-flex h-9 items-center rounded-lg bg-brand-600 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60";
 
 function FieldError({ keys, d }: { keys?: string[]; d: D }) {
   if (!keys?.length) return null;
@@ -90,7 +90,7 @@ export function ProfileDetailsForm({
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="phone" className={LABEL}>
-          {d.phone} <span className="font-normal text-zinc-500">({d.optional})</span>
+          {d.phone} <span className="font-normal text-ink-muted">({d.optional})</span>
         </label>
         <input
           id="phone"
@@ -135,8 +135,8 @@ function Toggle({
   return (
     <label className="flex cursor-pointer items-start justify-between gap-4 py-3">
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-black dark:text-zinc-50">{label}</span>
-        <span className="block text-sm text-zinc-500 dark:text-zinc-400">{description}</span>
+        <span className="block text-sm font-medium text-ink">{label}</span>
+        <span className="block text-sm text-ink-muted">{description}</span>
       </span>
       <input
         type="checkbox"
@@ -164,7 +164,7 @@ export function NotificationPrefsForm({
 
   return (
     <form action={action} className="flex flex-col gap-3">
-      <div className="divide-y divide-zinc-200/80 dark:divide-zinc-800/60">
+      <div className="divide-y divide-hairline">
         <Toggle
           name="repairUpdates"
           label={d.notifyRepairUpdates}

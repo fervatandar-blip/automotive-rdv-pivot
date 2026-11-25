@@ -20,12 +20,12 @@ export type EditableVehicle = {
 };
 
 const INPUT =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-black placeholder:text-zinc-400 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-brand-500";
-const LABEL = "text-sm font-medium text-black dark:text-zinc-50";
+  "w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20 dark:focus:border-brand-500";
+const LABEL = "text-sm font-medium text-ink";
 const PRIMARY =
   "inline-flex h-9 items-center justify-center rounded-full bg-brand-600 px-4 text-sm font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60 dark:bg-brand-500 dark:hover:bg-brand-600";
 const GHOST =
-  "inline-flex h-9 items-center justify-center rounded-full px-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-black dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-50";
+  "inline-flex h-9 items-center justify-center rounded-full px-4 text-sm font-medium text-ink transition-colors hover:bg-subtle hover:text-ink";
 
 function FieldError({ messages }: { messages?: string[] }) {
   return messages?.length ? (
@@ -150,7 +150,7 @@ function VehicleForm({
             aria-describedby={`${id}-vin-hint`}
             className={`${INPUT} font-mono uppercase`}
           />
-          <p id={`${id}-vin-hint`} className="text-xs text-zinc-500 dark:text-zinc-400">
+          <p id={`${id}-vin-hint`} className="text-xs text-ink-muted">
             {f.vinHint}
           </p>
           <FieldError messages={state?.errors?.vin} />
@@ -163,7 +163,7 @@ function VehicleForm({
         </p>
       )}
 
-      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-zinc-200/80 pt-4 dark:border-zinc-800/60">
+      <div className="flex flex-wrap items-center justify-end gap-2 border-t border-hairline pt-4">
         <button type="button" onClick={onDone} className={GHOST}>
           {f.cancel}
         </button>

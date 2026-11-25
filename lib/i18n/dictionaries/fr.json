@@ -18,13 +18,15 @@
       "in_repair": "En réparation",
       "quality_check": "Contrôle qualité",
       "ready_for_pickup": "Prêt à récupérer"
-    }
+    },
+    "ratingOutOf": "{rating} sur 5",
+    "ratingSummary": "Note de {rating} sur 5 ({count} avis)"
   },
   "home": {
     "heroTitle": "Trouvez un atelier de confiance au Luxembourg.",
     "heroSubtitle": "RDV connecte les propriétaires de véhicules à des ateliers vérifiés — recherchez, comparez et réservez en ligne en quelques clics.",
     "findGarageCta": "Trouver un atelier",
-    "listGarageCta": "Référencer mon garage",
+    "listGarageCta": "Référencer mon atelier",
     "features": {
       "search": {
         "title": "Rechercher et comparer",
@@ -75,7 +77,7 @@
     "welcomePrefix": "Bienvenue,",
     "rolePrefix": "Rôle :",
     "overview": "Vue d'ensemble",
-    "garagesNav": "Garages",
+    "garagesNav": "Ateliers",
     "leadsNav": "Prospects",
     "account": "Compte",
     "bookAppointment": "Prendre un rendez-vous",
@@ -137,7 +139,23 @@
     "pastServiceHistory": "Historique d'entretien",
     "messageWorkshop": "Écrire à {name}",
     "moreVehicles": "+{count} autres",
-    "noVehiclesHint": "Ajoutez votre véhicule une fois et réservez plus vite à chaque fois."
+    "noVehiclesHint": "Ajoutez votre véhicule une fois et réservez plus vite à chaque fois.",
+    "nextAppointment": "Prochain rendez-vous",
+    "moreUpcoming": "+{count} autres à venir",
+    "allAppointments": "Tous les rendez-vous",
+    "yourVehicle": "Votre véhicule",
+    "quickActions": "Actions rapides",
+    "unreadMessages": "{count} non lus",
+    "reviewPendingOne": "1 intervention à évaluer",
+    "reviewPendingMany": "{count} interventions à évaluer",
+    "waitlistActive": "{count} en liste d'attente",
+    "appointmentRescheduled": "Votre rendez-vous a été déplacé.",
+    "noVehicleTitle": "Aucun véhicule",
+    "findServiceCenter": "Trouver un atelier",
+    "lastVisit": "Dernier passage",
+    "noRecentService": "Aucune intervention terminée",
+    "upcomingCount": "À venir",
+    "waitlistSlotOpenedShort": "Créneau libéré"
   },
   "garageDiscovery": {
     "title": "Centres auto & ateliers",
@@ -175,7 +193,9 @@
     "sortByName": "Tri : nom",
     "sortByRating": "Tri : note",
     "sortByDistance": "Tri : distance",
-    "filters": "Recherche et filtres"
+    "filters": "Recherche et filtres",
+    "resultCount": "{count} résultats",
+    "bookAppointmentCta": "Prendre rendez-vous"
   },
   "garageDetail": {
     "backToGarages": "Retour aux ateliers",
@@ -330,12 +350,7 @@
       "nameTooShort": "Saisissez au moins 2 caractères.",
       "nameTooLong": "120 caractères maximum.",
       "phoneInvalid": "Saisissez un numéro valide (chiffres, espaces et + uniquement)."
-    },
-    "preferences": "Préférences",
-    "preferencesDescription": "Apparence sur cet appareil.",
-    "theme": "Thème",
-    "themeLight": "Clair",
-    "themeDark": "Sombre"
+    }
   },
   "appointmentMessages": {
     "backToDashboard": "Retour au tableau de bord",
@@ -665,7 +680,7 @@
     "manageHours": "Gérer les disponibilités",
     "noHours": "Aucun horaire défini. La réservation en ligne est indisponible tant que les horaires hebdomadaires ne sont pas configurés.",
     "locationDescription": "Placez le repère sur l'entrée pour guider les clients.",
-    "capabilitiesDescription": "Aide les clients à filtrer les garages et à trouver le bon.",
+    "capabilitiesDescription": "Aide les clients à filtrer les ateliers et à trouver le bon.",
     "save": "Enregistrer",
     "saving": "Enregistrement...",
     "saved": "Enregistré",
@@ -1051,11 +1066,11 @@
   },
   "demo": {
     "forDrivers": "Pour les conducteurs",
-    "forGarages": "Pour les garages",
+    "forGarages": "Pour les ateliers",
     "contact": "Contact",
     "logIn": "Connexion",
     "bookADemo": "Demander une démo",
-    "heroTitle": "Développez votre garage avec RDV Pro.",
+    "heroTitle": "Développez votre atelier avec RDV Pro.",
     "heroSubtitle": "Commencez par une démo gratuite et personnalisée. Sans engagement, sans carte bancaire, juste une présentation adaptée à votre spécialité.",
     "steps": [
       {
@@ -1071,7 +1086,7 @@
         "description": "Nous configurerons votre profil pour que vous puissiez accueillir des clients selon votre emploi du temps."
       }
     ],
-    "badge": "Nous accueillons actuellement des garages partout au Luxembourg",
+    "badge": "Nous accueillons actuellement des ateliers partout au Luxembourg",
     "benefits": [
       {
         "title": "Élargissez votre portée locale",
@@ -1100,25 +1115,25 @@
       "businessEmail": "E-mail professionnel",
       "phone": "Numéro de téléphone",
       "countryCode": "Indicatif du pays",
-      "garageName": "Nom du garage",
+      "garageName": "Nom de l'atelier",
       "country": "Pays",
-      "garageSizeType": "Taille/type de garage",
+      "garageSizeType": "Taille/type d'atelier",
       "selectAnOption": "Sélectionnez une option",
       "additionalDetails": "Détails supplémentaires (facultatif)",
       "additionalDetailsPlaceholder": "Combien de postes de travail, quels services vous proposez, tout ce que vous souhaitez nous indiquer avant l'appel...",
-      "submit": "Réserver la démo gratuite de mon garage.",
+      "submit": "Réserver la démo gratuite de mon atelier.",
       "submitPending": "Envoi en cours..."
     }
   },
   "adminNav": {
     "overview": "Vue d'ensemble",
-    "garages": "Garages",
+    "garages": "Ateliers",
     "leads": "Prospects"
   },
   "adminGarages": {
-    "title": "Garages",
+    "title": "Ateliers",
     "noCitySet": "Aucune ville renseignée",
-    "noGaragesYet": "Aucun garage pour le moment.",
+    "noGaragesYet": "Aucun atelier pour le moment.",
     "statusLabels": {
       "pending": "En attente",
       "approved": "Approuvé",
@@ -1126,7 +1141,7 @@
     }
   },
   "adminGarageDetail": {
-    "backToAllGarages": "Tous les garages",
+    "backToAllGarages": "Tous les ateliers",
     "noCitySet": "Aucune ville renseignée",
     "noEmail": "aucun e-mail",
     "statusLabels": {
@@ -1134,8 +1149,8 @@
       "approved": "Approuvé",
       "rejected": "Rejeté"
     },
-    "approveGarage": "Approuver le garage",
-    "rejectGarage": "Rejeter le garage",
+    "approveGarage": "Approuver l'atelier",
+    "rejectGarage": "Rejeter l'atelier",
     "verificationLevel": "Niveau de vérification",
     "save": "Enregistrer",
     "notUploaded": "Non téléchargé",
@@ -1145,14 +1160,14 @@
   },
   "adminLeads": {
     "title": "Prospects",
-    "leadConvertedNotice": "Le prospect a été converti en compte garage.",
+    "leadConvertedNotice": "Le prospect a été converti en compte atelier.",
     "errors": {
       "invalid": "Cette demande n'était pas valide. Veuillez réessayer.",
       "not-found": "Ce prospect n'a pas été trouvé.",
       "exists": "Cet e-mail appartient déjà à un compte de la plateforme.",
       "invite-failed": "Impossible d'envoyer l'invitation. Veuillez réessayer.",
-      "garage-missing": "Le compte a été créé, mais son garage n'a pas été trouvé.",
-      "lead-update-failed": "Le garage a été créé, mais le prospect n'a pas pu être marqué comme converti."
+      "garage-missing": "Le compte a été créé, mais son atelier n'a pas été trouvé.",
+      "lead-update-failed": "L'atelier a été créé, mais le prospect n'a pas pu être marqué comme converti."
     },
     "statusLabels": {
       "new": "Nouveau",
@@ -1161,7 +1176,7 @@
       "archived": "Archivé"
     },
     "submittedPrefix": "Soumis le",
-    "viewGarage": "Voir le garage",
+    "viewGarage": "Voir l'atelier",
     "markContacted": "Marquer comme contacté",
     "convertToAccount": "Convertir en compte",
     "archive": "Archiver",
@@ -1169,15 +1184,15 @@
   },
   "adminStats": {
     "title": "Vue d'ensemble",
-    "garagesListLink": "Liste des garages",
+    "garagesListLink": "Liste des ateliers",
     "runRetentionSweep": "Exécuter le nettoyage de rétention maintenant",
-    "garagesSection": "Garages",
+    "garagesSection": "Ateliers",
     "pending": "En attente",
     "approved": "Approuvé",
     "rejected": "Rejeté",
     "peopleSection": "Personnes",
     "clients": "Clients",
-    "garageAdmins": "Administrateurs de garage",
+    "garageAdmins": "Administrateurs d'atelier",
     "mecaniciens": "Mécaniciens",
     "appointmentsSection": "Rendez-vous",
     "confirmed": "Confirmé",
@@ -1194,23 +1209,23 @@
     "processNow": "Traiter maintenant"
   },
   "garageAuth": {
-    "tagline": "Développez votre garage avec RDV.",
+    "tagline": "Développez votre atelier avec RDV.",
     "login": {
-      "title": "Connexion garage",
-      "confirmEmailNotice": "Vérifiez votre e-mail pour confirmer votre compte garage avant de vous connecter.",
+      "title": "Connexion atelier",
+      "confirmEmailNotice": "Vérifiez votre e-mail pour confirmer votre compte atelier avant de vous connecter.",
       "submit": "Se connecter",
       "submitPending": "Connexion en cours...",
       "noAccount": "Nouveau sur RDV ?",
-      "signUpLink": "Référencer mon garage",
-      "notGarageOwner": "Vous n'êtes pas garagiste ?",
+      "signUpLink": "Référencer mon atelier",
+      "notGarageOwner": "Vous n'êtes pas un professionnel de l'automobile ?",
       "clientLoginLink": "Connexion client"
     },
     "signup": {
-      "title": "Référencez votre garage sur RDV",
-      "description": "Créez votre compte garagiste. Vous configurerez ensuite le profil de votre garage et vos documents de vérification.",
-      "submit": "Créer mon compte garage",
+      "title": "Référencez votre atelier sur RDV",
+      "description": "Créez votre compte professionnel. Vous configurerez ensuite le profil de votre atelier et vos documents de vérification.",
+      "submit": "Créer mon compte atelier",
       "submitPending": "Création du compte...",
-      "hasAccount": "Vous avez déjà un compte garage ?",
+      "hasAccount": "Vous avez déjà un compte atelier ?",
       "logInLink": "Connectez-vous",
       "notGarageOwner": "Vous cherchez plutôt à réserver un service ?",
       "clientSignUpLink": "Inscrivez-vous en tant que client"
@@ -1315,9 +1330,9 @@
   },
   "clientNav": {
     "mainNav": "Navigation principale",
-    "dashboard": "Mon tableau de bord",
+    "dashboard": "Vue d'ensemble",
     "dashboardShort": "Accueil",
-    "findGarage": "Trouver un atelier",
+    "findGarage": "Ateliers",
     "findGarageShort": "Rechercher",
     "vehicles": "Mes véhicules",
     "account": "Compte",
@@ -1330,7 +1345,10 @@
     "language": "Langue",
     "messages": "Messages",
     "unreadMessages": "{count} non lus",
-    "vehiclesShort": "Véhicules"
+    "vehiclesShort": "Véhicules",
+    "appointments": "Rendez-vous",
+    "appointmentsShort": "RDV",
+    "accountSettings": "Paramètres du compte"
   },
   "servicePrice": {
     "priceFrom": "À partir de {price}",
@@ -1380,13 +1398,26 @@
     "callNamed": "Appeler {name}",
     "directions": "Itinéraire",
     "directionsTo": "Itinéraire vers {name}",
-    "regarding": "Concernant : {service} · {date}",
+    "regarding": "Concernant : {service}, {date}",
     "workshopFallback": "Atelier",
     "serviceFallback": "Prestation",
     "noMessagesYet": "Aucun message pour l'instant. Posez vos questions à l'atelier sur votre réservation."
   },
   "meta": {
-    "siteTitle": "RDV — Trouvez un garage de confiance au Luxembourg",
-    "siteDescription": "RDV met en relation les automobilistes avec des garages vérifiés au Luxembourg : recherchez, comparez et réservez vos services auto en ligne en quelques clics."
+    "siteTitle": "RDV — Réservez un atelier de confiance au Luxembourg",
+    "siteDescription": "RDV met en relation les automobilistes avec des ateliers vérifiés au Luxembourg : recherchez, comparez et réservez vos services auto en ligne en quelques clics."
+  },
+  "clientAppointments": {
+    "title": "Rendez-vous",
+    "subtitle": "Vos prochaines visites, votre historique d'entretien et vos listes d'attente.",
+    "views": "Vues des rendez-vous",
+    "tabUpcoming": "À venir",
+    "tabPast": "Historique",
+    "tabWaitlist": "Liste d'attente",
+    "emptyUpcoming": "Aucun rendez-vous à venir.",
+    "emptyPast": "Aucun rendez-vous passé pour le moment.",
+    "emptyWaitlist": "Vous n'êtes sur aucune liste d'attente.",
+    "emptyWaitlistHint": "Quand une journée est complète, inscrivez-vous sur sa liste d'attente depuis la page de l'atelier. Nous vous préviendrons si un créneau se libère.",
+    "review": "Évaluer"
   }
 }
