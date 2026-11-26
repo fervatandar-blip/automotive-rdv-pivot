@@ -23,23 +23,60 @@
     "ratingSummary": "Rated {rating} out of 5 from {count} reviews"
   },
   "home": {
-    "heroTitle": "Find a trusted workshop in Luxembourg.",
-    "heroSubtitle": "RDV connects car owners with verified service centers — search, compare, and book online in a few taps.",
-    "findGarageCta": "Find a Workshop",
-    "listGarageCta": "List your workshop",
-    "features": {
-      "search": {
-        "title": "Search & compare",
-        "description": "Filter workshops by EV capability, mobile or emergency service, and rating, and see them on a map before you choose."
-      },
+    "mainNav": "Main navigation",
+    "forWorkshops": "For workshops",
+    "signUp": "Sign up",
+    "findGarageCta": "Find a workshop",
+    "heroTitle": "Book your next car service in Luxembourg.",
+    "heroSubtitle": "Compare verified workshops, pick a live slot and pay on-site.",
+    "searchLabel": "Find a workshop",
+    "serviceLabel": "Service",
+    "servicePlaceholder": "Service (e.g. oil change, brakes)",
+    "cityLabel": "Commune",
+    "anyCity": "All of Luxembourg",
+    "luxembourgCity": "Luxembourg City",
+    "searchSubmit": "Search",
+    "popularLabel": "Popular:",
+    "pills": {
+      "maintenance": "Maintenance",
+      "brakes": "Brakes",
+      "tires": "Tires",
+      "diagnostics": "Diagnostics",
+      "bodywork": "Bodywork",
+      "ev": "EV service"
+    },
+    "featuredTitle": "Workshops on RDV",
+    "featuredSubtitle": "Verified workshops taking bookings online.",
+    "featuredAll": "See all workshops",
+    "trust": {
       "verified": {
-        "title": "Verified workshops",
-        "description": "Every workshop completes a document verification process, and real client ratings & reviews are right on their profile."
+        "title": "Verified Luxembourg workshops",
+        "description": "Every workshop's business registration and insurance are checked before it is listed."
       },
-      "instant": {
-        "title": "Book instantly",
-        "description": "See real-time availability and lock in a time in a couple of taps — no phone calls, no waiting to hear back."
+      "calendar": {
+        "title": "Real-time calendar booking",
+        "description": "Slots come straight from the workshop's calendar, and your booking is confirmed right away."
+      },
+      "pay": {
+        "title": "Pay on-site after service",
+        "description": "Nothing to pay online. You settle with the workshop when you collect your car."
       }
+    },
+    "partnerTitle": "Run a workshop in Luxembourg?",
+    "partnerSubtitle": "Take bookings online and manage your bays, calendar and customers in one place.",
+    "partnerCta": "Register your workshop",
+    "partnerLogin": "Workshop login",
+    "footer": {
+      "privacy": "Privacy",
+      "rights": "All rights reserved."
+    },
+    "trustTitle": "Booking with RDV",
+    "book": "Book",
+    "heroCard": {
+      "title": "Featured workshops",
+      "region": "Luxembourg",
+      "book": "Book",
+      "all": "Browse all workshops"
     }
   },
   "auth": {
@@ -53,7 +90,9 @@
       "submit": "Log In",
       "submitPending": "Logging in...",
       "noAccount": "Don't have an account?",
-      "signUpLink": "Sign up"
+      "signUpLink": "Sign up",
+      "title": "Welcome back",
+      "workshopPrompt": "Run a workshop?"
     },
     "signup": {
       "title": "Create an account",
@@ -63,14 +102,40 @@
       "submit": "Sign Up",
       "submitPending": "Creating account...",
       "hasAccount": "Already have an account?",
-      "logInLink": "Log in"
+      "logInLink": "Log in",
+      "description": "Book services, follow repairs and keep your vehicles in one place.",
+      "passwordHint": "At least 8 characters, with a letter and a number."
     },
     "forgotPassword": {
       "title": "Reset your password",
       "description": "Enter your account email and we'll send you a link to choose a new password.",
       "submit": "Send reset link",
       "submitPending": "Sending...",
-      "backToLogin": "Back to log in"
+      "backToLogin": "Back to log in",
+      "sent": "If an account exists for that email, we've sent a link to reset your password."
+    },
+    "panel": {
+      "backHome": "Back to home",
+      "client": {
+        "title": "Book your next service in a few clicks.",
+        "points": [
+          "Live availability at verified workshops",
+          "Follow your repair step by step",
+          "Message your workshop directly"
+        ]
+      },
+      "workshop": {
+        "title": "Run your workshop’s bookings in one place.",
+        "points": [
+          "Online booking, around the clock",
+          "A job board for every car in the workshop",
+          "Client and vehicle history at hand"
+        ]
+      },
+      "previewService": "Oil change",
+      "previewWorkshop": "Atelier Muller",
+      "previewWeekday": "Thu",
+      "previewMonth": "Dec"
     }
   },
   "clientDashboard": {
@@ -158,8 +223,8 @@
   },
   "garageDiscovery": {
     "title": "Service Centers",
-    "searchByName": "Search by name",
-    "searchPlaceholder": "Search by workshop name",
+    "searchByName": "Search by workshop or service",
+    "searchPlaceholder": "Workshop or service, e.g. oil change",
     "cityLabel": "City",
     "anyCity": "Any city",
     "nearMe": "Near me",
@@ -194,12 +259,14 @@
     "sortByDistance": "Sort: Distance",
     "filters": "Search and filters",
     "resultCount": "{count} results",
-    "bookAppointmentCta": "Book Appointment",
+    "bookAppointmentCta": "Book appointment",
     "viewList": "List",
     "viewMap": "Map",
     "viewToggle": "Display",
     "closePreview": "Close preview",
-    "mapLabel": "Map of service centers"
+    "mapLabel": "Map of service centers",
+    "categoryLabel": "Service",
+    "anyCategory": "All services"
   },
   "garageDetail": {
     "backToGarages": "Back to workshops",
@@ -1074,7 +1141,7 @@
     "steps": [
       {
         "title": "Fill in the form",
-        "description": "Share a few details about your garage — it takes less than a minute."
+        "description": "Share a few details about your workshop — it takes less than a minute."
       },
       {
         "title": "Get a free demo",
@@ -1089,11 +1156,11 @@
     "benefits": [
       {
         "title": "Expand your local reach",
-        "description": "Be discovered by car owners across Luxembourg actively searching for a trusted garage near them."
+        "description": "Be discovered by car owners across Luxembourg actively searching for a trusted workshop near them."
       },
       {
         "title": "Streamlined scheduling",
-        "description": "A calendar built for a garage floor — confirmations, rescheduling, and staff assignment, all in one place."
+        "description": "A calendar built for a workshop floor — confirmations, rescheduling, and staff assignment, all in one place."
       },
       {
         "title": "Automated digital workflow",

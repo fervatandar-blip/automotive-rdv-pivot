@@ -42,8 +42,8 @@
   --color-ink: var(--ink);
   --color-ink-muted: var(--ink-muted);
 
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-jakarta), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-archivo), var(--font-plex-sans), ui-sans-serif, system-ui, sans-serif;
 
   /* Automotive cobalt, kept for primary CTAs, links and focus rings.
      Values match Tailwind's own blue-* hex exactly, so retrofitting
@@ -67,7 +67,6 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
-  font-feature-settings: "cv11", "ss01";
 }
 
 @layer base {
@@ -78,6 +77,16 @@ body {
   h3 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
+  }
+
+  /* Archivo semi-expanded (its wdth axis runs 62-125). Applied wherever the
+     display face is, including the font-display utility (logo wordmark,
+     monograms), so it is never seen at its narrower default width. */
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-variation-settings: "wdth" 112;
   }
 }
 

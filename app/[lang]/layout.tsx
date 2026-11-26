@@ -1,24 +1,27 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Archivo, IBM_Plex_Sans } from "next/font/google";
 import { locales, resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import "./globals.css";
 
-// Two faces, wired to Tailwind in globals.css: Inter for all UI text
-// (font-sans; numbers use tabular-nums so times and prices line up) and
-// Plus Jakarta Sans for headings (font-display). latin-ext covers the
-// accents in French and Luxembourgish names.
-const inter = Inter({
-  variable: "--font-inter",
+// Two faces, wired to Tailwind in globals.css: IBM Plex Sans for all UI
+// text (font-sans; numbers use tabular-nums so times line up) and Archivo,
+// semi-expanded through its width axis, for headings (font-display): a wide
+// grotesque in the spirit of car badges and dashboards. latin-ext covers
+// the accents in French and Luxembourgish names.
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
   subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
+// Variable font with the width axis; globals.css sets the width.
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin", "latin-ext"],
-  weight: ["500", "600", "700", "800"],
+  axes: ["wdth"],
   display: "swap",
 });
 
@@ -52,7 +55,7 @@ export default async function RootLayout({
     // before React hydrates, so <html>'s class differs from the server's.
     <html
       lang={lang}
-      className={`${inter.variable} ${jakarta.variable} h-full antialiased`}
+      className={`${plexSans.variable} ${archivo.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

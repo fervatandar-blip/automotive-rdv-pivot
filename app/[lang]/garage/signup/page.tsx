@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
+import { AuthShell } from "@/components/auth-shell";
 import { GarageSignupForm } from "./garage-signup-form";
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params;
+  const dictionary = await getDictionary(resolveLocale(lang));
+  return { title: dictionary.garageAuth.signup.title };
+}
 
 export default async function GarageSignupPage({
   params,
@@ -11,5 +19,9 @@ export default async function GarageSignupPage({
   const lang = resolveLocale(rawLang);
   const dictionary = await getDictionary(lang);
 
-  return <GarageSignupForm lang={lang} dictionary={dictionary} />;
+  return (
+    <AuthShell lang={lang} dictionary={dictionary} audience="workshop">
+      <GarageSignupForm lang={lang} dictionary={dictionary} />
+    </AuthShell>
+  );
 }

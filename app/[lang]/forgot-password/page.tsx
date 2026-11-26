@@ -1,6 +1,14 @@
+import type { Metadata } from "next";
 import { resolveLocale } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n/get-dictionary";
+import { AuthShell } from "@/components/auth-shell";
 import { ForgotPasswordForm } from "./forgot-password-form";
+
+export async function generateMetadata({ params }: { params: Promise<{ lang: string }> }): Promise<Metadata> {
+  const { lang } = await params;
+  const dictionary = await getDictionary(resolveLocale(lang));
+  return { title: dictionary.auth.forgotPassword.title };
+}
 
 export default async function ForgotPasswordPage({
   params,
@@ -11,5 +19,9 @@ export default async function ForgotPasswordPage({
   const lang = resolveLocale(rawLang);
   const dictionary = await getDictionary(lang);
 
-  return <ForgotPasswordForm lang={lang} dictionary={dictionary} />;
+  return (
+    <AuthShell lang={lang} dictionary={dictionary}>
+      <ForgotPasswordForm lang={lang} dictionary={dictionary} />
+    </AuthShell>
+  );
 }

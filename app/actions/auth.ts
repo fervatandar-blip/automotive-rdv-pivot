@@ -248,7 +248,7 @@ export async function requestPasswordReset(
     console.error("[auth] password reset request failed:", error);
   }
 
-  return { message: FORGOT_PASSWORD_SUCCESS };
+  return { message: FORGOT_PASSWORD_SUCCESS, sent: true };
 }
 
 export async function setPassword(

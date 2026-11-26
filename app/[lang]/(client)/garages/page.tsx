@@ -45,6 +45,11 @@ const MAX_CATEGORY_TAGS = 3;
 
 
 /** A workshop's service categories in display order, "other" left out. */
+/** Lowercase without accents, so "esch" finds "Esch-sur-Alzette" and "Ettelbruck" finds "Ettelbrück". */
+function foldText(value: string): string {
+  return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
 function categoriesOf(services: { category: string | null }[]): ServiceCategory[] {
   const present = new Set(services.map((service) => normalizeServiceCategory(service.category)));
   return SERVICE_CATEGORIES.filter((category) => category !== "other" && present.has(category));
@@ -56,6 +61,7 @@ type GarageRow = {
   id: string;
   name: string;
   city: string | null;
+  address: string | null;
   latitude: number | null;
   longitude: number | null;
   ev_capable: boolean;
@@ -63,7 +69,7 @@ type GarageRow = {
   emergency_service: boolean;
   pricing_category: string | null;
   verification_level: string | null;
-  services: { id: string; category: string | null }[];
+  services: { id: string; name: string; category: string | null }[];
   // Only selected while REVIEWS_ENABLED.
   reviews?: { rating: number }[];
 };
@@ -73,6 +79,8 @@ type GarageWithDistance = GarageRow & { distanceKm: number | null };
 type SearchParams = {
   q?: string;
   city?: string;
+  // A service category key (lib/service-categories.ts).
+  category?: string;
   ev?: string;
   mobile?: string;
   emergency?: string;
@@ -114,7 +122,7 @@ export default async function GaragesPage({
   const { data: garages } = await supabase
     .from("garages")
     .select(
-      `id, name, city, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, verification_level, services(id, category)${
+      `id, name, city, address, latitude, longitude, ev_capable, mobile_service, emergency_service, pricing_category, verification_level, services(id, name, category)${
         REVIEWS_ENABLED ? ", reviews(rating)" : ""
       }`
     )
@@ -149,6 +157,26 @@ export default async function GaragesPage({
     new Set(rows.map((garage) => garage.city).filter((city): city is string => !!city))
   ).sort();
 
+  // `city` is a dropdown value here, but links from elsewhere can carry a
+  // looser one (the homepage sends "Luxembourg" for Luxembourg City): an
+  // exact city (case and accents ignored) filters on it, a Luxembourg
+  // postcode (1234 or L-1234) matches the address, anything else matches
+  // part of the city name. Not the address: nearly every address ends in
+  // "Luxembourg".
+  const where = filters.city?.trim() ?? "";
+  const whereFolded = foldText(where);
+  const whereCity = where ? (cities.find((city) => foldText(city) === whereFolded) ?? null) : null;
+  const wherePostcode = whereCity ? null : (where.match(/^(?:L\s*-?\s*)?(\d{4})$/i)?.[1] ?? null);
+  const matchesWhere = (garage: GarageRow) => {
+    if (!where) return true;
+    if (whereCity) return garage.city === whereCity;
+    if (wherePostcode) {
+      return new RegExp(`(^|\\D)${wherePostcode}(\\D|$)`).test(foldText(garage.address ?? ""));
+    }
+    return foldText(garage.city ?? "").includes(whereFolded);
+  };
+
+  const category = SERVICE_CATEGORIES.find((key) => key === filters.category && key !== "other") ?? null;
   // Ratings are ignored entirely while reviews are off (old ?minRating= and
   // ?sort=rating links just fall back to the defaults).
   const minRating = REVIEWS_ENABLED && filters.minRating ? Number(filters.minRating) : 0;
@@ -172,8 +200,22 @@ export default async function GaragesPage({
   }));
 
   const filtered = withDistance.filter((garage) => {
-    if (query && !garage.name.toLowerCase().includes(query)) return false;
-    if (filters.city && garage.city !== filters.city) return false;
+    // The text matches the workshop's name or any of its services, so
+    // "vidange" finds every workshop that offers one.
+    if (
+      query &&
+      !garage.name.toLowerCase().includes(query) &&
+      !garage.services.some((service) => service.name.toLowerCase().includes(query))
+    ) {
+      return false;
+    }
+    if (
+      category &&
+      !garage.services.some((service) => normalizeServiceCategory(service.category) === category)
+    ) {
+      return false;
+    }
+    if (!matchesWhere(garage)) return false;
     if (filters.ev === "1" && !garage.ev_capable) return false;
     if (filters.mobile === "1" && !garage.mobile_service) return false;
     if (filters.emergency === "1" && !garage.emergency_service) return false;
@@ -192,7 +234,8 @@ export default async function GaragesPage({
   const effectiveSort = requestedSort ?? (hasOrigin ? "distance" : "name");
   const filtersActive = Boolean(
     query ||
-      filters.city ||
+      where ||
+      category ||
       filters.ev === "1" ||
       filters.mobile === "1" ||
       filters.emergency === "1" ||
@@ -311,15 +354,36 @@ export default async function GaragesPage({
           <StyledSelect
             id="city"
             name="city"
-            defaultValue={filters.city ?? ""}
+            defaultValue={whereCity ?? where}
             variant="bare"
             className={TOOLBAR_SELECT}
             wrapperClassName={TOOLBAR_SELECT_WRAPPER}
           >
             <option value="">{d.anyCity}</option>
+            {/* A looser place from a link stays visible and removable. */}
+            {where && !whereCity && <option value={where}>{where}</option>}
             {cities.map((city) => (
               <option key={city} value={city}>
                 {city}
+              </option>
+            ))}
+          </StyledSelect>
+
+          <label htmlFor="category" className="sr-only">
+            {d.categoryLabel}
+          </label>
+          <StyledSelect
+            id="category"
+            name="category"
+            defaultValue={category ?? ""}
+            variant="bare"
+            className={TOOLBAR_SELECT}
+            wrapperClassName={TOOLBAR_SELECT_WRAPPER}
+          >
+            <option value="">{d.anyCategory}</option>
+            {SERVICE_CATEGORIES.filter((key) => key !== "other").map((key) => (
+              <option key={key} value={key}>
+                {dictionary.serviceCategories[key]}
               </option>
             ))}
           </StyledSelect>

@@ -23,23 +23,60 @@
     "ratingSummary": "Note de {rating} sur 5 ({count} avis)"
   },
   "home": {
-    "heroTitle": "Trouvez un atelier de confiance au Luxembourg.",
-    "heroSubtitle": "RDV connecte les propriétaires de véhicules à des ateliers vérifiés — recherchez, comparez et réservez en ligne en quelques clics.",
+    "mainNav": "Navigation principale",
+    "forWorkshops": "Pour les ateliers",
+    "signUp": "S’inscrire",
     "findGarageCta": "Trouver un atelier",
-    "listGarageCta": "Référencer mon atelier",
-    "features": {
-      "search": {
-        "title": "Rechercher et comparer",
-        "description": "Filtrez les ateliers par capacité VE, service mobile ou d'urgence et note, et visualisez-les sur une carte avant de choisir."
-      },
+    "heroTitle": "Réservez votre prochain entretien auto au Luxembourg.",
+    "heroSubtitle": "Comparez des ateliers vérifiés, choisissez un créneau en direct et payez sur place.",
+    "searchLabel": "Trouver un atelier",
+    "serviceLabel": "Prestation",
+    "servicePlaceholder": "Prestation (ex. vidange, freins)",
+    "cityLabel": "Commune",
+    "anyCity": "Tout le Luxembourg",
+    "luxembourgCity": "Luxembourg-Ville",
+    "searchSubmit": "Rechercher",
+    "popularLabel": "Populaire :",
+    "pills": {
+      "maintenance": "Entretien",
+      "brakes": "Freinage",
+      "tires": "Pneus",
+      "diagnostics": "Diagnostic",
+      "bodywork": "Carrosserie",
+      "ev": "Véhicules électriques"
+    },
+    "featuredTitle": "Ateliers sur RDV",
+    "featuredSubtitle": "Des ateliers vérifiés qui prennent les rendez-vous en ligne.",
+    "featuredAll": "Voir tous les ateliers",
+    "trust": {
       "verified": {
-        "title": "Ateliers vérifiés",
-        "description": "Chaque atelier suit un processus de vérification des documents, et les avis et notes de vrais clients figurent directement sur son profil."
+        "title": "Ateliers luxembourgeois vérifiés",
+        "description": "Immatriculation et assurance de chaque atelier sont contrôlées avant son référencement."
       },
-      "instant": {
-        "title": "Réservez instantanément",
-        "description": "Consultez les disponibilités en temps réel et réservez un créneau en quelques clics — sans appel téléphonique, sans attente de réponse."
+      "calendar": {
+        "title": "Réservation en temps réel",
+        "description": "Les créneaux viennent directement de l’agenda de l’atelier et votre rendez-vous est confirmé immédiatement."
+      },
+      "pay": {
+        "title": "Paiement sur place",
+        "description": "Rien à payer en ligne. Vous réglez l’atelier en récupérant votre véhicule."
       }
+    },
+    "partnerTitle": "Vous gérez un atelier au Luxembourg ?",
+    "partnerSubtitle": "Prenez des rendez-vous en ligne et gérez vos postes, votre agenda et vos clients au même endroit.",
+    "partnerCta": "Référencer mon atelier",
+    "partnerLogin": "Connexion atelier",
+    "footer": {
+      "privacy": "Confidentialité",
+      "rights": "Tous droits réservés."
+    },
+    "trustTitle": "Réserver avec RDV",
+    "book": "Réserver",
+    "heroCard": {
+      "title": "Ateliers à la une",
+      "region": "Luxembourg",
+      "book": "Réserver",
+      "all": "Voir tous les ateliers"
     }
   },
   "auth": {
@@ -53,7 +90,9 @@
       "submit": "Se connecter",
       "submitPending": "Connexion en cours...",
       "noAccount": "Vous n'avez pas de compte ?",
-      "signUpLink": "Inscrivez-vous"
+      "signUpLink": "Inscrivez-vous",
+      "title": "Bon retour",
+      "workshopPrompt": "Vous gérez un atelier ?"
     },
     "signup": {
       "title": "Créer un compte",
@@ -63,14 +102,40 @@
       "submit": "S'inscrire",
       "submitPending": "Création du compte...",
       "hasAccount": "Vous avez déjà un compte ?",
-      "logInLink": "Connectez-vous"
+      "logInLink": "Connectez-vous",
+      "description": "Réservez vos entretiens, suivez vos réparations et gardez vos véhicules au même endroit.",
+      "passwordHint": "Au moins 8 caractères, dont une lettre et un chiffre."
     },
     "forgotPassword": {
       "title": "Réinitialiser votre mot de passe",
       "description": "Indiquez l'e-mail de votre compte et nous vous enverrons un lien pour choisir un nouveau mot de passe.",
       "submit": "Envoyer le lien de réinitialisation",
       "submitPending": "Envoi en cours...",
-      "backToLogin": "Retour à la connexion"
+      "backToLogin": "Retour à la connexion",
+      "sent": "Si un compte existe pour cet e-mail, nous vous avons envoyé un lien pour réinitialiser votre mot de passe."
+    },
+    "panel": {
+      "backHome": "Retour à l’accueil",
+      "client": {
+        "title": "Réservez votre prochain entretien en quelques clics.",
+        "points": [
+          "Disponibilités en temps réel dans des ateliers vérifiés",
+          "Suivez votre réparation étape par étape",
+          "Échangez directement avec votre atelier"
+        ]
+      },
+      "workshop": {
+        "title": "Gérez les rendez-vous de votre atelier au même endroit.",
+        "points": [
+          "Réservation en ligne 24 h/24",
+          "Un tableau de suivi pour chaque véhicule à l’atelier",
+          "Historique clients et véhicules à portée de main"
+        ]
+      },
+      "previewService": "Vidange",
+      "previewWorkshop": "Atelier Muller",
+      "previewWeekday": "jeu",
+      "previewMonth": "déc"
     }
   },
   "clientDashboard": {
@@ -158,8 +223,8 @@
   },
   "garageDiscovery": {
     "title": "Centres auto & ateliers",
-    "searchByName": "Rechercher par nom",
-    "searchPlaceholder": "Rechercher par nom d'atelier",
+    "searchByName": "Rechercher un atelier ou une prestation",
+    "searchPlaceholder": "Atelier ou prestation, ex. vidange",
     "cityLabel": "Ville",
     "anyCity": "Toutes les villes",
     "nearMe": "Près de moi",
@@ -199,7 +264,9 @@
     "viewMap": "Carte",
     "viewToggle": "Affichage",
     "closePreview": "Fermer l'aperçu",
-    "mapLabel": "Carte des ateliers"
+    "mapLabel": "Carte des ateliers",
+    "categoryLabel": "Prestation",
+    "anyCategory": "Toutes les prestations"
   },
   "garageDetail": {
     "backToGarages": "Retour aux ateliers",
@@ -1074,7 +1141,7 @@
     "steps": [
       {
         "title": "Remplissez le formulaire",
-        "description": "Partagez quelques informations sur votre garage — cela prend moins d'une minute."
+        "description": "Partagez quelques informations sur votre atelier — cela prend moins d'une minute."
       },
       {
         "title": "Bénéficiez d'une démo gratuite",
@@ -1089,11 +1156,11 @@
     "benefits": [
       {
         "title": "Élargissez votre portée locale",
-        "description": "Soyez découvert par des propriétaires de véhicules partout au Luxembourg qui recherchent activement un garage de confiance près de chez eux."
+        "description": "Soyez découvert par des propriétaires de véhicules partout au Luxembourg qui recherchent activement un atelier de confiance près de chez eux."
       },
       {
         "title": "Planification simplifiée",
-        "description": "Un calendrier conçu pour un atelier de garage — confirmations, reports et affectation du personnel, tout en un seul endroit."
+        "description": "Un calendrier conçu pour l’atelier — confirmations, reports et affectation du personnel, tout en un seul endroit."
       },
       {
         "title": "Flux de travail numérique automatisé",

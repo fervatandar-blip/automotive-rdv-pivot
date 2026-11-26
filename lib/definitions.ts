@@ -111,6 +111,9 @@ export type ForgotPasswordFormState =
         email?: string[];
       };
       message?: string;
+      // The neutral "if an account exists, we've sent a link" outcome, as
+      // opposed to an error message (rate limit).
+      sent?: boolean;
     }
   | undefined;
 

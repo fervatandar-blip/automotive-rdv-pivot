@@ -2,75 +2,62 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { requestPasswordReset } from "@/app/actions/auth";
+import {
+  AUTH_INPUT,
+  AUTH_SUBMIT,
+  AuthField,
+  AuthHeading,
+  AuthNotice,
+} from "@/components/auth-form-parts";
 import type { Dictionary } from "@/lib/i18n/get-dictionary";
 import type { Locale } from "@/lib/i18n/config";
 
-export function ForgotPasswordForm({
-  lang,
-  dictionary,
-}: {
-  lang: Locale;
-  dictionary: Dictionary;
-}) {
-  const [state, action, pending] = useActionState(
-    requestPasswordReset,
-    undefined
-  );
+export function ForgotPasswordForm({ lang, dictionary }: { lang: Locale; dictionary: Dictionary }) {
+  const [state, action, pending] = useActionState(requestPasswordReset, undefined);
+  const a = dictionary.auth;
 
   return (
-    <div className="flex flex-1 items-center justify-center bg-zinc-50 px-4 py-16 dark:bg-black">
-      <form
-        action={action}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-xl border border-black/[.08] bg-white p-8 dark:border-white/[.145] dark:bg-zinc-950"
+    <form action={action} className="flex flex-col gap-6" noValidate>
+      <input type="hidden" name="lang" value={lang} />
+
+      <AuthHeading title={a.forgotPassword.title} description={a.forgotPassword.description} />
+
+      <AuthField id="email" label={a.emailLabel} errors={state?.errors?.email}>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          required
+          aria-invalid={state?.errors?.email ? true : undefined}
+          aria-describedby={state?.errors?.email ? "email-error" : undefined}
+          placeholder="jane@example.com"
+          className={AUTH_INPUT}
+        />
+      </AuthField>
+
+      {/* "Sent" reads the same whether or not the address has an account,
+          so the form can't be used to find out which emails are registered. */}
+      {state?.sent ? (
+        <AuthNotice tone="success">{a.forgotPassword.sent}</AuthNotice>
+      ) : (
+        state?.message && <AuthNotice tone="error">{state.message}</AuthNotice>
+      )}
+
+      <button disabled={pending} aria-busy={pending} type="submit" className={AUTH_SUBMIT}>
+        {pending ? a.forgotPassword.submitPending : a.forgotPassword.submit}
+      </button>
+
+      <Link
+        href={`/${lang}/login`}
+        className="inline-flex items-center gap-1.5 self-start text-sm font-semibold text-ink-muted transition-colors hover:text-ink"
       >
-        <input type="hidden" name="lang" value={lang} />
-
-        <h1 className="text-2xl font-semibold text-black dark:text-zinc-50">
-          {dictionary.auth.forgotPassword.title}
-        </h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          {dictionary.auth.forgotPassword.description}
-        </p>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="email" className="text-sm font-medium">
-            {dictionary.auth.emailLabel}
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            placeholder="jane@example.com"
-            className="rounded-md border border-black/[.08] px-3 py-2 dark:border-white/[.145] dark:bg-black"
-          />
-          {state?.errors?.email && (
-            <p className="text-sm text-red-600">{state.errors.email[0]}</p>
-          )}
-        </div>
-
-        {state?.message && (
-          <p className="text-sm text-green-700 dark:text-green-500">
-            {state.message}
-          </p>
-        )}
-
-        <button
-          disabled={pending}
-          type="submit"
-          className="mt-2 rounded-full bg-foreground px-5 py-2 text-background transition-colors hover:bg-[#383838] disabled:opacity-50 dark:hover:bg-[#ccc]"
-        >
-          {pending
-            ? dictionary.auth.forgotPassword.submitPending
-            : dictionary.auth.forgotPassword.submit}
-        </button>
-
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          <Link href={`/${lang}/login`} className="font-medium underline">
-            {dictionary.auth.forgotPassword.backToLogin}
-          </Link>
-        </p>
-      </form>
-    </div>
+        <ArrowLeft aria-hidden className="h-4 w-4" strokeWidth={2} />
+        {a.forgotPassword.backToLogin}
+      </Link>
+    </form>
   );
 }
